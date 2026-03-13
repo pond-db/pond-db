@@ -1,0 +1,14 @@
+services:
+  ponddb:
+    build: .
+    ports:
+      - "8432:8432"
+    environment:
+      - POND_HOST=0.0.0.0
+      - POND_PORT=8432
+    volumes:
+      - pond-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  pond-data:
