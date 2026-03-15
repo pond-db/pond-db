@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PondDB Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; margin: 0; background: #f8fafc; }
+    header { background: #1e293b; color: #fff; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.3rem; }
+    .header-actions { display: flex; align-items: center; gap: 1rem; }
+    .header-actions a { color: #cbd5e1; text-decoration: none; font-size: 0.9rem; }
+    .logout-form button { background: #475569; color: #fff; border: none; border-radius: 4px; padding: 0.4rem 0.9rem; cursor: pointer; font-size: 0.9rem; }
+    .logout-form button:hover { background: #334155; }
+    main { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h2 { margin: 0 0 1rem; font-size: 1.05rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+    .stat { font-size: 2rem; font-weight: 700; color: #3b82f6; }
+    .stat-label { font-size: 0.85rem; color: #64748b; margin-top: 0.25rem; }
+    .btn { display: inline-block; padding: 0.5rem 1.1rem; border-radius: 5px; text-decoration: none; font-size: 0.9rem; cursor: pointer; }
+    .btn-primary { background: #3b82f6; color: #fff; border: none; }
+    .btn-secondary { background: #e2e8f0; color: #334155; border: none; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    ul li { padding: 0.4rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    ul li:last-child { border-bottom: none; }
+    a.wg-link { color: #3b82f6; text-decoration: none; }
+    a.wg-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🦆 PondDB Dashboard</h1>
+    <div class="header-actions">
+      <a href="/editor">SQL Editor</a>
+      <form action="/logout" method="POST" class="logout-form">
+        <button type="submit">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+
+      <!-- Sessions card -->
+      <div class="card">
+        <h2>Sessions</h2>
+        <div class="stat">{{ active_sessions }}</div>
+        <div class="stat-label">active sessions</div>
+        {% if active_sessions == 0 %}
+        <p style="color:#94a3b8;font-size:0.85rem;margin:0.75rem 0 0;">No sessions currently active.</p>
+        {% endif %}
+        <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+          <a href="/editor" class="btn btn-primary">Launch new session</a>
+          <a href="/sessions" class="btn btn-secondary">View all</a>
+        </div>
+      </div>
+
+      <!-- Metrics & Compute Usage card -->
+      <div class="card">
+        <h2>Metrics &amp; Compute Usage</h2>
+        <p style="color:#64748b;font-size:0.9rem;margin:0 0 1rem;">
+          Monitor query usage, compute units, and performance metrics.
+        </p>
+        <a href="/metrics" class="btn btn-secondary">Prometheus metrics</a>
+      </div>
+
+      <!-- Workgroups card -->
+      <div class="card">
+        <h2>Workgroups</h2>
+        {% if workgroups %}
+        <ul>
+          {% for wg in workgroups %}
+          <li><a href="/workgroup/{{ wg.name }}" class="wg-link">{{ wg.name }}</a></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p style="color:#94a3b8;font-size:0.85rem;margin:0;">No workgroups configured.</p>
+        {% endif %}
+      </div>
+
+      <!-- Recent Query History card -->
+      <div class="card">
+        <h2>Recent Query History</h2>
+        <p style="color:#64748b;font-size:0.9rem;margin:0 0 1rem;">
+          View recent queries executed across your sessions.
+        </p>
+        <a href="/history" class="btn btn-secondary">View query history</a>
+      </div>
+
+    </div>
+  </main>
+</body>
+</html>

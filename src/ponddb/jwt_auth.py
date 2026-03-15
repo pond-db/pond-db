@@ -39,7 +39,11 @@ def _get_expiry_seconds() -> int:
 # ---------------------------------------------------------------------------
 
 
-def create_access_token(tenant_id: str, scopes: list[str] | None = None) -> str:
+def create_access_token(
+    tenant_id: str,
+    scopes: list[str] | None = None,
+    role: str | None = None,
+) -> str:
     """Return a signed HS256 access JWT for *tenant_id*."""
     secret = _get_secret()
     expiry = _get_expiry_seconds()
@@ -52,6 +56,8 @@ def create_access_token(tenant_id: str, scopes: list[str] | None = None) -> str:
         "iat": now,
         "exp": now + expiry,
     }
+    if role is not None:
+        payload["role"] = role
     return jose_jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -120,3 +126,27 @@ async def require_auth(request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     raise HTTPException(status_code=401, detail="Authentication required")
+
+
+async def require_admin(request: Request) -> dict[str, Any]:
+    """Dependency that requires a Bearer JWT with role=admin.
+
+    - No auth → 401
+    - API key only → 403
+    - Valid JWT without role=admin → 403
+    - Valid JWT with role=admin → returns claims
+    """
+    authorization = request.headers.get("Authorization", "")
+    api_key = request.headers.get("X-API-Key", "")
+
+    if not authorization.startswith("Bearer "):
+        if api_key:
+            # API key is authenticated but not admin
+            raise HTTPException(status_code=403, detail="Admin role required")
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    token = authorization[len("Bearer "):]
+    claims = verify_access_token(token)
+    if claims.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return claims

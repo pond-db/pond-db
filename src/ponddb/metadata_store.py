@@ -83,6 +83,19 @@ class MetadataStore(QueryStoreMixin):
                 executed_at   TEXT NOT NULL
             )
         """)
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS invite_tokens (
+                token       TEXT PRIMARY KEY,
+                email       TEXT NOT NULL,
+                tenant_id   TEXT NOT NULL,
+                role        TEXT NOT NULL DEFAULT 'member',
+                status      TEXT NOT NULL DEFAULT 'pending',
+                created_by  TEXT NOT NULL,
+                created_at  TEXT NOT NULL,
+                expires_at  TEXT NOT NULL,
+                accepted_at TEXT
+            )
+        """)
         # Migrations: add columns to existing tables
         for stmt in (
             "ALTER TABLE queries ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'",

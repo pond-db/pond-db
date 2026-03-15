@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Namespaces &amp; Workgroups — PondDB Admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; margin: 0; background: #f8fafc; }
+    header { background: #1e293b; color: #fff; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.3rem; }
+    .header-actions { display: flex; align-items: center; gap: 1rem; }
+    .header-actions a { color: #cbd5e1; text-decoration: none; font-size: 0.9rem; }
+    .logout-form button { background: #475569; color: #fff; border: none; border-radius: 4px; padding: 0.4rem 0.9rem; cursor: pointer; font-size: 0.9rem; }
+    main { max-width: 960px; margin: 2rem auto; padding: 0 1.5rem; }
+    h2 { color: #1e293b; margin-top: 0; }
+    .breadcrumb { font-size: 0.875rem; color: #64748b; margin-bottom: 1rem; }
+    .breadcrumb a { color: #3b82f6; text-decoration: none; }
+    .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.5rem 0.75rem; background: #f1f5f9; color: #374151; font-size: 0.8rem; text-transform: uppercase; }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: top; }
+    .btn { display: inline-block; padding: 0.35rem 0.8rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer; border: none; text-decoration: none; }
+    .btn-sm { background: #e2e8f0; color: #334155; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .empty { color: #94a3b8; font-size: 0.875rem; padding: 1rem 0; }
+    .wg-list { margin: 0; padding: 0; list-style: none; }
+    .wg-list li { padding: 0.2rem 0; display: flex; align-items: center; gap: 0.5rem; }
+    .ns-section { margin-bottom: 2rem; }
+    .ns-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .ns-name { font-weight: 600; font-size: 1rem; color: #1e293b; }
+    .ns-desc { font-size: 0.8rem; color: #64748b; margin-left: 0.5rem; }
+    a.quota-link { color: #3b82f6; text-decoration: none; font-size: 0.8rem; }
+    a.quota-link:hover { text-decoration: underline; }
+    .create-link { display: inline-block; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🦆 PondDB Admin — Namespaces</h1>
+    <div class="header-actions">
+      <a href="/admin">Admin</a>
+      <a href="/dashboard">Dashboard</a>
+      <form action="/logout" method="POST" class="logout-form">
+        <button type="submit">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <main>
+    <div class="breadcrumb">
+      <a href="/dashboard">Dashboard</a> › <a href="/admin">Admin</a> › Namespaces &amp; Workgroups
+    </div>
+
+    <h2>Namespaces &amp; Workgroups</h2>
+
+    <p>
+      <a href="/namespaces" class="btn btn-primary create-link">+ Create new namespace</a>
+    </p>
+
+    {% if namespaces %}
+    {% for ns_id, ns in namespaces.items() %}
+    <div class="card ns-section">
+      <div class="ns-header">
+        <div>
+          <span class="ns-name">{{ ns.name }}</span>
+          {% if ns.description %}
+          <span class="ns-desc">{{ ns.description }}</span>
+          {% endif %}
+        </div>
+        <small style="color:#94a3b8;">ID: {{ ns.id }}</small>
+      </div>
+
+      {% set wgs = wg_by_ns.get(ns_id, []) %}
+      {% if wgs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Workgroup</th>
+            <th>Active Sessions</th>
+            <th>Max Sessions (quota)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wg in wgs %}
+          <tr>
+            <td>{{ wg.name }}</td>
+            <td>{{ wg.active_sessions }}</td>
+            <td>
+              {% if wg.quota and wg.quota.max_sessions %}
+                {{ wg.quota.max_sessions }}
+              {% else %}
+                <span style="color:#94a3b8;">unlimited</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="/admin/workgroups/{{ wg.id }}/quota" class="quota-link btn btn-sm">Edit Quota</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No workgroups in this namespace.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="card">
+      <p class="empty">No namespaces yet. Create your first namespace using the button above.</p>
+    </div>
+    {% endif %}
+  </main>
+</body>
+</html>

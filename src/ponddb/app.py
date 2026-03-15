@@ -22,10 +22,20 @@ from ponddb.jwt_auth import (
     verify_refresh_token,
 )
 from ponddb.metadata_store import MetadataStore
+from ponddb.namespace_routes import check_and_reserve_session_slot, make_namespace_workgroup_router
 from ponddb.query_routes import make_query_router
 from ponddb.result_cache import ResultCache
-from ponddb.session_manager import QueryError, SessionManager
+from ponddb.session_manager import QueryError, SessionManager, WorkgroupAccessError
+from ponddb.invite_routes import make_invite_router
+from ponddb.invite_store import InviteStore
+from ponddb.oauth_routes import make_oauth_router
 from ponddb.share_routes import make_share_router
+from ponddb.user_routes import make_user_router
+from ponddb.user_store import UserStore
+from ponddb.pondapi_execute import make_pondapi_execute_router
+from ponddb.pondapi_htmx import make_pondapi_htmx_router
+from ponddb.website_routes import make_website_router
+from ponddb.admin_routes import make_admin_router
 
 # ---------------------------------------------------------------------------
 # Write-operation detection (invalidates cache)
@@ -166,13 +176,46 @@ _store.initialize_blocking()
 app.include_router(make_query_router(_store))
 app.include_router(make_share_router(_store))
 
+_user_store = UserStore(_sqlite_path)
+_user_store.initialize_blocking()
+app.include_router(make_oauth_router(_user_store))
+app.include_router(make_user_router(_user_store))
+
+_invite_store = InviteStore(_store)
+app.include_router(make_invite_router(_invite_store))
+
 _data_root = os.environ.get("POND_DATA_ROOT", "./data")
 _dataset_manager = DatasetManager(_data_root)
 app.include_router(make_dataset_router(_dataset_manager))
 
+# Shared state for workgroup quota tracking (passed into the namespace router)
+_workgroups: dict = {}
+_namespaces: dict = {}
+_session_workgroups: dict[str, str] = {}  # session_id -> workgroup_id
+app.include_router(make_namespace_workgroup_router(_workgroups, _session_workgroups, _namespaces))
+
 _cache = ResultCache(ttl_seconds=300)
 # Per-session dataset version for cache invalidation
 _dataset_versions: dict[str, int] = {}
+
+# PondAPI async execution router (uses the same SQLite connection as MetadataStore)
+import sqlite3 as _sqlite3
+_pondapi_db_conn = _sqlite3.connect(":memory:", check_same_thread=False)
+_pondapi_db_conn.row_factory = _sqlite3.Row
+app.include_router(make_pondapi_execute_router(_manager, _pondapi_db_conn))
+app.include_router(make_pondapi_htmx_router(_manager, _pondapi_db_conn))
+app.include_router(make_website_router(_manager, _workgroups))
+
+
+def _get_usage_stats() -> dict:
+    return {
+        "active_sessions": _manager.session_count,
+        "total_queries": _histogram_count,
+        "compute_ms": _compute_units_total,
+    }
+
+
+app.include_router(make_admin_router(_invite_store, _workgroups, _namespaces, _get_usage_stats))
 
 
 @app.get("/metrics", include_in_schema=False)
@@ -203,19 +246,43 @@ async def editor(request: Request) -> HTMLResponse:
 
 class CreateSessionRequest(BaseModel):
     namespace: str = "default"
+    workgroup_id: Optional[str] = None
 
 
 @app.post("/session", status_code=201)
 async def create_session(req: Optional[CreateSessionRequest] = None) -> dict:
     namespace = req.namespace if req is not None else "default"
-    sid = _manager.create_session(namespace=namespace)
+    workgroup_id = req.workgroup_id if req is not None else None
+
+    # Workgroup quota enforcement
+    if workgroup_id is not None:
+        if workgroup_id not in _workgroups:
+            raise HTTPException(status_code=404, detail=f"Workgroup not found: {workgroup_id}")
+        wg = _workgroups[workgroup_id]
+        try:
+            check_and_reserve_session_slot(wg)
+        except ValueError as exc:
+            raise HTTPException(status_code=429, detail=str(exc))
+        wg["active_sessions"] = wg.get("active_sessions", 0) + 1
+
+    effective_workgroup_id = workgroup_id if workgroup_id is not None else "default"
+    sid = _manager.create_session(namespace=namespace, workgroup_id=effective_workgroup_id)
+
+    if workgroup_id is not None:
+        _session_workgroups[sid] = workgroup_id
+
     # Auto-register uploaded datasets as views in the new session
     session = _manager._sessions[sid]
     if session.conn is not None:
         _dataset_manager.register_in_session(session.conn)
     info = _manager.get_session(sid)
     status = info["status"]
-    return {"session_id": sid, "status": status.value if hasattr(status, "value") else status}
+    result: dict = {
+        "session_id": sid,
+        "status": status.value if hasattr(status, "value") else status,
+        "workgroup_id": effective_workgroup_id,
+    }
+    return result
 
 
 @app.delete("/session/{session_id}")
@@ -224,12 +291,21 @@ async def destroy_session(session_id: str) -> dict:
         _manager.destroy_session(session_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+    # Decrement workgroup active_sessions if this session was in a workgroup
+    if session_id in _session_workgroups:
+        wg_id = _session_workgroups.pop(session_id)
+        if wg_id in _workgroups:
+            wg = _workgroups[wg_id]
+            wg["active_sessions"] = max(0, wg.get("active_sessions", 0) - 1)
     return {"detail": "destroyed"}
 
 
 @app.get("/sessions")
-async def list_sessions(namespace: Optional[str] = None) -> list[dict]:
-    sessions = _manager.list_sessions(namespace=namespace)
+async def list_sessions(
+    namespace: Optional[str] = None,
+    workgroup_id: Optional[str] = None,
+) -> list[dict]:
+    sessions = _manager.list_sessions(namespace=namespace, workgroup_id=workgroup_id)
     return [
         {
             "session_id": s["session_id"],
@@ -237,6 +313,7 @@ async def list_sessions(namespace: Optional[str] = None) -> list[dict]:
             "namespace": s["namespace"],
             "created_at": s["created_at"],
             "last_active": s["last_active"],
+            "workgroup_id": s["workgroup_id"],
         }
         for s in sessions
     ]
@@ -269,6 +346,14 @@ async def execute_query(
         namespace = session_info["namespace"]
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Session not found: {req.session_id}")
+
+    # Workgroup isolation: enforce only when JWT carries a workgroup_id claim
+    caller_wg: Optional[str] = _auth.get("workgroup_id")
+    if caller_wg is not None:
+        try:
+            _manager.check_workgroup_access(req.session_id, caller_wg)
+        except WorkgroupAccessError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
 
     is_write = bool(_WRITE_RE.match(req.sql))
 

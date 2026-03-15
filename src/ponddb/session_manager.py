@@ -22,6 +22,10 @@ class QueryError(Exception):
     """Raised when DuckDB rejects a query."""
 
 
+class WorkgroupAccessError(Exception):
+    """Raised when a caller's workgroup_id does not match the session's workgroup_id."""
+
+
 @dataclass
 class QueryResult:
     columns: list[str]
@@ -38,6 +42,7 @@ class _Session:
     last_active: datetime
     namespace: str
     conn: Optional[duckdb.DuckDBPyConnection]
+    workgroup_id: str = "default"
 
 
 def _drive(coro) -> None:
@@ -71,7 +76,7 @@ class SessionManager:
     def session_count(self) -> int:
         return len(self._sessions)
 
-    def create_session(self, namespace: str = "default") -> str:
+    def create_session(self, namespace: str = "default", workgroup_id: str = "default") -> str:
         sid = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         conn = duckdb.connect(":memory:")
@@ -82,6 +87,7 @@ class SessionManager:
             last_active=now,
             namespace=namespace,
             conn=conn,
+            workgroup_id=workgroup_id,
         )
         if self.store is not None:
             _drive(self.store.save_session(sid, namespace, "ACTIVE", now, now))
@@ -109,13 +115,38 @@ class SessionManager:
             "created_at": s.created_at.isoformat(),
             "last_active": s.last_active.isoformat(),
             "namespace": s.namespace,
+            "workgroup_id": s.workgroup_id,
         }
 
-    def list_sessions(self, namespace: Optional[str] = None) -> list[dict]:
+    def list_sessions(
+        self,
+        namespace: Optional[str] = None,
+        workgroup_id: Optional[str] = None,
+    ) -> list[dict]:
         sessions = [self.get_session(sid) for sid in self._sessions]
         if namespace is not None:
             sessions = [s for s in sessions if s["namespace"] == namespace]
+        if workgroup_id is not None:
+            sessions = [s for s in sessions if s["workgroup_id"] == workgroup_id]
         return sessions
+
+    def check_workgroup_access(
+        self, session_id: str, caller_workgroup_id: Optional[str]
+    ) -> None:
+        """Raise WorkgroupAccessError if caller's workgroup doesn't match session's.
+
+        Passing None as caller_workgroup_id skips the check entirely (backwards compat).
+        """
+        if session_id not in self._sessions:
+            raise KeyError(f"Unknown session: {session_id}")
+        if caller_workgroup_id is None:
+            return
+        session_wg = self._sessions[session_id].workgroup_id
+        if session_wg != caller_workgroup_id:
+            raise WorkgroupAccessError(
+                f"Access denied: session belongs to workgroup '{session_wg}', "
+                f"caller asserts workgroup '{caller_workgroup_id}'"
+            )
 
     def suspend_session(self, session_id: str) -> None:
         if session_id not in self._sessions:
