@@ -10,6 +10,9 @@ services:
       - POND_SQLITE_PATH=/app/data/ponddb.db
       - POND_DATA_ROOT=/app/data
       - POND_LOG_LEVEL=warning
+      - POND_JWT_SECRET=dev-secret-change-me
+      - POND_API_KEY=pond-alpha-key-2026
+      - POND_WEBSITE_SESSION_SECRET=session-secret-change-me
     volumes:
       - pond-data:/app/data
     restart: unless-stopped
