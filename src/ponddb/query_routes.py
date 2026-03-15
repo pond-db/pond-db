@@ -1,30 +1,20 @@
-"""REST endpoints for the named query store."""
+"""REST endpoints for the named query store — JWT tenant-aware."""
 
-import os
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Security
-from fastapi.security.api_key import APIKeyHeader
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from ponddb.jwt_auth import require_auth
 from ponddb.metadata_store import MetadataStore
 from ponddb.query_store import DuplicateQueryError, QueryNotFoundError
-
-_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-
-
-async def _require_api_key(key: Optional[str] = Security(_api_key_header)) -> None:
-    """Validate X-API-Key against POND_API_KEY env var."""
-    expected = os.environ.get("POND_API_KEY", "")
-    if not key or not key.strip() or key != expected or not expected:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 class SaveQueryRequest(BaseModel):
     title: str
     description: str = ""
     sql: str
-    created_by: str
+    created_by: Optional[str] = None  # derived from JWT if omitted
     visibility: Literal["public", "private"] = "private"
 
 
@@ -32,36 +22,49 @@ def make_query_router(store: MetadataStore) -> APIRouter:
     """Return a router with /queries endpoints bound to *store*."""
     router = APIRouter()
 
-    @router.post("/queries", status_code=201, dependencies=[Security(_require_api_key)])
-    async def create_query(req: SaveQueryRequest) -> dict[str, Any]:
+    @router.post("/queries", status_code=201)
+    async def create_query(
+        req: SaveQueryRequest,
+        _auth: dict = Depends(require_auth),
+    ) -> dict[str, Any]:
+        tenant_id: str = _auth.get("tenant_id", "default")
+        created_by = req.created_by or tenant_id
         try:
             slug = await store.save_query(
                 title=req.title,
                 description=req.description,
                 sql=req.sql,
-                created_by=req.created_by,
+                created_by=created_by,
+                tenant_id=tenant_id,
                 visibility=req.visibility,
             )
         except DuplicateQueryError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        result = await store.get_query_by_slug(slug)
+        result = await store.get_query_by_slug(slug, tenant_id=tenant_id)
         return result
 
-    @router.get("/queries", dependencies=[Security(_require_api_key)])
+    @router.get("/queries")
     async def list_queries(
-        created_by: str,
+        _auth: dict = Depends(require_auth),
         limit: int = 20,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
+        tenant_id: str = _auth.get("tenant_id", "default")
         return await store.list_queries(
-            created_by=created_by, limit=limit, offset=offset
+            tenant_id=tenant_id, include_public=True, limit=limit, offset=offset
         )
 
-    @router.get("/queries/{slug}", dependencies=[Security(_require_api_key)])
-    async def get_query(slug: str) -> dict[str, Any]:
+    @router.get("/queries/{slug}")
+    async def get_query(
+        slug: str,
+        _auth: dict = Depends(require_auth),
+    ) -> dict[str, Any]:
+        tenant_id: str = _auth.get("tenant_id", "default")
         try:
-            return await store.get_query_by_slug(slug)
+            return await store.get_query_by_slug(slug, tenant_id=tenant_id)
         except QueryNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     return router

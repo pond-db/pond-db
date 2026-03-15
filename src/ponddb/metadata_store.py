@@ -65,6 +65,7 @@ class MetadataStore(QueryStoreMixin):
                 description TEXT NOT NULL DEFAULT '',
                 sql         TEXT NOT NULL,
                 created_by  TEXT NOT NULL,
+                tenant_id   TEXT NOT NULL DEFAULT 'default',
                 created_at  TEXT NOT NULL,
                 visibility  TEXT NOT NULL DEFAULT 'private'
             )
@@ -73,6 +74,7 @@ class MetadataStore(QueryStoreMixin):
             CREATE TABLE IF NOT EXISTS query_history (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 namespace     TEXT NOT NULL,
+                tenant_id     TEXT NOT NULL DEFAULT 'default',
                 sql           TEXT NOT NULL,
                 duration_ms   REAL NOT NULL,
                 rows_returned INTEGER NOT NULL,
@@ -81,14 +83,17 @@ class MetadataStore(QueryStoreMixin):
                 executed_at   TEXT NOT NULL
             )
         """)
-        # Migration: add visibility column to existing tables
-        try:
-            self._conn.execute(
-                "ALTER TABLE queries ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'"
-            )
-            self._conn.commit()
-        except Exception:
-            pass  # Column already exists
+        # Migrations: add columns to existing tables
+        for stmt in (
+            "ALTER TABLE queries ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'",
+            "ALTER TABLE queries ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'",
+            "ALTER TABLE query_history ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default'",
+        ):
+            try:
+                self._conn.execute(stmt)
+                self._conn.commit()
+            except Exception:
+                pass  # Column already exists
         self._conn.commit()
 
     async def initialize(self) -> None:
@@ -235,21 +240,23 @@ class MetadataStore(QueryStoreMixin):
         status: str,
         executed_at: datetime,
         error_message: Optional[str] = None,
+        tenant_id: str = "default",
     ) -> None:
         """Append a query execution record to query_history."""
         self._conn.execute(
             """
             INSERT INTO query_history
-                (namespace, sql, duration_ms, rows_returned, status, error_message, executed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (namespace, tenant_id, sql, duration_ms, rows_returned, status, error_message, executed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (namespace, sql, duration_ms, rows_returned, status, error_message, _to_iso(executed_at)),
+            (namespace, tenant_id, sql, duration_ms, rows_returned, status, error_message, _to_iso(executed_at)),
         )
         self._conn.commit()
 
     async def get_query_history(
         self,
         namespace: Optional[str] = None,
+        tenant_id: Optional[str] = None,
         status_filter: Optional[str] = None,
         start: Optional[datetime] = None,
         end: Optional[datetime] = None,
@@ -260,7 +267,10 @@ class MetadataStore(QueryStoreMixin):
         conditions: list[str] = []
         params: list = []
 
-        if namespace is not None:
+        if tenant_id is not None:
+            conditions.append("tenant_id = ?")
+            params.append(tenant_id)
+        elif namespace is not None:
             conditions.append("namespace = ?")
             params.append(namespace)
         if status_filter is not None:
@@ -277,7 +287,7 @@ class MetadataStore(QueryStoreMixin):
         params.extend([limit, offset])
 
         cursor = self._conn.execute(
-            f"SELECT namespace, sql, duration_ms, rows_returned, status, error_message, executed_at "
+            f"SELECT namespace, tenant_id, sql, duration_ms, rows_returned, status, error_message, executed_at "
             f"FROM query_history {where} "
             f"ORDER BY executed_at DESC "
             f"LIMIT ? OFFSET ?",

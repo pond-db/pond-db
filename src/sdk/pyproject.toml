@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "duckcloud"
+version = "0.1.0"
+description = "Python SDK for the DuckCloud query platform"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "DatabaseCompany" }]
+
+dependencies = [
+    "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["duckcloud"]

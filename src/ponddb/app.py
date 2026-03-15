@@ -3,13 +3,24 @@
 import os
 import re
 from datetime import datetime, timezone
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Response, Security
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, Security
+from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from ponddb import __version__
+from ponddb.dataset_manager import DatasetManager
+from ponddb.dataset_routes import make_dataset_router
+from ponddb.jwt_auth import (
+    create_access_token,
+    create_refresh_token,
+    require_auth,
+    verify_refresh_token,
+)
 from ponddb.metadata_store import MetadataStore
 from ponddb.query_routes import make_query_router
 from ponddb.result_cache import ResultCache
@@ -92,6 +103,61 @@ app = FastAPI(
     description="Lightweight self-hosted DuckDB compute platform",
 )
 
+
+# ---------------------------------------------------------------------------
+# Auth endpoints: POST /auth/token and POST /auth/refresh
+# ---------------------------------------------------------------------------
+
+
+class TokenRequest(BaseModel):
+    api_key: str
+    tenant_id: Optional[str] = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@app.post("/auth/token", response_model=TokenResponse)
+async def issue_token(req: TokenRequest) -> dict[str, Any]:
+    """Exchange an API key for JWT access + refresh tokens."""
+    expected = os.environ.get("POND_API_KEY", "")
+    if not req.api_key or req.api_key != expected or not expected:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    tenant_id = req.tenant_id or "default"
+    expiry = int(os.environ.get("POND_JWT_EXPIRY_SECONDS", "3600") or "3600")
+    access = create_access_token(tenant_id)
+    refresh = create_refresh_token(tenant_id)
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "token_type": "bearer",
+        "expires_in": expiry,
+    }
+
+
+@app.post("/auth/refresh")
+async def refresh_token(req: RefreshRequest) -> dict[str, Any]:
+    """Issue a new access token using a valid refresh token."""
+    claims = verify_refresh_token(req.refresh_token)
+    tenant_id = claims.get("tenant_id", "default")
+    expiry = int(os.environ.get("POND_JWT_EXPIRY_SECONDS", "3600") or "3600")
+    new_access = create_access_token(tenant_id)
+    return {
+        "access_token": new_access,
+        "token_type": "bearer",
+        "expires_in": expiry,
+    }
+
+_templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
 _manager = SessionManager()
 
 _sqlite_path = os.environ.get("POND_SQLITE_PATH", ":memory:")
@@ -99,6 +165,10 @@ _store = MetadataStore(_sqlite_path)
 _store.initialize_blocking()
 app.include_router(make_query_router(_store))
 app.include_router(make_share_router(_store))
+
+_data_root = os.environ.get("POND_DATA_ROOT", "./data")
+_dataset_manager = DatasetManager(_data_root)
+app.include_router(make_dataset_router(_dataset_manager))
 
 _cache = ResultCache(ttl_seconds=300)
 # Per-session dataset version for cache invalidation
@@ -121,6 +191,11 @@ async def health_head() -> None:
     pass
 
 
+@app.get("/editor", response_class=HTMLResponse)
+async def editor(request: Request) -> HTMLResponse:
+    return _templates.TemplateResponse(request, "editor.html")
+
+
 # ---------------------------------------------------------------------------
 # Session endpoints
 # ---------------------------------------------------------------------------
@@ -134,6 +209,10 @@ class CreateSessionRequest(BaseModel):
 async def create_session(req: Optional[CreateSessionRequest] = None) -> dict:
     namespace = req.namespace if req is not None else "default"
     sid = _manager.create_session(namespace=namespace)
+    # Auto-register uploaded datasets as views in the new session
+    session = _manager._sessions[sid]
+    if session.conn is not None:
+        _dataset_manager.register_in_session(session.conn)
     info = _manager.get_session(sid)
     status = info["status"]
     return {"session_id": sid, "status": status.value if hasattr(status, "value") else status}
@@ -174,14 +253,17 @@ class QueryRequest(BaseModel):
     format: str = "json"
 
 
-@app.post("/query", dependencies=[Security(_require_api_key)])
-async def execute_query(req: QueryRequest, response: Response) -> dict:
+@app.post("/query")
+async def execute_query(
+    req: QueryRequest, response: Response, _auth: dict = Depends(require_auth)
+) -> dict:
     if req.format not in ("json",):
         raise HTTPException(status_code=400, detail=f"Unsupported format: {req.format}")
     if not req.sql or not req.sql.strip():
         raise HTTPException(status_code=400, detail="SQL must not be empty")
 
-    # Resolve namespace for history logging
+    # Resolve namespace for history logging and extract tenant_id for isolation
+    tenant_id: str = _auth.get("tenant_id", "default")
     try:
         session_info = _manager.get_session(req.session_id)
         namespace = session_info["namespace"]
@@ -195,7 +277,8 @@ async def execute_query(req: QueryRequest, response: Response) -> dict:
         _dataset_versions[req.session_id] = _dataset_versions.get(req.session_id, 0) + 1
 
     version = str(_dataset_versions.get(req.session_id, 0))
-    cache_key = _cache.make_key(req.sql, version)
+    # Include tenant_id in cache key to prevent cross-tenant cache leakage
+    cache_key = _cache.make_key(req.sql, f"{tenant_id}:{version}")
 
     # Check cache (reads only)
     if not is_write:
@@ -217,6 +300,7 @@ async def execute_query(req: QueryRequest, response: Response) -> dict:
         try:
             await _store.log_query_history(
                 namespace=namespace,
+                tenant_id=tenant_id,
                 sql=req.sql,
                 duration_ms=0.0,
                 rows_returned=0,
@@ -235,6 +319,7 @@ async def execute_query(req: QueryRequest, response: Response) -> dict:
     try:
         await _store.log_query_history(
             namespace=namespace,
+            tenant_id=tenant_id,
             sql=req.sql,
             duration_ms=result.elapsed_ms,
             rows_returned=result.rowcount,
@@ -266,8 +351,36 @@ async def execute_query(req: QueryRequest, response: Response) -> dict:
 _VALID_STATUSES = {"success", "error"}
 
 
-@app.get("/history", dependencies=[Security(_require_api_key)])
+@app.get("/schema")
+async def get_schema(session_id: str = Query(...)) -> list[dict]:
+    """Introspect DuckDB session schema — returns user tables/views with column metadata."""
+    if session_id not in _manager._sessions:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+    session = _manager._sessions[session_id]
+    if session.conn is None:
+        raise HTTPException(status_code=404, detail=f"Session not active: {session_id}")
+    try:
+        tables_result = session.conn.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'main' ORDER BY table_name"
+        ).fetchall()
+        schema: list[dict] = []
+        for (table_name,) in tables_result:
+            cols_result = session.conn.execute(
+                "SELECT column_name, data_type FROM information_schema.columns "
+                "WHERE table_schema = 'main' AND table_name = ? ORDER BY ordinal_position",
+                [table_name],
+            ).fetchall()
+            columns = [{"name": col_name, "type": data_type} for col_name, data_type in cols_result]
+            schema.append({"table_name": table_name, "columns": columns})
+        return schema
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/history")
 async def get_history(
+    _auth: dict = Depends(require_auth),
     status: Optional[str] = Query(default=None),
     start: Optional[str] = Query(default=None),
     end: Optional[str] = Query(default=None),
@@ -293,7 +406,9 @@ async def get_history(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {exc}")
 
+    calling_tenant: str = _auth.get("tenant_id", "default")
     rows = await _store.get_query_history(
+        tenant_id=calling_tenant,
         status_filter=status,
         start=start_dt,
         end=end_dt,

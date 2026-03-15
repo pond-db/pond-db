@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PondDB SQL Editor</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; margin: 0; background: #f5f5f5; display: flex; flex-direction: column; height: 100vh; }
+    h1 { margin: 0.5rem 1rem; font-size: 1.2rem; }
+    .top-bar { padding: 0.5rem 1rem; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 1rem; }
+    .main-layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar */
+    #schema-sidebar {
+      width: 240px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease;
+      overflow: hidden;
+    }
+    #schema-sidebar.collapsed {
+      width: 0;
+      display: none;
+    }
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #eee;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    #schema-tables {
+      overflow-y: auto;
+      flex: 1;
+      padding: 0.25rem 0;
+    }
+    .schema-table-entry { padding: 0 0.25rem 0.25rem; }
+    .schema-table-name {
+      cursor: pointer;
+      padding: 0.3rem 0.5rem;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #0066cc;
+    }
+    .schema-table-name:hover { background: #e8f0fe; }
+    .schema-col-list { margin: 0; padding: 0 0 0 1rem; list-style: none; }
+    .schema-col-list li { font-size: 0.75rem; color: #555; padding: 0.1rem 0; }
+    .col-type { color: #888; margin-left: 0.25rem; font-style: italic; }
+    .schema-empty { padding: 0.5rem 0.75rem; color: #999; font-size: 0.8rem; }
+
+    /* Editor pane */
+    .editor-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0.75rem;
+      overflow: hidden;
+    }
+    #editor { border: 1px solid #ccc; background: #fff; min-height: 120px; border-radius: 4px; flex: 1; }
+    .toolbar { margin: 0.5rem 0; display: flex; gap: 0.5rem; align-items: center; }
+    #run-btn { padding: 0.4rem 1.2rem; cursor: pointer; background: #0066cc; color: #fff; border: none; border-radius: 4px; font-size: 1rem; }
+    #run-btn:hover { background: #0052a3; }
+    #session-input { padding: 0.3rem; width: 22rem; border: 1px solid #ccc; border-radius: 4px; }
+    #error-panel { display: none; background: #fff0f0; border: 1px solid #f88; border-radius: 4px; padding: 0.5rem 1rem; margin: 0.5rem 0; color: #c00; }
+    #results-container { margin-top: 0.5rem; overflow: auto; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 0.3rem 0.6rem; text-align: left; }
+    th { background: #eee; }
+
+    /* Toggle button */
+    #sidebar-btn {
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    #sidebar-btn:hover { background: #ddd; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <h1>PondDB SQL Editor</h1>
+    <button id="sidebar-btn" class="sidebar-toggle">&#9776; Schema</button>
+    <label for="session-input">Session ID:</label>
+    <input id="session-input" type="text" placeholder="paste session_id here" />
+  </div>
+
+  <div class="main-layout">
+    <!-- Schema sidebar -->
+    <aside id="schema-sidebar">
+      <div class="sidebar-header">
+        <span>Schema Browser</span>
+        <button id="schema-refresh-btn" title="Refresh schema" style="cursor:pointer;background:none;border:none;font-size:0.9rem;">&#8635;</button>
+      </div>
+      <div id="schema-tables">
+        <p class="schema-empty">Enter a session ID to browse schema.</p>
+      </div>
+    </aside>
+
+    <!-- Main editor pane -->
+    <div class="editor-pane">
+      <div id="editor"></div>
+      <div class="toolbar">
+        <button id="run-btn" class="run-button">Run</button>
+      </div>
+      <div id="error-panel" class="error-display"></div>
+      <div id="results-container" class="results-area"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // ---------------------------------------------------------------------------
+    // CodeMirror 6 — load from esm.sh
+    // ---------------------------------------------------------------------------
+    let view;
+    let getSQL;
+    let insertText;
+
+    try {
+      const cm = await import("https://esm.sh/@codemirror/basic-setup@0.20.0");
+      const { sql } = await import("https://esm.sh/@codemirror/lang-sql@6.8.0");
+      const { autocompletion } = await import("https://esm.sh/@codemirror/autocomplete@6.18.6");
+      const { EditorView } = await import("https://esm.sh/@codemirror/view@6");
+
+      const state = cm.EditorState.create({
+        doc: "SELECT 1;",
+        extensions: [cm.basicSetup, sql(), autocompletion()],
+      });
+
+      view = new cm.EditorView({
+        state,
+        parent: document.getElementById("editor"),
+      });
+
+      getSQL = () => view.state.doc.toString();
+
+      // Insert table_name at cursor position
+      insertText = (text) => {
+        if (!view) return;
+        const { from } = view.state.selection.main;
+        view.dispatch({
+          changes: { from, insert: text },
+          selection: { anchor: from + text.length },
+        });
+        view.focus();
+      };
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.id = "sql-textarea";
+      ta.rows = 6;
+      ta.style.width = "100%";
+      ta.value = "SELECT 1;";
+      document.getElementById("editor").appendChild(ta);
+      getSQL = () => ta.value;
+      insertText = (text) => {
+        const start = ta.selectionStart;
+        const before = ta.value.substring(0, start);
+        const after = ta.value.substring(ta.selectionEnd);
+        ta.value = before + text + after;
+        ta.selectionStart = ta.selectionEnd = start + text.length;
+        ta.focus();
+      };
+    }
+
+    // ---------------------------------------------------------------------------
+    // Sidebar toggle
+    // ---------------------------------------------------------------------------
+    const sidebar = document.getElementById("schema-sidebar");
+    const sidebarBtn = document.getElementById("sidebar-btn");
+
+    sidebarBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+    });
+
+    // ---------------------------------------------------------------------------
+    // Schema fetch — GET /schema?session_id=...
+    // ---------------------------------------------------------------------------
+    async function fetchSchema(sessionId) {
+      const container = document.getElementById("schema-tables");
+      if (!sessionId) {
+        container.innerHTML = '<p class="schema-empty">Enter a session ID to browse schema.</p>';
+        return;
+      }
+      try {
+        const resp = await fetch(`/schema?session_id=${encodeURIComponent(sessionId)}`);
+        if (!resp.ok) {
+          container.innerHTML = '<p class="schema-empty">Could not load schema.</p>';
+          return;
+        }
+        const tables = await resp.json();
+        if (!tables || tables.length === 0) {
+          container.innerHTML = '<p class="schema-empty">No tables found.</p>';
+          return;
+        }
+        let html = "";
+        for (const tbl of tables) {
+          const table_name = tbl.table_name;
+          html += `<div class="schema-table-entry">`;
+          html += `<div class="schema-table-name" data-table="${table_name}">${table_name}</div>`;
+          if (tbl.columns && tbl.columns.length > 0) {
+            html += `<ul class="schema-col-list">`;
+            for (const col of tbl.columns) {
+              html += `<li>${col.name}<span class="col-type">${col.type}</span></li>`;
+            }
+            html += `</ul>`;
+          }
+          html += `</div>`;
+        }
+        container.innerHTML = html;
+
+        // Attach click handlers — insert table_name at cursor
+        container.querySelectorAll(".schema-table-name").forEach((el) => {
+          el.addEventListener("click", () => {
+            const tableName = el.dataset.table;
+            if (insertText) insertText(tableName);
+          });
+        });
+      } catch (err) {
+        container.innerHTML = '<p class="schema-empty">Error loading schema.</p>';
+      }
+    }
+
+    // Refresh schema when session ID changes (on blur/enter) or button clicked
+    const sessionInput = document.getElementById("session-input");
+    const refreshBtn = document.getElementById("schema-refresh-btn");
+
+    sessionInput.addEventListener("change", () => fetchSchema(sessionInput.value.trim()));
+    sessionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") fetchSchema(sessionInput.value.trim());
+    });
+    refreshBtn.addEventListener("click", () => fetchSchema(sessionInput.value.trim()));
+
+    // ---------------------------------------------------------------------------
+    // Run button — POST /query
+    // ---------------------------------------------------------------------------
+    const runBtn = document.getElementById("run-btn");
+    const errorPanel = document.getElementById("error-panel");
+    const resultsContainer = document.getElementById("results-container");
+
+    runBtn.addEventListener("click", async () => {
+      const session_id = sessionInput.value.trim();
+      const sql = getSQL ? getSQL() : "";
+
+      errorPanel.style.display = "none";
+      errorPanel.textContent = "";
+      resultsContainer.innerHTML = "";
+
+      try {
+        const response = await fetch("/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id, sql }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errorPanel.textContent = data.detail || "Query error";
+          errorPanel.style.display = "block";
+          return;
+        }
+
+        const { columns, rows } = data;
+        if (!columns || columns.length === 0) {
+          resultsContainer.innerHTML = "<p>Query executed. No rows returned.</p>";
+          // Refresh schema after DDL
+          fetchSchema(session_id);
+          return;
+        }
+
+        let html = "<table><thead><tr>";
+        for (const col of columns) {
+          html += `<th>${col}</th>`;
+        }
+        html += "</tr></thead><tbody>";
+        for (const row of rows) {
+          html += "<tr>";
+          for (const cell of row) {
+            html += `<td>${cell ?? ""}</td>`;
+          }
+          html += "</tr>";
+        }
+        html += "</tbody></table>";
+        resultsContainer.innerHTML = html;
+        // Refresh schema in case query created/dropped tables
+        fetchSchema(session_id);
+      } catch (err) {
+        errorPanel.textContent = err.message || "Network error";
+        errorPanel.style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>
