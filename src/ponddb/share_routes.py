@@ -29,6 +29,11 @@ _RATE_WINDOW = 60.0     # window size in seconds
 _buckets: dict[str, list[float]] = {}
 
 
+def reset_rate_limiter() -> None:
+    """Clear all rate-limit buckets. Useful for test isolation."""
+    _buckets.clear()
+
+
 def _check_rate_limit(ip: str) -> bool:
     """Return True if request is allowed, False if rate limited."""
     now = time.monotonic()
@@ -81,6 +86,7 @@ def _execute_sql(sql: str) -> dict[str, Any]:
 
 def make_share_router(store: MetadataStore) -> APIRouter:
     """Return a router with GET /q/{slug} endpoint."""
+    reset_rate_limiter()  # Clean state for fresh router (important for test isolation)
     router = APIRouter()
 
     @router.get("/q/{slug}")
@@ -89,9 +95,9 @@ def make_share_router(store: MetadataStore) -> APIRouter:
         request: Request,
         key: Optional[str] = Security(_api_key_header),
     ) -> Response:
-        # Look up the query
+        # Look up the query (skip tenant check — share links handle auth separately)
         try:
-            query = await store.get_query_by_slug(slug)
+            query = await store.get_query_by_slug(slug, enforce_tenant=False)
         except QueryNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 

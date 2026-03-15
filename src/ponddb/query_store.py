@@ -63,11 +63,16 @@ class QueryStoreMixin:
         return slug
 
     async def get_query_by_slug(
-        self, slug: str, tenant_id: str = "default"
+        self,
+        slug: str,
+        tenant_id: str = "default",
+        enforce_tenant: bool = True,
     ) -> dict[str, Any]:
         """Return the query dict or raise QueryNotFoundError.
 
-        Raises PermissionError if the query is private and owned by a different tenant.
+        When enforce_tenant is True (default), raises PermissionError if the
+        query is private and owned by a different tenant. Set to False for
+        share-link lookups where auth is handled separately.
         """
         cursor = self._conn.execute(
             "SELECT slug, title, description, sql, created_by, tenant_id, created_at, visibility "
@@ -78,7 +83,11 @@ class QueryStoreMixin:
         if row is None:
             raise QueryNotFoundError(f"No query found with slug: {slug!r}")
         result = dict(row)
-        if result["visibility"] == "private" and result["tenant_id"] != tenant_id:
+        if (
+            enforce_tenant
+            and result["visibility"] == "private"
+            and result["tenant_id"] != tenant_id
+        ):
             raise PermissionError(
                 f"Query {slug!r} is private and belongs to a different tenant"
             )
