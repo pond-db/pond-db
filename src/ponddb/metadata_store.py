@@ -1,4 +1,4 @@
-"""MetadataStore — SQLite persistence for session state and catalog mounts.
+"""MetadataStore — SQLite persistence for session state, catalog mounts, and queries.
 
 Uses sqlite3 (synchronous) wrapped in async def so callers can await it,
 while SessionManager can also drive the coroutines synchronously via send().
@@ -8,6 +8,8 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
 
+from ponddb.query_store import QueryStoreMixin
+
 
 def _to_iso(dt: datetime) -> str:
     """Convert datetime to ISO string for storage."""
@@ -16,16 +18,16 @@ def _to_iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
-class MetadataStore:
+class MetadataStore(QueryStoreMixin):
     """Async interface backed by synchronous SQLite via sqlite3."""
 
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
         self._conn: Optional[sqlite3.Connection] = None
 
-    async def initialize(self) -> None:
-        """Create tables if they don't exist (idempotent)."""
-        self._conn = sqlite3.connect(self.db_path)
+    def _create_tables(self) -> None:
+        """Create all tables (idempotent). Shared by initialize() and initialize_blocking()."""
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("""
@@ -56,7 +58,46 @@ class MetadataStore:
                 timestamp    TEXT NOT NULL
             )
         """)
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS queries (
+                slug        TEXT PRIMARY KEY,
+                title       TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                sql         TEXT NOT NULL,
+                created_by  TEXT NOT NULL,
+                created_at  TEXT NOT NULL,
+                visibility  TEXT NOT NULL DEFAULT 'private'
+            )
+        """)
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS query_history (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                namespace     TEXT NOT NULL,
+                sql           TEXT NOT NULL,
+                duration_ms   REAL NOT NULL,
+                rows_returned INTEGER NOT NULL,
+                status        TEXT NOT NULL,
+                error_message TEXT,
+                executed_at   TEXT NOT NULL
+            )
+        """)
+        # Migration: add visibility column to existing tables
+        try:
+            self._conn.execute(
+                "ALTER TABLE queries ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'"
+            )
+            self._conn.commit()
+        except Exception:
+            pass  # Column already exists
         self._conn.commit()
+
+    async def initialize(self) -> None:
+        """Create tables if they don't exist (idempotent)."""
+        self._create_tables()
+
+    def initialize_blocking(self) -> None:
+        """Synchronous version of initialize() for use at module import time."""
+        self._create_tables()
 
     async def close(self) -> None:
         """Close the SQLite connection."""
@@ -179,4 +220,67 @@ class MetadataStore:
                 "SELECT session_id, query_hash, wall_ms, mem_delta_kb, timestamp "
                 "FROM compute_log"
             )
+        return [dict(row) for row in cursor.fetchall()]
+
+    # ------------------------------------------------------------------
+    # Query history operations
+    # ------------------------------------------------------------------
+
+    async def log_query_history(
+        self,
+        namespace: str,
+        sql: str,
+        duration_ms: float,
+        rows_returned: int,
+        status: str,
+        executed_at: datetime,
+        error_message: Optional[str] = None,
+    ) -> None:
+        """Append a query execution record to query_history."""
+        self._conn.execute(
+            """
+            INSERT INTO query_history
+                (namespace, sql, duration_ms, rows_returned, status, error_message, executed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (namespace, sql, duration_ms, rows_returned, status, error_message, _to_iso(executed_at)),
+        )
+        self._conn.commit()
+
+    async def get_query_history(
+        self,
+        namespace: Optional[str] = None,
+        status_filter: Optional[str] = None,
+        start: Optional[datetime] = None,
+        end: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """Return query history rows ordered by executed_at DESC."""
+        conditions: list[str] = []
+        params: list = []
+
+        if namespace is not None:
+            conditions.append("namespace = ?")
+            params.append(namespace)
+        if status_filter is not None:
+            conditions.append("status = ?")
+            params.append(status_filter)
+        if start is not None:
+            conditions.append("executed_at >= ?")
+            params.append(_to_iso(start))
+        if end is not None:
+            conditions.append("executed_at <= ?")
+            params.append(_to_iso(end))
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        params.extend([limit, offset])
+
+        cursor = self._conn.execute(
+            f"SELECT namespace, sql, duration_ms, rows_returned, status, error_message, executed_at "
+            f"FROM query_history {where} "
+            f"ORDER BY executed_at DESC "
+            f"LIMIT ? OFFSET ?",
+            params,
+        )
         return [dict(row) for row in cursor.fetchall()]

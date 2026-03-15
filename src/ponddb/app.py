@@ -1,14 +1,28 @@
 """FastAPI application — PondDB server entry point."""
 
 import os
+import re
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Response, Security
+from fastapi import FastAPI, HTTPException, Query, Response, Security
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 
 from ponddb import __version__
+from ponddb.metadata_store import MetadataStore
+from ponddb.query_routes import make_query_router
+from ponddb.result_cache import ResultCache
 from ponddb.session_manager import QueryError, SessionManager
+from ponddb.share_routes import make_share_router
+
+# ---------------------------------------------------------------------------
+# Write-operation detection (invalidates cache)
+# ---------------------------------------------------------------------------
+_WRITE_RE = re.compile(
+    r"^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|REPLACE|TRUNCATE|MERGE)\b",
+    re.IGNORECASE,
+)
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics state (reset on module reload)
@@ -79,6 +93,16 @@ app = FastAPI(
 )
 
 _manager = SessionManager()
+
+_sqlite_path = os.environ.get("POND_SQLITE_PATH", ":memory:")
+_store = MetadataStore(_sqlite_path)
+_store.initialize_blocking()
+app.include_router(make_query_router(_store))
+app.include_router(make_share_router(_store))
+
+_cache = ResultCache(ttl_seconds=300)
+# Per-session dataset version for cache invalidation
+_dataset_versions: dict[str, int] = {}
 
 
 @app.get("/metrics", include_in_schema=False)
@@ -151,21 +175,129 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/query", dependencies=[Security(_require_api_key)])
-async def execute_query(req: QueryRequest) -> dict:
+async def execute_query(req: QueryRequest, response: Response) -> dict:
     if req.format not in ("json",):
         raise HTTPException(status_code=400, detail=f"Unsupported format: {req.format}")
     if not req.sql or not req.sql.strip():
         raise HTTPException(status_code=400, detail="SQL must not be empty")
+
+    # Resolve namespace for history logging
+    try:
+        session_info = _manager.get_session(req.session_id)
+        namespace = session_info["namespace"]
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Session not found: {req.session_id}")
+
+    is_write = bool(_WRITE_RE.match(req.sql))
+
+    # Bump dataset version on write operations, clearing old cache entries
+    if is_write:
+        _dataset_versions[req.session_id] = _dataset_versions.get(req.session_id, 0) + 1
+
+    version = str(_dataset_versions.get(req.session_id, 0))
+    cache_key = _cache.make_key(req.sql, version)
+
+    # Check cache (reads only)
+    if not is_write:
+        t0 = __import__("time").perf_counter()
+        cached = _cache.get(cache_key)
+        lookup_ms = (__import__("time").perf_counter() - t0) * 1000
+        if cached is not None:
+            response.headers["X-Cache"] = "HIT"
+            return {**cached, "elapsed_ms": lookup_ms}
+
+    # Execute query
+    executed_at = datetime.now(timezone.utc)
     try:
         result = _manager.execute_query(req.session_id, req.sql)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Session not found: {req.session_id}")
     except QueryError as exc:
+        # Log error to history
+        try:
+            await _store.log_query_history(
+                namespace=namespace,
+                sql=req.sql,
+                duration_ms=0.0,
+                rows_returned=0,
+                status="error",
+                error_message=str(exc),
+                executed_at=executed_at,
+            )
+        except Exception:
+            pass
+        response.headers["X-Cache"] = "MISS"
         raise HTTPException(status_code=400, detail=str(exc))
+
     _record_query_duration(result.elapsed_ms / 1000.0)
-    return {
+
+    # Log success to history
+    try:
+        await _store.log_query_history(
+            namespace=namespace,
+            sql=req.sql,
+            duration_ms=result.elapsed_ms,
+            rows_returned=result.rowcount,
+            status="success",
+            executed_at=executed_at,
+        )
+    except Exception:
+        pass
+
+    payload = {
         "columns": result.columns,
         "rows": result.rows,
         "rowcount": result.rowcount,
         "elapsed_ms": result.elapsed_ms,
     }
+
+    # Cache successful read queries
+    if not is_write:
+        _cache.set(cache_key, payload)
+
+    response.headers["X-Cache"] = "MISS"
+    return payload
+
+
+# ---------------------------------------------------------------------------
+# History endpoint
+# ---------------------------------------------------------------------------
+
+_VALID_STATUSES = {"success", "error"}
+
+
+@app.get("/history", dependencies=[Security(_require_api_key)])
+async def get_history(
+    status: Optional[str] = Query(default=None),
+    start: Optional[str] = Query(default=None),
+    end: Optional[str] = Query(default=None),
+    limit: int = Query(default=50),
+    offset: int = Query(default=0),
+) -> list[dict]:
+    if status is not None and status not in _VALID_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {status!r}. Must be 'success' or 'error'")
+
+    start_dt: Optional[datetime] = None
+    end_dt: Optional[datetime] = None
+
+    def _parse_ts(ts: str) -> datetime:
+        # A bare "+" in a query string is decoded as a space; restore it
+        ts = ts.replace(" ", "+").replace("Z", "+00:00")
+        return datetime.fromisoformat(ts)
+
+    try:
+        if start is not None:
+            start_dt = _parse_ts(start)
+        if end is not None:
+            end_dt = _parse_ts(end)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {exc}")
+
+    rows = await _store.get_query_history(
+        status_filter=status,
+        start=start_dt,
+        end=end_dt,
+        limit=limit,
+        offset=offset,
+    )
+    return rows
