@@ -1,0 +1,44 @@
+{# HTMX partial — workgroup API keys tab (no <html>/<body>) #}
+{% from "_macros.html" import copy_button %}
+
+<article>
+  <header>API Authentication</header>
+  <p style="color:var(--pond-text-muted);margin-bottom:1rem;">
+    Use these credentials to authenticate API requests to workgroup <strong>{{ workgroup.name }}</strong>.
+    Per-workgroup API keys are coming soon.
+  </p>
+
+  <div class="key-display" style="margin-bottom:1rem;">
+    <span class="key-label">Auth Header</span>
+    <code>X-API-Key: &lt;your-key&gt;</code>
+    <button class="key-copy" onclick="navigator.clipboard.writeText('X-API-Key: ')">Copy</button>
+  </div>
+
+  <div class="key-display" style="margin-bottom:1rem;">
+    <span class="key-label">JWT Token Endpoint</span>
+    <code>POST /auth/token</code>
+    <button class="key-copy" onclick="navigator.clipboard.writeText('POST /auth/token')">Copy</button>
+  </div>
+
+  <div class="key-display">
+    <span class="key-label">Query Endpoint</span>
+    <code>POST /query  { "session_id": "...", "sql": "SELECT 1" }</code>
+    <button class="key-copy" onclick="navigator.clipboard.writeText('POST /query')">Copy</button>
+  </div>
+</article>
+
+<article>
+  <header>Quick Start</header>
+  <div class="detail-row">
+    <span class="detail-label">1. Get API key</span>
+    <span class="detail-value">Obtain from your admin or <code>/admin/invites</code></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">2. Create session</span>
+    <span class="detail-value"><code>POST /session</code> with workgroup_id</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">3. Execute SQL</span>
+    <span class="detail-value"><code>POST /query</code> with session_id</span>
+  </div>
+</article>

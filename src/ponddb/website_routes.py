@@ -206,6 +206,7 @@ def make_website_router(
         wg_name = wg.get("name", workgroup_id)
         all_sessions = manager.list_sessions()
         wg_sessions = [s for s in all_sessions if s.get("workgroup_id") == wg_name]
+        wg["active_sessions"] = len(wg_sessions)
         return _templates.TemplateResponse(
             request,
             "workgroup.html",

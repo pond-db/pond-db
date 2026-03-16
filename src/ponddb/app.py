@@ -313,7 +313,7 @@ def _get_usage_stats() -> dict:
 
 
 app.include_router(make_admin_router(_invite_store, _workgroups, _namespaces, _get_usage_stats))
-app.include_router(make_htmx_router(_manager, _workgroups, _pondapi_db_conn))
+app.include_router(make_htmx_router(_manager, _workgroups, _pondapi_db_conn, store=_store))
 
 
 @app.get("/metrics", include_in_schema=False)

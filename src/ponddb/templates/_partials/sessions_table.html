@@ -12,12 +12,29 @@
   </thead>
   <tbody>
     {% for s in sessions %}
+    {% set st = s.status|default('active') %}
+    {% set st_str = st if st is string else st.value %}
     <tr id="session-row-{{ s.session_id }}">
       <td>{{ session_id_cell(s.session_id) }}</td>
-      <td>{{ status_badge(s.status|default('active')) }}</td>
-      <td>{{ relative_time(s.created_at) if s.created_at else '—' }}</td>
-      <td>{{ s.workgroup_id|default('—') }}</td>
+      <td>{{ status_badge(st_str) }}</td>
+      <td>{{ relative_time(s.created_at) if s.created_at else '&#8212;' }}</td>
+      <td>{{ s.workgroup_id|default('&#8212;') }}</td>
       <td>
+        {% if st_str|lower == 'suspended' %}
+        <button class="btn btn-sm btn-primary"
+                hx-post="/htmx/session/{{ s.session_id }}/resume"
+                hx-target="#session-row-{{ s.session_id }}"
+                hx-swap="outerHTML">
+          Resume
+        </button>
+        {% elif st_str|lower in ('active', 'running') %}
+        <button class="btn btn-sm btn-warning"
+                hx-post="/htmx/session/{{ s.session_id }}/suspend"
+                hx-target="#session-row-{{ s.session_id }}"
+                hx-swap="outerHTML">
+          Suspend
+        </button>
+        {% endif %}
         <button class="btn btn-sm btn-danger"
                 hx-delete="/htmx/session/{{ s.session_id }}"
                 hx-target="#session-row-{{ s.session_id }}"

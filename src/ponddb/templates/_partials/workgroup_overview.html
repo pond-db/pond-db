@@ -1,0 +1,58 @@
+{# HTMX partial — workgroup overview tab (no <html>/<body>) #}
+{% from "_macros.html" import stat_card, progress_bar %}
+
+{# Quota stat cards #}
+<div class="grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:1.5rem;">
+  <div class="stat-card">
+    <div class="stat-label">Max Sessions</div>
+    <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.max_sessions or "&#8734;" }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Sessions</div>
+    <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.active_sessions or 0 }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Max Query Duration</div>
+    <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.max_query_duration_ms or "&#8734;" }}ms</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Max Result Size</div>
+    <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.max_result_mb or "&#8734;" }}MB</div>
+  </div>
+</div>
+
+{# Utilization progress bar #}
+{% if workgroup.quota and workgroup.quota.max_sessions and workgroup.quota.max_sessions > 0 %}
+{% set pct = ((workgroup.active_sessions or 0) / workgroup.quota.max_sessions * 100)|round(1) %}
+<article style="margin-top:1rem;">
+  <header>Utilization</header>
+  {{ progress_bar(pct, "%s%% of session quota used"|format(pct)) }}
+</article>
+{% endif %}
+
+{# Quota details #}
+<article>
+  <header>Quota Details</header>
+  <div class="detail-row">
+    <span class="detail-label">Workgroup Name</span>
+    <span class="detail-value">{{ workgroup.name }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Max Sessions</span>
+    <span class="detail-value">{{ workgroup.max_sessions or "Unlimited" }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Max Query Duration</span>
+    <span class="detail-value">{{ workgroup.max_query_duration_ms or "Unlimited" }}{% if workgroup.max_query_duration_ms %} ms{% endif %}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Max Result Size</span>
+    <span class="detail-value">{{ workgroup.max_result_mb or "Unlimited" }}{% if workgroup.max_result_mb %} MB{% endif %}</span>
+  </div>
+</article>
+
+{# Members placeholder #}
+<article>
+  <header>Members &amp; Users</header>
+  <p style="color:var(--pond-text-muted);">No members configured for this workgroup.</p>
+</article>

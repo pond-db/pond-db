@@ -47,6 +47,7 @@ def make_htmx_router(
     manager: SessionManager,
     workgroups: dict,
     pondapi_db: Optional[sqlite3.Connection] = None,
+    store: Any = None,
 ) -> APIRouter:
     """Return HTMX partials router. All routes require auth."""
     router = APIRouter(prefix="/htmx", tags=["htmx"])
@@ -77,19 +78,11 @@ def make_htmx_router(
     async def workgroup_sessions(request: Request, wg_name: str) -> Any:
         """Return sessions for a specific workgroup."""
         claims = await require_auth(request)
-        wg = None
-        for w in workgroups.values():
-            if w.get("name") == wg_name:
-                wg = w
-                break
-        if wg is None:
+        if not any(w.get("name") == wg_name for w in workgroups.values()):
             raise HTTPException(status_code=404, detail="Workgroup not found")
-        all_sessions = manager.list_sessions()
-        sessions = [s for s in all_sessions if s.get("workgroup_id") == wg_name]
+        sessions = [s for s in manager.list_sessions() if s.get("workgroup_id") == wg_name]
         return _templates.TemplateResponse(
-            request,
-            "_partials/workgroup_sessions.html",
-            {"sessions": sessions},
+            request, "_partials/workgroup_sessions.html", {"sessions": sessions},
         )
 
     @router.get("/pondapi/{execution_id}/detail", response_class=HTMLResponse)
@@ -109,6 +102,99 @@ def make_htmx_router(
             request,
             "_partials/pondapi_detail.html",
             {"execution": execution},
+        )
+
+    # ── Workgroup tab partials ────────────────────────────────────────────
+
+    def _find_workgroup(wg_name: str) -> Optional[dict]:
+        """Look up a workgroup by name."""
+        for w in workgroups.values():
+            if w.get("name") == wg_name:
+                return w
+        return None
+
+    @router.get("/workgroup/{wg_name}/overview", response_class=HTMLResponse)
+    async def workgroup_overview(request: Request, wg_name: str) -> Any:
+        """Return workgroup overview tab fragment."""
+        claims = await require_auth(request)
+        wg = _find_workgroup(wg_name)
+        if wg is None:
+            raise HTTPException(status_code=404, detail="Workgroup not found")
+        all_sessions = manager.list_sessions()
+        wg["active_sessions"] = sum(
+            1 for s in all_sessions if s.get("workgroup_id") == wg_name
+        )
+        return _templates.TemplateResponse(
+            request,
+            "_partials/workgroup_overview.html",
+            {"workgroup": wg},
+        )
+
+    @router.get("/workgroup/{wg_name}/history", response_class=HTMLResponse)
+    async def workgroup_history(request: Request, wg_name: str) -> Any:
+        """Return workgroup query history tab fragment."""
+        claims = await require_auth(request)
+        wg = _find_workgroup(wg_name)
+        if wg is None:
+            raise HTTPException(status_code=404, detail="Workgroup not found")
+        history: list[dict] = []
+        if store is not None:
+            try:
+                tenant_id = claims.get("tenant_id", "default")
+                history = await store.get_query_history(
+                    tenant_id=tenant_id, limit=25,
+                )
+            except Exception:
+                pass
+        return _templates.TemplateResponse(
+            request,
+            "_partials/workgroup_history.html",
+            {"history": history, "workgroup": wg},
+        )
+
+    @router.get("/workgroup/{wg_name}/apikeys", response_class=HTMLResponse)
+    async def workgroup_apikeys(request: Request, wg_name: str) -> Any:
+        """Return workgroup API keys tab fragment."""
+        claims = await require_auth(request)
+        wg = _find_workgroup(wg_name)
+        if wg is None:
+            raise HTTPException(status_code=404, detail="Workgroup not found")
+        return _templates.TemplateResponse(
+            request,
+            "_partials/workgroup_apikeys.html",
+            {"workgroup": wg},
+        )
+
+    # ── Session suspend/resume ────────────────────────────────────────────
+
+    @router.post("/session/{session_id}/suspend", response_class=HTMLResponse)
+    async def suspend_session(request: Request, session_id: str) -> Any:
+        """Suspend a session and return updated row fragment."""
+        claims = await require_auth(request)
+        try:
+            manager.suspend_session(session_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Session not found")
+        session = manager.get_session(session_id)
+        return _templates.TemplateResponse(
+            request,
+            "_partials/session_row.html",
+            {"session": session},
+        )
+
+    @router.post("/session/{session_id}/resume", response_class=HTMLResponse)
+    async def resume_session(request: Request, session_id: str) -> Any:
+        """Resume a suspended session and return updated row fragment."""
+        claims = await require_auth(request)
+        try:
+            manager.resume_session(session_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Session not found")
+        session = manager.get_session(session_id)
+        return _templates.TemplateResponse(
+            request,
+            "_partials/session_row.html",
+            {"session": session},
         )
 
     return router

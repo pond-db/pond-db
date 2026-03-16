@@ -1,0 +1,33 @@
+{# HTMX partial — workgroup query history tab (no <html>/<body>) #}
+{% from "_macros.html" import status_badge, relative_time %}
+
+{% if history %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>SQL</th>
+      <th>Duration</th>
+      <th>Rows</th>
+      <th>Executed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for q in history %}
+    <tr>
+      <td>{{ status_badge(q.status|default('done')) }}</td>
+      <td><code style="font-size:0.8rem;">{{ q.sql[:80] }}{% if q.sql|length > 80 %}...{% endif %}</code></td>
+      <td>{{ q.elapsed_ms|default('--') }}ms</td>
+      <td>{{ q.rowcount|default('--') }}</td>
+      <td>{{ relative_time(q.created_at) if q.created_at else '--' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<article>
+  <header>Query History</header>
+  <p style="color:var(--pond-text-muted);">No recent queries in this workgroup.</p>
+  <a href="/editor" class="btn btn-primary">Open SQL Editor</a>
+</article>
+{% endif %}

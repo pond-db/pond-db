@@ -48,6 +48,24 @@
           <td>{{ relative_time(s.last_active) if s.last_active else '—' }}</td>
           <td>
             <a href="/editor?session_id={{ s.session_id }}" class="btn btn-sm btn-primary" style="margin-right:0.25rem;">Open</a>
+            {% set st_str = s.status if s.status is string else s.status.value %}
+            {% if st_str|lower == 'suspended' %}
+            <button class="btn btn-sm btn-primary"
+                    hx-post="/htmx/session/{{ s.session_id }}/resume"
+                    hx-target="#session-row-{{ s.session_id }}"
+                    hx-swap="outerHTML"
+                    style="margin-right:0.25rem;">
+              Resume
+            </button>
+            {% elif st_str|lower in ('active', 'running') %}
+            <button class="btn btn-sm btn-warning"
+                    hx-post="/htmx/session/{{ s.session_id }}/suspend"
+                    hx-target="#session-row-{{ s.session_id }}"
+                    hx-swap="outerHTML"
+                    style="margin-right:0.25rem;">
+              Suspend
+            </button>
+            {% endif %}
             <button class="btn btn-sm btn-danger"
                     hx-delete="/htmx/session/{{ s.session_id }}"
                     hx-target="#session-row-{{ s.session_id }}"
