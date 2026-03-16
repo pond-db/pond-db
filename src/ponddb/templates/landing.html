@@ -1,41 +1,70 @@
-{% extends "base_public.html" %}
-{% block title %}PondDB — Self-Hosted DuckDB Analytics{% endblock %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PondDB — Serverless DuckDB for Teams</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/static/pond.css">
+</head>
+<body>
+  {# --- Nav bar --- #}
+  <nav class="landing-nav">
+    <div><strong style="font-size:1.1rem;color:#111827;">PondDB</strong></div>
+    <div style="display:flex;gap:24px;align-items:center;">
+      <a href="/editor">Try Now</a>
+      <a href="https://github.com/DatabaseCompany/db-engine">Docs</a>
+      <a href="/login" class="btn btn-primary" style="padding:8px 20px;">Login</a>
+    </div>
+  </nav>
 
-{% block content %}
-{# --- Hero section --- #}
-<section style="text-align:center; padding:4rem 0 3rem;">
-  <h1>Self-Hosted DuckDB Analytics Platform</h1>
-  <p style="max-width:600px; margin:0 auto 2rem; color:var(--pond-text-muted); font-size:1.1rem;">
-    Run SQL queries on DuckDB with serverless session management.
-    Self-hosted, zero cloud dependency, full control over your data.
-  </p>
-  <a href="/login" role="button">Get Started</a>
-  <a href="/editor" role="button" class="secondary">Try the SQL Editor</a>
-</section>
+  {# --- Hero section --- #}
+  <section class="hero">
+    <h1>Serverless DuckDB for Teams</h1>
+    <p>Run SQL queries instantly. No clusters. No cold starts. Self-hosted and open source.</p>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+      <a href="mailto:2014houtianlu@gmail.com?subject=PondDB%20Invite%20Request"
+         class="btn btn-primary" style="padding:12px 28px;font-size:1.05rem;border-radius:8px;">
+        Request Invite
+      </a>
+      <a href="https://github.com/DatabaseCompany/db-engine"
+         class="btn-outline" style="padding:12px 28px;font-size:1.05rem;border-radius:8px;">
+        View on GitHub
+      </a>
+    </div>
+  </section>
 
-{# --- Feature cards --- #}
-<section>
-  <div class="grid">
-    <article>
-      <h3>DuckDB Engine</h3>
-      <p>Powered by DuckDB for fast in-process analytics queries.</p>
-    </article>
-    <article>
+  {# --- Features section --- #}
+  <section class="features-grid">
+    <div class="feature-card">
+      <h3>PondAPI</h3>
+      <p>Submit SQL over HTTP, poll for results. Async execution modeled on Redshift Data API. Sub-200ms submission latency.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Workgroup Isolation</h3>
+      <p>Per-team compute quotas. Namespace hierarchy. Your data stays in your workgroup.</p>
+    </div>
+    <div class="feature-card">
       <h3>Self-Hosted</h3>
-      <p>Your data stays on your infrastructure. Zero cloud dependency.</p>
-    </article>
-    <article>
-      <h3>Fast SQL</h3>
-      <p>Execute analytical queries instantly with the built-in SQL editor.</p>
-    </article>
-    <article>
-      <h3>Analytics</h3>
-      <p>Full analytics capabilities with session-based tenant isolation.</p>
-    </article>
-  </div>
-</section>
-{% endblock %}
+      <p>Docker Compose on your hardware. No cloud vendor lock-in. MIT licensed.</p>
+    </div>
+  </section>
 
-{% block footer %}
-<small>PondDB — Open Source Self-Hosted DuckDB Platform</small>
-{% endblock %}
+  {# --- Code example --- #}
+  <section class="code-section">
+    <div class="code-block">
+      <code>curl -X POST /pondapi/execute -d '{"sql": "SELECT * FROM sales"}'</code>
+    </div>
+    <p style="text-align:center;color:#9ca3af;margin-top:16px;font-size:0.95rem;">
+      One POST to submit. One GET for results. That's it.
+    </p>
+  </section>
+
+  {# --- Footer --- #}
+  <footer class="landing-footer">
+    Built by DatabaseCompany &middot;
+    <a href="https://github.com/DatabaseCompany/db-engine">GitHub</a> &middot;
+    MIT License
+  </footer>
+</body>
+</html>

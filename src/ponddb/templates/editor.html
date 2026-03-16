@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="/static/pond.css">
   <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
   <style>
-    /* Editor page overrides for Pico.css full-width layout */
     body { margin: 0; display: flex; flex-direction: column; height: 100vh; }
   </style>
 </head>
@@ -16,7 +15,8 @@
   <div class="top-bar">
     <h1>PondDB SQL Editor</h1>
     <button id="sidebar-btn" class="sidebar-toggle">&#9776; Schema</button>
-    <label for="session-input">Session ID:</label>
+    <input id="query-name" type="text" placeholder="Untitled query" class="query-name-input">
+    <label for="session-input" style="font-size:0.85rem;">Session:</label>
     <input id="session-input" type="text" placeholder="paste session_id here" />
   </div>
 
@@ -35,11 +35,27 @@
     <!-- Main editor pane -->
     <div class="editor-pane">
       <div id="editor"></div>
-      <div class="toolbar">
-        <button id="run-btn" class="run-button">Run</button>
+      <div class="action-bar">
+        <button id="run-btn" class="btn btn-primary" style="padding:0.4rem 1.2rem;font-size:1rem;">Run</button>
+        <button id="save-btn" class="btn btn-secondary"
+                hx-post="/queries"
+                hx-target="#save-status"
+                hx-swap="innerHTML"
+                hx-include="#query-name, #session-input"
+                hx-vals='js:{"sql": window.__getSQL ? window.__getSQL() : ""}'>
+          Save Query
+        </button>
+        <button id="share-btn" class="btn-outline" style="display:none;"
+                hx-target="#share-status"
+                hx-swap="innerHTML">
+          Share
+        </button>
+        <span id="save-status" style="font-size:0.8rem;color:var(--pond-text-muted);"></span>
+        <span id="share-status" style="font-size:0.8rem;color:var(--pond-text-muted);"></span>
       </div>
       <div id="error-panel" class="error-display"></div>
       <div id="results-container" class="results-area"></div>
+      <div id="query-metadata" class="query-metadata" style="display:none;"></div>
       <!-- HTMX-powered async execution -->
       <form id="htmx-exec-form"
             hx-post="/pondapi/execute/htmx"
@@ -56,9 +72,9 @@
   </div>
 
   <script type="module">
-    // ---------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
     // CodeMirror 6 — load from esm.sh
-    // ---------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
     let view;
     let getSQL;
     let insertText;
@@ -80,8 +96,6 @@
       });
 
       getSQL = () => view.state.doc.toString();
-
-      // Insert table_name at cursor position
       insertText = (text) => {
         if (!view) return;
         const { from } = view.state.selection.main;
@@ -101,27 +115,41 @@
       getSQL = () => ta.value;
       insertText = (text) => {
         const start = ta.selectionStart;
-        const before = ta.value.substring(0, start);
-        const after = ta.value.substring(ta.selectionEnd);
-        ta.value = before + text + after;
+        ta.value = ta.value.substring(0, start) + text + ta.value.substring(ta.selectionEnd);
         ta.selectionStart = ta.selectionEnd = start + text.length;
         ta.focus();
       };
     }
 
-    // ---------------------------------------------------------------------------
-    // Sidebar toggle
-    // ---------------------------------------------------------------------------
-    const sidebar = document.getElementById("schema-sidebar");
-    const sidebarBtn = document.getElementById("sidebar-btn");
+    // Expose for HTMX hx-vals
+    window.__getSQL = getSQL;
 
-    sidebarBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("collapsed");
+    // -----------------------------------------------------------------------
+    // Sidebar toggle
+    // -----------------------------------------------------------------------
+    document.getElementById("sidebar-btn").addEventListener("click", () => {
+      document.getElementById("schema-sidebar").classList.toggle("collapsed");
     });
 
-    // ---------------------------------------------------------------------------
-    // Schema fetch — GET /schema?session_id=...
-    // ---------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
+    // Schema fetch — type icons for tables and columns
+    // -----------------------------------------------------------------------
+    const TYPE_ICONS = {
+      INTEGER: "\ud83d\udd22", BIGINT: "\ud83d\udd22", SMALLINT: "\ud83d\udd22", TINYINT: "\ud83d\udd22",
+      FLOAT: "\ud83d\udd22", DOUBLE: "\ud83d\udd22", DECIMAL: "\ud83d\udd22", NUMERIC: "\ud83d\udd22",
+      VARCHAR: "\ud83d\udcdd", TEXT: "\ud83d\udcdd", CHAR: "\ud83d\udcdd", STRING: "\ud83d\udcdd",
+      DATE: "\ud83d\udcc5", TIMESTAMP: "\ud83d\udcc5", DATETIME: "\ud83d\udcc5", TIME: "\ud83d\udcc5",
+      BOOLEAN: "\u2705", BOOL: "\u2705",
+      BLOB: "\ud83d\udce6",
+    };
+    function typeIcon(colType) {
+      const upper = (colType || "").toUpperCase();
+      for (const [key, icon] of Object.entries(TYPE_ICONS)) {
+        if (upper.includes(key)) return icon;
+      }
+      return "\u2022";
+    }
+
     async function fetchSchema(sessionId) {
       const container = document.getElementById("schema-tables");
       if (!sessionId) {
@@ -129,89 +157,69 @@
         return;
       }
       try {
-        const resp = await fetch(`/schema?session_id=${encodeURIComponent(sessionId)}`);
-        if (!resp.ok) {
-          container.innerHTML = '<p class="schema-empty">Could not load schema.</p>';
-          return;
-        }
+        const resp = await fetch("/schema?session_id=" + encodeURIComponent(sessionId));
+        if (!resp.ok) { container.innerHTML = '<p class="schema-empty">Could not load schema.</p>'; return; }
         const tables = await resp.json();
-        if (!tables || tables.length === 0) {
-          container.innerHTML = '<p class="schema-empty">No tables found.</p>';
-          return;
-        }
+        if (!tables || tables.length === 0) { container.innerHTML = '<p class="schema-empty">No tables found.</p>'; return; }
         let html = "";
         for (const tbl of tables) {
-          const table_name = tbl.table_name;
-          html += `<div class="schema-table-entry">`;
-          html += `<div class="schema-table-name" data-table="${table_name}">${table_name}</div>`;
+          html += '<div class="schema-table-entry">';
+          html += '<div class="schema-table-name" data-table="' + tbl.table_name + '">\ud83d\udccb ' + tbl.table_name + '</div>';
           if (tbl.columns && tbl.columns.length > 0) {
-            html += `<ul class="schema-col-list">`;
+            html += '<ul class="schema-col-list">';
             for (const col of tbl.columns) {
-              html += `<li>${col.name}<span class="col-type">${col.type}</span></li>`;
+              html += '<li>' + typeIcon(col.type) + ' ' + col.name + '<span class="col-type">' + col.type + '</span></li>';
             }
-            html += `</ul>`;
+            html += '</ul>';
           }
-          html += `</div>`;
+          html += '</div>';
         }
         container.innerHTML = html;
-
-        // Attach click handlers — insert table_name at cursor
         container.querySelectorAll(".schema-table-name").forEach((el) => {
-          el.addEventListener("click", () => {
-            const tableName = el.dataset.table;
-            if (insertText) insertText(tableName);
-          });
+          el.addEventListener("click", () => { if (insertText) insertText(el.dataset.table); });
         });
-      } catch (err) {
-        container.innerHTML = '<p class="schema-empty">Error loading schema.</p>';
-      }
+      } catch (err) { container.innerHTML = '<p class="schema-empty">Error loading schema.</p>'; }
     }
 
-    // Refresh schema when session ID changes (on blur/enter) or button clicked
     const sessionInput = document.getElementById("session-input");
     const refreshBtn = document.getElementById("schema-refresh-btn");
-
     sessionInput.addEventListener("change", () => fetchSchema(sessionInput.value.trim()));
-    sessionInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") fetchSchema(sessionInput.value.trim());
-    });
+    sessionInput.addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSchema(sessionInput.value.trim()); });
     refreshBtn.addEventListener("click", () => fetchSchema(sessionInput.value.trim()));
 
-    // Auto-create a session on page load so users don't have to paste one
+    // Auto-create session on load
     if (!sessionInput.value.trim()) {
       try {
         const resp = await fetch("/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        if (resp.ok) {
-          const data = await resp.json();
-          sessionInput.value = data.session_id;
-          fetchSchema(data.session_id);
-        }
-      } catch (_) { /* user can still paste manually */ }
+        if (resp.ok) { const data = await resp.json(); sessionInput.value = data.session_id; fetchSchema(data.session_id); }
+      } catch (_) {}
     }
 
-    // ---------------------------------------------------------------------------
-    // Run button — POST /query
-    // ---------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
+    // Run button — POST /query with pond-table results + metadata
+    // -----------------------------------------------------------------------
     const runBtn = document.getElementById("run-btn");
     const errorPanel = document.getElementById("error-panel");
     const resultsContainer = document.getElementById("results-container");
+    const metadataEl = document.getElementById("query-metadata");
 
     runBtn.addEventListener("click", async () => {
       const session_id = sessionInput.value.trim();
-      const sql = getSQL ? getSQL() : "";
-
+      const sqlText = getSQL ? getSQL() : "";
       errorPanel.style.display = "none";
       errorPanel.textContent = "";
       resultsContainer.innerHTML = "";
+      metadataEl.style.display = "none";
+      const startTime = Date.now();
 
       try {
         const response = await fetch("/query", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id, sql }),
+          body: JSON.stringify({ session_id, sql: sqlText }),
         });
-
         const data = await response.json();
+        const elapsed = data.elapsed_ms || (Date.now() - startTime);
 
         if (!response.ok) {
           errorPanel.textContent = data.detail || "Query error";
@@ -220,28 +228,30 @@
         }
 
         const { columns, rows } = data;
+        const rowCount = rows ? rows.length : 0;
+
         if (!columns || columns.length === 0) {
           resultsContainer.innerHTML = "<p>Query executed. No rows returned.</p>";
-          // Refresh schema after DDL
+          metadataEl.textContent = "Completed in " + elapsed + "ms";
+          metadataEl.style.display = "block";
           fetchSchema(session_id);
           return;
         }
 
-        let html = "<table><thead><tr>";
-        for (const col of columns) {
-          html += `<th>${col}</th>`;
-        }
+        let html = '<span class="result-count">' + rowCount + ' rows returned</span>';
+        html += '<table class="pond-table"><thead><tr>';
+        for (const col of columns) { html += "<th>" + col + "</th>"; }
         html += "</tr></thead><tbody>";
         for (const row of rows) {
           html += "<tr>";
-          for (const cell of row) {
-            html += `<td>${cell ?? ""}</td>`;
-          }
+          for (const cell of row) { html += "<td>" + (cell ?? "") + "</td>"; }
           html += "</tr>";
         }
         html += "</tbody></table>";
         resultsContainer.innerHTML = html;
-        // Refresh schema in case query created/dropped tables
+
+        metadataEl.textContent = "Completed in " + elapsed + "ms \u00b7 " + rowCount + " rows \u00b7 Cache: " + (data.cache_hit ? "HIT" : "MISS");
+        metadataEl.style.display = "block";
         fetchSchema(session_id);
       } catch (err) {
         errorPanel.textContent = err.message || "Network error";

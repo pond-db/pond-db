@@ -78,22 +78,26 @@ def make_website_router(
 
     @router.get("/login", response_class=HTMLResponse)
     async def login_page(request: Request) -> Response:
-        return _templates.TemplateResponse(request, "login.html", {"error": None})
+        invite_state = request.query_params.get("invite_state", "")
+        namespace_name = request.query_params.get("namespace_name", "")
+        return _templates.TemplateResponse(
+            request, "login.html",
+            {"error": None, "invite_state": invite_state, "namespace_name": namespace_name},
+        )
 
     @router.post("/login")
     async def login_submit(
         request: Request,
         api_key: str = Form(default=""),
     ) -> Response:
+        ctx = {"error": None, "invite_state": "", "namespace_name": ""}
         if not api_key or not api_key.strip():
-            return _templates.TemplateResponse(
-                request, "login.html", {"error": "API key is required"}, status_code=400
-            )
+            ctx["error"] = "API key is required"
+            return _templates.TemplateResponse(request, "login.html", ctx, status_code=400)
         expected = os.environ.get("POND_API_KEY", "")
         if not expected or api_key != expected:
-            return _templates.TemplateResponse(
-                request, "login.html", {"error": "Invalid API key"}, status_code=200
-            )
+            ctx["error"] = "Invalid API key"
+            return _templates.TemplateResponse(request, "login.html", ctx, status_code=200)
         session_data = {"tenant_id": "default"}
         cookie_val = _sign_session(session_data)
         response = RedirectResponse(url="/dashboard", status_code=303)

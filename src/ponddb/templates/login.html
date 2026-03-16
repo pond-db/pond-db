@@ -1,42 +1,67 @@
-{% extends "base_public.html" %}
-{% block title %}PondDB — Log In{% endblock %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PondDB — Sign In</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/static/pond.css">
+</head>
+<body>
+  {# --- Nav bar (same as landing) --- #}
+  <nav class="landing-nav">
+    <div><strong style="font-size:1.1rem;color:#111827;"><a href="/" style="color:inherit;text-decoration:none;">PondDB</a></strong></div>
+    <div style="display:flex;gap:24px;align-items:center;">
+      <a href="https://github.com/DatabaseCompany/db-engine">Docs</a>
+      <a href="/login" class="btn btn-primary" style="padding:8px 20px;">Login</a>
+    </div>
+  </nav>
 
-{% block head_extra %}
-<style>
-  .login-card { max-width: 420px; margin: 3rem auto; }
-  .toggle-vis { background: none; border: none; color: var(--pond-primary); cursor: pointer; font-size: 0.85rem; padding: 0; margin-bottom: 0.75rem; }
-  .divider { text-align: center; margin: 1.25rem 0; color: var(--pond-gray); font-size: 0.85rem; position: relative; }
-  .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #e2e8f0; }
-  .divider::before { left: 0; }
-  .divider::after { right: 0; }
-  .oauth-btn { display: block; width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; text-align: center; text-decoration: none; color: #334155; font-size: 0.9rem; margin-bottom: 0.5rem; cursor: pointer; }
-  .oauth-btn:hover { background: #f1f5f9; }
-</style>
-{% endblock %}
+  {# --- Login card --- #}
+  <div class="login-card">
+    {% if invite_state and namespace_name %}
+    <div class="invite-banner">
+      You've been invited to join <strong>{{ namespace_name }}</strong>
+    </div>
+    {% endif %}
 
-{% block content %}
-<div class="login-card">
-  <article>
-    <a href="/">&larr; Home</a>
-    <h2>Log in to PondDB</h2>
-    <p style="color:var(--pond-text-muted);">Enter your API key to access the dashboard.</p>
+    <h2 style="margin-bottom:8px;font-size:1.5rem;">Sign in to PondDB</h2>
 
     {% if error %}
     <div class="error-msg">{{ error }}</div>
     {% endif %}
 
-    <form action="/login" method="POST">
+    {# --- OAuth buttons --- #}
+    <a href="/auth/google{% if invite_state %}?invite_state={{ invite_state }}{% endif %}" class="oauth-btn oauth-google">
+      {# Google G icon (4-color) #}
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59A14.5 14.5 0 019.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.97 23.97 0 000 24c0 3.77.91 7.35 2.56 10.53l7.97-5.94z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.94C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continue with Google
+    </a>
+    <a href="/auth/github{% if invite_state %}?invite_state={{ invite_state }}{% endif %}" class="oauth-btn oauth-github">
+      {# GitHub mark (white) #}
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="white"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Continue with GitHub
+    </a>
+
+    <div class="login-divider">or</div>
+
+    {# --- API key form (self-hosted / admin fallback) --- #}
+    <form method="post" action="/login" style="margin:0;">
       <input type="hidden" name="_form" value="login">
-      <label for="api_key">API Key</label>
-      <input type="password" id="api_key" name="api_key" placeholder="Your API key" autocomplete="off">
-      <button type="button" class="toggle-vis" onclick="var f=document.getElementById('api_key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'Show key':'Hide key'">Show key</button>
-      <button type="submit">Sign In</button>
+      <input type="password" name="api_key" placeholder="API key (self-hosted)" style="margin-bottom:8px;">
+      <button type="submit" class="btn btn-primary" style="width:100%;">Sign in with API Key</button>
     </form>
 
-    <div class="divider">or continue with</div>
+    <p style="text-align:center;color:var(--pond-text-muted);font-size:0.9rem;margin-top:12px;">
+      Don't have access? Contact your workspace admin.
+    </p>
+  </div>
 
-    <a href="/auth/google" class="oauth-btn">Sign in with Google</a>
-    <a href="/auth/github" class="oauth-btn">Sign in with GitHub</a>
-  </article>
-</div>
-{% endblock %}
+  {# --- Footer --- #}
+  <footer class="landing-footer">
+    Built by DatabaseCompany &middot;
+    <a href="https://github.com/DatabaseCompany/db-engine">GitHub</a> &middot;
+    MIT License
+  </footer>
+</body>
+</html>
