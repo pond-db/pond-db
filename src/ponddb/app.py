@@ -7,13 +7,15 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, Security
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ponddb import __version__
+from ponddb.cors_middleware import AllowlistCORSMiddleware
 from ponddb.dataset_manager import DatasetManager
 from ponddb.dataset_routes import make_dataset_router
 from ponddb.jwt_auth import (
@@ -22,11 +24,13 @@ from ponddb.jwt_auth import (
     require_auth,
     verify_refresh_token,
 )
+from ponddb import token_blocklist
 from ponddb.metadata_store import MetadataStore
 from ponddb.namespace_routes import check_and_reserve_session_slot, make_namespace_workgroup_router
 from ponddb.query_routes import make_query_router
 from ponddb.result_cache import ResultCache
 from ponddb.session_manager import QueryError, SessionManager, WorkgroupAccessError
+from ponddb.sql_sandbox import BlockedSqlError
 from ponddb.invite_routes import make_invite_router
 from ponddb.invite_store import InviteStore
 from ponddb.oauth_routes import make_oauth_router
@@ -38,6 +42,8 @@ from ponddb.pondapi_htmx import make_pondapi_htmx_router
 from ponddb.website_routes import make_website_router
 from ponddb.admin_routes import make_admin_router
 from ponddb.htmx_partials import make_htmx_router
+from ponddb.security_headers import SecurityHeadersMiddleware
+from ponddb.health_security import make_health_security_router
 
 # ---------------------------------------------------------------------------
 # Write-operation detection (invalidates cache)
@@ -115,6 +121,8 @@ app = FastAPI(
     description="Lightweight self-hosted DuckDB compute platform",
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Serve static assets (pond.css)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
@@ -140,16 +148,22 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class RevokeRequest(BaseModel):
+    token: str
+
+
 @app.post("/auth/token", response_model=TokenResponse)
-async def issue_token(req: TokenRequest) -> dict[str, Any]:
+async def issue_token(req: TokenRequest, request: Request) -> dict[str, Any]:
     """Exchange an API key for JWT access + refresh tokens."""
     expected = os.environ.get("POND_API_KEY", "")
     if not req.api_key or req.api_key != expected or not expected:
         raise HTTPException(status_code=401, detail="Invalid API key")
     tenant_id = req.tenant_id or "default"
     expiry = int(os.environ.get("POND_JWT_EXPIRY_SECONDS", "3600") or "3600")
+    client_ip: Optional[str] = request.headers.get("X-Forwarded-For") or None
+    user_agent: Optional[str] = request.headers.get("User-Agent") or None
     access = create_access_token(tenant_id)
-    refresh = create_refresh_token(tenant_id)
+    refresh = create_refresh_token(tenant_id, ip=client_ip, user_agent=user_agent)
     return {
         "access_token": access,
         "refresh_token": refresh,
@@ -159,17 +173,95 @@ async def issue_token(req: TokenRequest) -> dict[str, Any]:
 
 
 @app.post("/auth/refresh")
-async def refresh_token(req: RefreshRequest) -> dict[str, Any]:
+async def refresh_token(req: RefreshRequest, request: Request) -> dict[str, Any]:
     """Issue a new access token using a valid refresh token."""
-    claims = verify_refresh_token(req.refresh_token)
-    tenant_id = claims.get("tenant_id", "default")
-    expiry = int(os.environ.get("POND_JWT_EXPIRY_SECONDS", "3600") or "3600")
-    new_access = create_access_token(tenant_id)
-    return {
-        "access_token": new_access,
-        "token_type": "bearer",
-        "expires_in": expiry,
-    }
+    from ponddb import audit_log
+    from ponddb.audit_log import AuditLogMiddleware
+
+    client_ip: Optional[str] = request.headers.get("X-Forwarded-For") or None
+    user_agent: Optional[str] = request.headers.get("User-Agent") or None
+
+    try:
+        claims = verify_refresh_token(req.refresh_token, ip=client_ip, user_agent=user_agent)
+        tenant_id = claims.get("tenant_id", "default")
+        expiry = int(os.environ.get("POND_JWT_EXPIRY_SECONDS", "3600") or "3600")
+        new_access = create_access_token(tenant_id)
+        try:
+            await audit_log.log_event(
+                AuditLogMiddleware._pool,
+                "token_refresh",
+                tenant_id=tenant_id,
+                ip_address=client_ip,
+                user_agent=user_agent,
+                detail="success",
+            )
+        except Exception:
+            pass
+        return {
+            "access_token": new_access,
+            "token_type": "bearer",
+            "expires_in": expiry,
+        }
+    except HTTPException as exc:
+        try:
+            await audit_log.log_event(
+                AuditLogMiddleware._pool,
+                "token_refresh",
+                ip_address=client_ip,
+                user_agent=user_agent,
+                detail=f"failed: {exc.detail}",
+            )
+        except Exception:
+            pass
+        raise
+
+
+@app.post("/auth/revoke")
+async def revoke_token(req: RevokeRequest, request: Request) -> dict[str, Any]:
+    """Revoke a token by adding its jti to the blocklist."""
+    from jose import JWTError
+    from jose import jwt as jose_jwt
+    from ponddb import audit_log
+    from ponddb.audit_log import AuditLogMiddleware
+
+    secret = os.environ.get("POND_JWT_SECRET", "")
+    if not secret:
+        raise HTTPException(status_code=500, detail="POND_JWT_SECRET is not configured")
+
+    # Decode without expiry verification so expired tokens can still be revoked
+    try:
+        claims = jose_jwt.decode(
+            req.token,
+            secret,
+            algorithms=["HS256"],
+            options={"verify_exp": False},
+        )
+    except JWTError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid token: {exc}") from exc
+
+    jti = claims.get("jti")
+    if not jti:
+        raise HTTPException(status_code=400, detail="Token has no jti claim")
+
+    token_blocklist.add_to_blocklist(jti)
+
+    fwd = request.headers.get("X-Forwarded-For", "")
+    client_ip: Optional[str] = fwd.split(",")[0].strip() if fwd else None
+    user_agent: Optional[str] = request.headers.get("User-Agent") or None
+    tenant_id: Optional[str] = claims.get("tenant_id") or claims.get("sub")
+    try:
+        await audit_log.log_event(
+            AuditLogMiddleware._pool,
+            "token_revoke",
+            tenant_id=tenant_id,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            detail=f"jti:{jti}",
+        )
+    except Exception:
+        pass
+
+    return {"detail": "revoked", "jti": jti}
 
 _templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
@@ -209,7 +301,7 @@ _pondapi_db_conn = _sqlite3.connect(":memory:", check_same_thread=False)
 _pondapi_db_conn.row_factory = _sqlite3.Row
 app.include_router(make_pondapi_execute_router(_manager, _pondapi_db_conn))
 app.include_router(make_pondapi_htmx_router(_manager, _pondapi_db_conn))
-app.include_router(make_website_router(_manager, _workgroups))
+app.include_router(make_website_router(_manager, _workgroups, store=_store, dataset_manager=_dataset_manager))
 
 
 def _get_usage_stats() -> dict:
@@ -225,9 +317,12 @@ app.include_router(make_htmx_router(_manager, _workgroups, _pondapi_db_conn))
 
 
 @app.get("/metrics", include_in_schema=False)
-async def metrics() -> Response:
+async def metrics(_auth: dict = Depends(require_auth)) -> Response:
     text = _render_metrics(_manager.session_count)
     return Response(content=text, media_type="text/plain; version=0.0.4; charset=utf-8")
+
+
+app.include_router(make_health_security_router())
 
 
 @app.get("/health")
@@ -256,7 +351,9 @@ class CreateSessionRequest(BaseModel):
 
 
 @app.post("/session", status_code=201)
-async def create_session(req: Optional[CreateSessionRequest] = None) -> dict:
+async def create_session(
+    req: Optional[CreateSessionRequest] = None,
+) -> dict:
     namespace = req.namespace if req is not None else "default"
     workgroup_id = req.workgroup_id if req is not None else None
 
@@ -332,7 +429,7 @@ async def list_sessions(
 
 class QueryRequest(BaseModel):
     session_id: str
-    sql: str
+    sql: str = Field(..., max_length=50_000)
     format: str = "json"
 
 
@@ -384,6 +481,11 @@ async def execute_query(
     executed_at = datetime.now(timezone.utc)
     try:
         result = _manager.execute_query(req.session_id, req.sql)
+    except BlockedSqlError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Blocked SQL pattern '{exc.pattern}': not allowed",
+        )
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Session not found: {req.session_id}")
     except QueryError as exc:
@@ -443,7 +545,10 @@ _VALID_STATUSES = {"success", "error"}
 
 
 @app.get("/schema")
-async def get_schema(session_id: str = Query(...)) -> list[dict]:
+async def get_schema(
+    _auth: dict = Depends(require_auth),
+    session_id: str = Query(...),
+) -> list[dict]:
     """Introspect DuckDB session schema — returns user tables/views with column metadata."""
     if session_id not in _manager._sessions:
         raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
@@ -507,3 +612,41 @@ async def get_history(
         offset=offset,
     )
     return rows
+
+
+# ---------------------------------------------------------------------------
+# build_app() — factory for fresh apps (used by tests, notably CORS tests)
+# ---------------------------------------------------------------------------
+
+
+def build_app() -> FastAPI:
+    """Create a fresh FastAPI app with CORSMiddleware from POND_CORS_ORIGINS.
+
+    Reads POND_CORS_ORIGINS at call time (comma-separated, whitespace stripped).
+    Allowed origins are echoed in Access-Control-Allow-Origin; no wildcard is used.
+    """
+    cors_raw = os.environ.get("POND_CORS_ORIGINS", "")
+    allow_origins: list[str] = (
+        [o.strip() for o in cors_raw.split(",") if o.strip()]
+        if cors_raw.strip()
+        else []
+    )
+
+    new_app = FastAPI(
+        title="PondDB",
+        version=__version__,
+        description="Lightweight self-hosted DuckDB compute platform",
+    )
+
+    if allow_origins:
+        new_app.add_middleware(AllowlistCORSMiddleware, allow_origins=allow_origins)
+
+    @new_app.get("/health")
+    async def _health() -> dict:
+        return {"status": "ok", "version": __version__, "sessions": 0}
+
+    @new_app.post("/query")
+    async def _query() -> dict:
+        return {}
+
+    return new_app

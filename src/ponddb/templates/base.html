@@ -5,47 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <link rel="stylesheet" href="/static/pond.css">
-  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <title>{% block title %}PondDB{% endblock %}</title>
   {% block head_extra %}{% endblock %}
 </head>
 <body>
   {% block body %}
-  <div class="app-layout">
-    {# --- Sidebar --- #}
-    <aside class="sidebar">
-      <div class="sidebar-brand">PondDB</div>
-      <nav>
-        <a href="/dashboard"{% if active_page == "dashboard" %} class="active"{% endif %}>Dashboard</a>
-        <a href="/editor"{% if active_page == "editor" %} class="active"{% endif %}>SQL Editor</a>
-        {% if workgroups_nav is defined and workgroups_nav %}
-        <div class="sidebar-section">Workgroups</div>
-        {% for wg in workgroups_nav %}
-        <a href="/workgroup/{{ wg.name }}" class="sidebar-wg">{{ wg.name }}</a>
-        {% endfor %}
-        {% endif %}
-        <div class="sidebar-section">Tools</div>
-        <a href="/history">Query History</a>
-        <a href="/datasets">Datasets</a>
-        <a href="/admin"{% if active_page == "admin" %} class="active"{% endif %}>Admin</a>
-      </nav>
-      <div class="sidebar-footer">
-        <form action="/logout" method="POST">
-          <button type="submit">Logout</button>
-        </form>
-      </div>
-    </aside>
-    {# --- Main content area --- #}
-    <div class="main-content">
-      {% if breadcrumb is defined and breadcrumb %}
-      <div class="breadcrumb">
-        {% for item in breadcrumb %}
-          {% if not loop.last %}<a href="{{ item.url }}">{{ item.label }}</a> &rsaquo; {% else %}{{ item.label }}{% endif %}
-        {% endfor %}
-      </div>
+  {# --- Sidebar --- #}
+  <aside class="sidebar">
+    <div class="sidebar-brand">PondDB</div>
+    <nav>
+      <a href="/dashboard"{% if active_page == "dashboard" %} class="active"{% endif %}>Dashboard</a>
+      <a href="/editor"{% if active_page == "editor" %} class="active"{% endif %}>SQL Editor</a>
+      {% if workgroups_nav is defined and workgroups_nav %}
+      <div class="sidebar-section">Workgroups</div>
+      {% for wg in workgroups_nav %}
+      <a href="/workgroup/{{ wg.name }}" class="sidebar-wg{% if active_page == 'workgroup-' ~ wg.name %} active{% endif %}">{{ wg.name }}</a>
+      {% endfor %}
       {% endif %}
-      {% block content %}{% endblock %}
+      <div class="sidebar-section">Tools</div>
+      <a href="/history"{% if active_page == "history" %} class="active"{% endif %}>Query History</a>
+      <a href="/datasets"{% if active_page == "datasets" %} class="active"{% endif %}>Datasets</a>
+      <a href="/settings"{% if active_page == "settings" %} class="active"{% endif %}>Settings</a>
+      {% if current_user is defined and current_user and current_user.role == "admin" %}
+      <a href="/admin"{% if active_page == "admin" %} class="active"{% endif %}>Admin</a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      {% if current_user is defined and current_user %}
+      <div style="font-size:0.8rem;color:#9ca3af;margin-bottom:4px;">{{ current_user.display_name }}</div>
+      {% endif %}
+      <form action="/logout" method="POST">
+        <button type="submit">Logout</button>
+      </form>
     </div>
+  </aside>
+  {# --- Main content area --- #}
+  <div class="main-content">
+    {% if breadcrumb is defined and breadcrumb %}
+    <div class="breadcrumb">
+      {% for item in breadcrumb %}
+        {% if not loop.last %}<a href="{{ item.url }}">{{ item.label }}</a> &rsaquo; {% else %}{{ item.label }}{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
   </div>
   {% endblock %}
   {% block scripts %}{% endblock %}

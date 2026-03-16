@@ -1,68 +1,110 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stat_card, empty_state %}
+{% from "_macros.html" import status_badge, progress_bar, empty_state, relative_time %}
 {% block title %}PondDB Dashboard{% endblock %}
 
 {% block content %}
-<h2>Dashboard</h2>
+<h2>Welcome back, {{ current_user.display_name if current_user else "User" }}</h2>
 
-{# --- Stat cards row --- #}
-<div class="grid">
-  {{ stat_card("Active Sessions", active_sessions, "/dashboard/sessions") }}
-  {{ stat_card("Workgroups", workgroups|length if workgroups else 0) }}
+{# --- Stat Cards Row --- #}
+<div class="stats-row">
+  <div class="stat-card">
+    <h3>Active Sessions</h3>
+    <div class="value">{{ stats.active_sessions }}</div>
+    <a href="/dashboard/sessions" class="stat-link">View sessions &rarr;</a>
+    <br><a href="/editor" class="btn btn-primary btn-sm" style="margin-top:8px;">Launch new session</a>
+  </div>
+  <div class="stat-card">
+    <h3>Queries Today</h3>
+    <div class="value">{{ stats.queries_today }}</div>
+    <a href="/history" class="stat-link">View history &rarr;</a>
+  </div>
+  <div class="stat-card">
+    <h3>Datasets</h3>
+    <div class="value">{{ stats.datasets }}</div>
+    <a href="/datasets" class="stat-link">Manage datasets &rarr;</a>
+  </div>
 </div>
 
-{# --- Main grid --- #}
-<div class="grid" style="margin-top:1.5rem;">
-
-  {# Sessions card #}
-  <article>
-    <header>Sessions</header>
-    {% if active_sessions == 0 %}
-    <p style="color:var(--pond-text-muted);font-size:0.85rem;">No sessions currently active.</p>
-    {% else %}
-    <p>{{ active_sessions }} active session(s).</p>
-    {% endif %}
-    <footer>
-      <a href="/editor" role="button" class="btn btn-primary">Launch new session</a>
-      <a href="/dashboard/sessions" role="button" class="btn btn-secondary secondary">View all</a>
-    </footer>
-  </article>
-
-  {# Metrics & Compute Usage card #}
-  <article>
-    <header>Metrics &amp; Compute Usage</header>
-    <p style="color:var(--pond-text-muted);font-size:0.9rem;">
-      Monitor query usage, compute units, and performance metrics.
-    </p>
-    <footer>
-      <a href="/metrics" role="button" class="btn btn-secondary secondary">Prometheus metrics</a>
-    </footer>
-  </article>
-
-  {# Workgroups card #}
-  <article>
-    <header>Workgroups</header>
-    {% if workgroups %}
-    <ul>
-      {% for wg in workgroups %}
-      <li><a href="/workgroup/{{ wg.name }}">{{ wg.name }}</a></li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p style="color:var(--pond-text-muted);font-size:0.85rem;">No workgroups configured.</p>
-    {% endif %}
-  </article>
-
-  {# Recent Query History card #}
-  <article>
-    <header>Recent Query History</header>
-    <p style="color:var(--pond-text-muted);font-size:0.9rem;">
-      View recent queries executed across your sessions.
-    </p>
-    <footer>
-      <a href="/history" role="button" class="btn btn-secondary secondary">View query history</a>
-    </footer>
-  </article>
-
+{# --- Workgroups --- #}
+<h3>Workgroups</h3>
+{% if workgroups %}
+<div class="wg-grid">
+  {% for wg in workgroups %}
+  <div class="wg-card">
+    <h3>{{ wg.name }}</h3>
+    <div class="wg-meta">
+      <span class="badge badge-gray">{{ wg.namespace | default("default") }}</span>
+      {% if wg.status | default("active") == "active" %}
+      <span class="badge badge-green">active</span>
+      {% else %}
+      <span class="badge badge-yellow">{{ wg.status }}</span>
+      {% endif %}
+    </div>
+    <div class="session-usage">
+      Sessions: {{ wg.active_sessions | default(0) }} / {{ wg.max_sessions | default(10) }}
+    </div>
+    {% set pct = ((wg.active_sessions | default(0)) / (wg.max_sessions | default(10)) * 100) | int %}
+    {{ progress_bar(pct) }}
+    <div style="margin-top:12px;">
+      <a href="/editor?workgroup={{ wg.name }}" class="btn btn-primary btn-sm">Open Editor</a>
+      <a href="/workgroup/{{ wg.name }}" class="btn btn-secondary btn-sm" style="margin-left:4px;">Details</a>
+    </div>
+  </div>
+  {% endfor %}
 </div>
+{% else %}
+{{ empty_state("No workgroups configured yet.", "Create workgroup", "/admin/namespaces") }}
+{% endif %}
+
+{# --- Recent Executions --- #}
+<h3>Recent Executions</h3>
+{% if recent_executions %}
+<table class="pond-table">
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>SQL</th>
+      <th>Duration</th>
+      <th>Rows</th>
+      <th>Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ex in recent_executions %}
+    <tr class="clickable-row" onclick="window.location='/history'">
+      <td>
+        {% if ex.status == "success" or ex.status == "complete" %}
+        <span class="badge badge-green">{{ ex.status }}</span>
+        {% elif ex.status == "error" or ex.status == "failed" %}
+        <span class="badge badge-red">{{ ex.status }}</span>
+        {% elif ex.status == "pending" or ex.status == "running" %}
+        <span class="badge badge-yellow">{{ ex.status }}</span>
+        {% else %}
+        <span class="badge badge-gray">{{ ex.status }}</span>
+        {% endif %}
+      </td>
+      <td><code style="font-size:0.8rem;">{{ ex.sql[:60] }}{% if ex.sql|length > 60 %}...{% endif %}</code></td>
+      <td>{{ "%.0f"|format(ex.duration_ms) }}ms</td>
+      <td>{{ ex.rows_returned }}</td>
+      <td>{{ relative_time(ex.executed_at) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+{{ empty_state("No queries executed yet.", "Open SQL Editor", "/editor") }}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('time[datetime]').forEach(function(el) {
+  var diff = Date.now() - new Date(el.getAttribute('datetime'));
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) el.textContent = 'just now';
+  else if (mins < 60) el.textContent = mins + 'm ago';
+  else if (mins < 1440) el.textContent = Math.floor(mins / 60) + 'h ago';
+  else el.textContent = Math.floor(mins / 1440) + 'd ago';
+});
+</script>
 {% endblock %}

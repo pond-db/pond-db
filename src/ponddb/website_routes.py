@@ -10,8 +10,9 @@ import hashlib
 import hmac
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -54,7 +55,21 @@ def _get_session(request: Request) -> Optional[dict]:
     return _verify_session(cookie)
 
 
-def make_website_router(manager: SessionManager, workgroups: dict) -> APIRouter:
+def _build_current_user(session: dict) -> dict:
+    """Build a current_user context dict from session cookie data."""
+    return {
+        "display_name": session.get("display_name", "User"),
+        "role": session.get("role", "user"),
+        "tenant_id": session.get("tenant_id", "default"),
+    }
+
+
+def make_website_router(
+    manager: SessionManager,
+    workgroups: dict,
+    store: Any = None,
+    dataset_manager: Any = None,
+) -> APIRouter:
     router = APIRouter()
 
     @router.get("/", response_class=HTMLResponse)
@@ -98,14 +113,61 @@ def make_website_router(manager: SessionManager, workgroups: dict) -> APIRouter:
         session = _get_session(request)
         if not session:
             return RedirectResponse(url="/login", status_code=302)
-        active_sessions = manager.session_count
+
+        current_user = _build_current_user(session)
         wg_list = list(workgroups.values())
+
+        # Enrich workgroups with active session counts
+        all_sessions = manager.list_sessions()
+        for wg in wg_list:
+            wg_name = wg.get("name", "")
+            wg["active_sessions"] = sum(
+                1 for s in all_sessions if s.get("workgroup_id") == wg_name
+            )
+
+        # Queries today + recent executions from metadata store
+        queries_today = 0
+        recent_executions: list[dict] = []
+        if store is not None:
+            try:
+                today_start = datetime.now(timezone.utc).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                today_rows = await store.get_query_history(
+                    tenant_id=session.get("tenant_id", "default"),
+                    start=today_start,
+                    limit=1000,
+                )
+                queries_today = len(today_rows)
+                recent_executions = await store.get_query_history(
+                    tenant_id=session.get("tenant_id", "default"),
+                    limit=10,
+                )
+            except Exception:
+                pass  # graceful degradation — show 0
+
+        # Dataset count
+        datasets_count = 0
+        if dataset_manager is not None:
+            try:
+                datasets_count = len(dataset_manager.list_datasets())
+            except Exception:
+                pass
+
+        stats = {
+            "active_sessions": manager.session_count,
+            "queries_today": queries_today,
+            "datasets": datasets_count,
+        }
+
         return _templates.TemplateResponse(
             request,
             "dashboard.html",
             {
-                "active_sessions": active_sessions,
+                "current_user": current_user,
+                "stats": stats,
                 "workgroups": wg_list,
+                "recent_executions": recent_executions,
                 "active_page": "dashboard",
                 "workgroups_nav": wg_list,
             },
