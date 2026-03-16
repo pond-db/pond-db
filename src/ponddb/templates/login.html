@@ -1,49 +1,42 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PondDB — Log In</title>
-  <style>
-    body { font-family: sans-serif; margin: 0; background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: #fff; padding: 2rem 2.5rem; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); width: 100%; max-width: 380px; }
-    .card h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
-    .card p.sub { color: #64748b; margin: 0 0 1.5rem; font-size: 0.9rem; }
-    .back { display: inline-block; margin-bottom: 1.5rem; color: #3b82f6; text-decoration: none; font-size: 0.9rem; }
-    label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: #475569; }
-    input[type="password"] { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; margin-bottom: 1rem; }
-    .btn-primary { width: 100%; padding: 0.65rem; background: #3b82f6; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600; }
-    .btn-primary:hover { background: #2563eb; }
-    .error-msg { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; }
-    .divider { text-align: center; margin: 1.25rem 0; color: #94a3b8; font-size: 0.85rem; position: relative; }
-    .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #e2e8f0; }
-    .divider::before { left: 0; }
-    .divider::after { right: 0; }
-    .oauth-btn { display: block; width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; text-align: center; text-decoration: none; color: #334155; font-size: 0.9rem; margin-bottom: 0.5rem; cursor: pointer; }
-    .oauth-btn:hover { background: #f1f5f9; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <a href="/" class="back">← Home</a>
-    <h1>Log in to PondDB</h1>
-    <p class="sub">Enter your API key to access the dashboard.</p>
+{% extends "base_public.html" %}
+{% block title %}PondDB — Log In{% endblock %}
+
+{% block head_extra %}
+<style>
+  .login-card { max-width: 420px; margin: 3rem auto; }
+  .toggle-vis { background: none; border: none; color: var(--pond-primary); cursor: pointer; font-size: 0.85rem; padding: 0; margin-bottom: 0.75rem; }
+  .divider { text-align: center; margin: 1.25rem 0; color: var(--pond-gray); font-size: 0.85rem; position: relative; }
+  .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #e2e8f0; }
+  .divider::before { left: 0; }
+  .divider::after { right: 0; }
+  .oauth-btn { display: block; width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; text-align: center; text-decoration: none; color: #334155; font-size: 0.9rem; margin-bottom: 0.5rem; cursor: pointer; }
+  .oauth-btn:hover { background: #f1f5f9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+  <article>
+    <a href="/">&larr; Home</a>
+    <h2>Log in to PondDB</h2>
+    <p style="color:var(--pond-text-muted);">Enter your API key to access the dashboard.</p>
 
     {% if error %}
     <div class="error-msg">{{ error }}</div>
     {% endif %}
 
     <form action="/login" method="POST">
-      <input type="hidden" name="_token" value="csrf-placeholder">
+      <input type="hidden" name="_form" value="login">
       <label for="api_key">API Key</label>
-      <input type="password" id="api_key" name="api_key" placeholder="Your API key" autocomplete="current-password">
-      <button type="submit" class="btn-primary">Sign In</button>
+      <input type="password" id="api_key" name="api_key" placeholder="Your API key" autocomplete="off">
+      <button type="button" class="toggle-vis" onclick="var f=document.getElementById('api_key');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'Show key':'Hide key'">Show key</button>
+      <button type="submit">Sign In</button>
     </form>
 
     <div class="divider">or continue with</div>
 
     <a href="/auth/google" class="oauth-btn">Sign in with Google</a>
     <a href="/auth/github" class="oauth-btn">Sign in with GitHub</a>
-  </div>
-</body>
-</html>
+  </article>
+</div>
+{% endblock %}

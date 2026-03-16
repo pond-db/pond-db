@@ -1,5 +1,9 @@
 """JWT token utilities for PondDB authentication."""
 
+import base64
+import hashlib
+import hmac as _hmac
+import json
 import os
 import time
 from typing import Any
@@ -105,12 +109,32 @@ def verify_refresh_token(token: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# FastAPI dependency — accepts Bearer JWT *or* X-API-Key
+# Session cookie verification (shared with website_routes)
+# ---------------------------------------------------------------------------
+
+_COOKIE_NAME = "pond_session"
+
+
+def _verify_session_cookie(cookie: str) -> dict | None:
+    """Verify HMAC-signed session cookie. Returns payload dict or None."""
+    try:
+        payload_b64, sig = cookie.rsplit(".", 1)
+        secret = os.environ.get("POND_WEBSITE_SESSION_SECRET", "change-me-default-secret")
+        expected = _hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
+        if not _hmac.compare_digest(sig, expected):
+            return None
+        return json.loads(base64.urlsafe_b64decode(payload_b64).decode())
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# FastAPI dependency — accepts Bearer JWT, X-API-Key, or session cookie
 # ---------------------------------------------------------------------------
 
 
 async def require_auth(request: Request) -> dict[str, Any]:
-    """Dependency that accepts either a Bearer JWT or an X-API-Key header."""
+    """Dependency that accepts a Bearer JWT, X-API-Key header, or session cookie."""
     authorization = request.headers.get("Authorization", "")
     api_key = request.headers.get("X-API-Key", "")
 
@@ -124,6 +148,17 @@ async def require_auth(request: Request) -> dict[str, Any]:
             # Return a minimal claims dict for API-key callers
             return {"tenant_id": "default", "scopes": ["query", "read", "write"], "type": "access"}
         raise HTTPException(status_code=401, detail="Invalid API key")
+
+    # Fall back to website session cookie
+    cookie = request.cookies.get(_COOKIE_NAME)
+    if cookie:
+        session = _verify_session_cookie(cookie)
+        if session:
+            return {
+                "tenant_id": session.get("tenant_id", "default"),
+                "scopes": ["query", "read", "write"],
+                "type": "access",
+            }
 
     raise HTTPException(status_code=401, detail="Authentication required")
 

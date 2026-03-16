@@ -1,0 +1,114 @@
+"""HTMX partial routes — return HTML fragments for dynamic dashboard updates.
+
+All endpoints return HTML fragments (no <html>/<body>), suitable for
+hx-swap="innerHTML" or hx-swap="outerHTML" targets.
+"""
+
+import json
+import sqlite3
+from pathlib import Path
+from typing import Any, Optional
+
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from ponddb.jwt_auth import require_auth
+from ponddb.session_manager import SessionManager
+
+_templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
+
+def _fetch_execution(conn: sqlite3.Connection, execution_id: str) -> Optional[dict]:
+    """Fetch a PondAPI execution row and format it for templates."""
+    cur = conn.execute(
+        "SELECT * FROM pondapi_executions WHERE execution_id=?", (execution_id,)
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    result: dict[str, Any] = {
+        "execution_id": row["execution_id"],
+        "tenant_id": row["tenant_id"],
+        "session_id": row["session_id"],
+        "sql": row["sql"],
+        "status": row["status"],
+        "created_at": row["created_at"],
+        "elapsed_ms": row["elapsed_ms"],
+        "error": row["error"],
+        "rowcount": row["rowcount"],
+        "columns": json.loads(row["columns_json"]) if row["columns_json"] else [],
+        "rows": json.loads(row["rows_json"]) if row["rows_json"] else [],
+    }
+    return result
+
+
+def make_htmx_router(
+    manager: SessionManager,
+    workgroups: dict,
+    pondapi_db: Optional[sqlite3.Connection] = None,
+) -> APIRouter:
+    """Return HTMX partials router. All routes require auth."""
+    router = APIRouter(prefix="/htmx", tags=["htmx"])
+
+    @router.get("/sessions-table", response_class=HTMLResponse)
+    async def sessions_table(request: Request) -> Any:
+        """Return sessions table fragment for auto-refresh."""
+        claims = await require_auth(request)
+        sessions = manager.list_sessions()
+        return _templates.TemplateResponse(
+            request,
+            "_partials/sessions_table.html",
+            {"sessions": sessions},
+        )
+
+    @router.delete("/session/{session_id}", response_class=HTMLResponse)
+    async def terminate_session(request: Request, session_id: str) -> Any:
+        """Terminate a session and return empty row (removed from DOM)."""
+        claims = await require_auth(request)
+        try:
+            manager.destroy_session(session_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Session not found")
+        # Return empty string so hx-swap="outerHTML" removes the row
+        return HTMLResponse(content="", status_code=200)
+
+    @router.get("/workgroup/{wg_name}/sessions", response_class=HTMLResponse)
+    async def workgroup_sessions(request: Request, wg_name: str) -> Any:
+        """Return sessions for a specific workgroup."""
+        claims = await require_auth(request)
+        wg = None
+        for w in workgroups.values():
+            if w.get("name") == wg_name:
+                wg = w
+                break
+        if wg is None:
+            raise HTTPException(status_code=404, detail="Workgroup not found")
+        all_sessions = manager.list_sessions()
+        sessions = [s for s in all_sessions if s.get("workgroup_id") == wg_name]
+        return _templates.TemplateResponse(
+            request,
+            "_partials/workgroup_sessions.html",
+            {"sessions": sessions},
+        )
+
+    @router.get("/pondapi/{execution_id}/detail", response_class=HTMLResponse)
+    async def pondapi_detail(request: Request, execution_id: str) -> Any:
+        """Return PondAPI execution detail panel HTML fragment."""
+        claims = await require_auth(request)
+        if pondapi_db is None:
+            raise HTTPException(status_code=503, detail="PondAPI not available")
+        execution = _fetch_execution(pondapi_db, execution_id)
+        if execution is None:
+            raise HTTPException(status_code=404, detail="Execution not found")
+        # Tenant isolation
+        tenant_id = claims.get("tenant_id", "default")
+        if execution["tenant_id"] != tenant_id:
+            raise HTTPException(status_code=404, detail="Execution not found")
+        return _templates.TemplateResponse(
+            request,
+            "_partials/pondapi_detail.html",
+            {"execution": execution},
+        )
+
+    return router

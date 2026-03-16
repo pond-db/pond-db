@@ -1,0 +1,84 @@
+{# === PondDB Jinja2 Macros — reusable UI components === #}
+
+
+{# Status badge with color coding based on status string #}
+{% macro status_badge(status) -%}
+<span class="badge badge-{{ status|lower|replace(' ', '-') }}">{{ status }}</span>
+{%- endmacro %}
+
+
+{# Stat card for dashboard metrics #}
+{% macro stat_card(label, value, href=None) %}
+<div class="stat-card">
+  <div class="stat-value">{{ value }}</div>
+  <div class="stat-label">{{ label }}</div>
+  {% if href %}<a href="{{ href }}" class="stat-link">View details &rarr;</a>{% endif %}
+</div>
+{% endmacro %}
+
+
+{# Empty state placeholder with optional action button #}
+{% macro empty_state(message, action_label=None, action_url=None) %}
+<div class="empty-state">
+  <p>{{ message }}</p>
+  {% if action_label and action_url %}
+  <a href="{{ action_url }}" role="button" class="btn btn-primary">{{ action_label }}</a>
+  {% endif %}
+</div>
+{% endmacro %}
+
+
+{# Progress bar with percentage fill and color thresholds #}
+{% macro progress_bar(percent, label=None) %}
+<div class="progress-bar">
+  <div class="progress-fill{% if percent >= 80 %} danger{% elif percent >= 60 %} warn{% endif %}" style="width:{{ [percent, 100]|min }}%"></div>
+</div>
+{% if label %}<small>{{ label }}</small>{% endif %}
+{% endmacro %}
+
+
+{# Copy-to-clipboard button #}
+{% macro copy_button(text, label="Copy ID") %}
+<button class="btn-copy" onclick="navigator.clipboard.writeText('{{ text }}')" title="Copy to clipboard">{{ label }}</button>
+{% endmacro %}
+
+
+{# Action button — form-based (POST/DELETE) or HTMX-powered #}
+{% macro action_button(label, url, method="POST", variant="primary", confirm=None, htmx=False) %}
+{% if htmx %}
+<button class="btn btn-sm btn-{{ variant }}"
+        hx-{{ method|lower }}="{{ url }}"
+        hx-target="closest tr" hx-swap="outerHTML"
+        {% if confirm %}hx-confirm="{{ confirm }}"{% endif %}>
+  {{ label }}
+</button>
+{% else %}
+<form action="{{ url }}" method="{{ method }}" style="display:inline;">
+  <button type="submit" class="btn btn-sm btn-{{ variant }}"
+    {% if confirm %}onclick="return confirm('{{ confirm }}')"{% endif %}>{{ label }}</button>
+</form>
+{% endif %}
+{% endmacro %}
+
+
+{# Session ID with short display + copy button #}
+{% macro session_id_cell(sid) %}
+<code class="session-id">{{ sid[:8] }}</code>
+{{ copy_button(sid) }}
+{% endmacro %}
+
+
+{# Relative time display with full timestamp on hover #}
+{% macro relative_time(iso_str) %}
+<time datetime="{{ iso_str }}" title="{{ iso_str }}">{{ iso_str[:19]|replace('T', ' ') }}</time>
+{% endmacro %}
+
+
+{# Data table with optional HTMX auto-refresh #}
+{% macro data_table_start(id=None, htmx_url=None, htmx_interval="10s") %}
+{% if id %}<div id="{{ id }}"{% if htmx_url %} hx-get="{{ htmx_url }}" hx-trigger="every {{ htmx_interval }}" hx-swap="innerHTML"{% endif %}>{% endif %}
+{% endmacro %}
+
+{% macro data_table_end(id=None) %}
+{% if id %}</div>{% endif %}
+{% endmacro %}

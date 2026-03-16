@@ -99,10 +99,33 @@ def make_website_router(manager: SessionManager, workgroups: dict) -> APIRouter:
         if not session:
             return RedirectResponse(url="/login", status_code=302)
         active_sessions = manager.session_count
+        wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request,
             "dashboard.html",
-            {"active_sessions": active_sessions, "workgroups": list(workgroups.values())},
+            {
+                "active_sessions": active_sessions,
+                "workgroups": wg_list,
+                "active_page": "dashboard",
+                "workgroups_nav": wg_list,
+            },
+        )
+
+    @router.get("/dashboard/sessions", response_class=HTMLResponse)
+    async def sessions_page(request: Request) -> Response:
+        session = _get_session(request)
+        if not session:
+            return RedirectResponse(url="/login", status_code=302)
+        sessions = manager.list_sessions()
+        wg_list = list(workgroups.values())
+        return _templates.TemplateResponse(
+            request,
+            "sessions.html",
+            {
+                "sessions": sessions,
+                "active_page": "sessions",
+                "workgroups_nav": wg_list,
+            },
         )
 
     @router.get("/workgroup/{workgroup_id}", response_class=HTMLResponse)
@@ -117,6 +140,23 @@ def make_website_router(manager: SessionManager, workgroups: dict) -> APIRouter:
                 break
         if wg is None:
             raise HTTPException(status_code=404, detail=f"Workgroup not found: {workgroup_id}")
-        return _templates.TemplateResponse(request, "workgroup.html", {"workgroup": wg})
+        wg_list = list(workgroups.values())
+        wg_name = wg.get("name", workgroup_id)
+        all_sessions = manager.list_sessions()
+        wg_sessions = [s for s in all_sessions if s.get("workgroup_id") == wg_name]
+        return _templates.TemplateResponse(
+            request,
+            "workgroup.html",
+            {
+                "workgroup": wg,
+                "wg_sessions": wg_sessions,
+                "active_page": "workgroup",
+                "workgroups_nav": wg_list,
+                "breadcrumb": [
+                    {"label": "Dashboard", "url": "/dashboard"},
+                    {"label": f"Workgroup: {wg_name}"},
+                ],
+            },
+        )
 
     return router

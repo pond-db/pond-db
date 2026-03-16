@@ -1,0 +1,17 @@
+{# HTMX partial — single session row (no <html>/<body>) #}
+{% from "_macros.html" import status_badge, session_id_cell, relative_time %}
+<tr id="session-row-{{ session.session_id }}">
+  <td>{{ session_id_cell(session.session_id) }}</td>
+  <td>{{ status_badge(session.status|default('active')) }}</td>
+  <td>{{ relative_time(session.created_at) if session.created_at else '—' }}</td>
+  <td>{{ session.workgroup_id|default('—') }}</td>
+  <td>
+    <button class="btn btn-sm btn-danger"
+            hx-delete="/htmx/session/{{ session.session_id }}"
+            hx-target="#session-row-{{ session.session_id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Terminate session {{ session.session_id[:8] }}?">
+      Terminate
+    </button>
+  </td>
+</tr>

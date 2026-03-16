@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, session_id_cell, relative_time, empty_state %}
+{% block title %}PondDB — Sessions{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/dashboard">Dashboard</a> &rsaquo; Sessions
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;">
+  <h2>Sessions</h2>
+  <a href="/editor" role="button">+ New Session</a>
+</div>
+
+{# --- Sessions table with HTMX auto-refresh --- #}
+<article>
+  <div id="sessions-table-container"
+       hx-get="/htmx/sessions-table"
+       hx-trigger="every 10s"
+       hx-swap="innerHTML">
+    {% if sessions %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Session ID</th>
+          <th>Status</th>
+          <th>Namespace</th>
+          <th>Workgroup</th>
+          <th>Created</th>
+          <th>Last Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sessions %}
+        <tr id="session-row-{{ s.session_id }}">
+          <td>{{ session_id_cell(s.session_id) }}</td>
+          <td>{{ status_badge(s.status if s.status is string else s.status.value) }}</td>
+          <td>{{ s.namespace|default('default') }}</td>
+          <td>
+            {% if s.workgroup_id and s.workgroup_id != 'default' %}
+            <a href="/workgroup/{{ s.workgroup_id }}">{{ s.workgroup_id }}</a>
+            {% else %}
+            <span style="color:var(--pond-gray);">default</span>
+            {% endif %}
+          </td>
+          <td>{{ relative_time(s.created_at) if s.created_at else '—' }}</td>
+          <td>{{ relative_time(s.last_active) if s.last_active else '—' }}</td>
+          <td>
+            <a href="/editor?session_id={{ s.session_id }}" class="btn btn-sm btn-primary" style="margin-right:0.25rem;">Open</a>
+            <button class="btn btn-sm btn-danger"
+                    hx-delete="/htmx/session/{{ s.session_id }}"
+                    hx-target="#session-row-{{ s.session_id }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="Terminate session {{ s.session_id[:8] }}?">
+              Terminate
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No active sessions.", "Launch SQL Editor", "/editor") }}
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

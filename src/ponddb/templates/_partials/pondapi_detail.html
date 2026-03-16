@@ -1,0 +1,73 @@
+{# HTMX partial — PondAPI execution detail panel (no <html>/<body>) #}
+{% from "_macros.html" import status_badge %}
+<div class="pondapi-detail" id="pondapi-detail-{{ execution.execution_id }}">
+  <h4>Execution Detail</h4>
+  <div class="grid" style="margin-bottom:1rem;">
+    <div>
+      <small style="color:var(--pond-text-muted);">Status</small><br>
+      {{ status_badge(execution.status) }}
+    </div>
+    <div>
+      <small style="color:var(--pond-text-muted);">Execution ID</small><br>
+      <code style="font-size:0.8rem;">{{ execution.execution_id }}</code>
+    </div>
+    <div>
+      <small style="color:var(--pond-text-muted);">Elapsed</small><br>
+      {% if execution.elapsed_ms is not none %}
+        {{ "%.1f"|format(execution.elapsed_ms) }} ms
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div>
+      <small style="color:var(--pond-text-muted);">Created</small><br>
+      {{ execution.created_at[:19]|replace('T', ' ') if execution.created_at else '—' }}
+    </div>
+  </div>
+
+  {% if execution.sql %}
+  <details open>
+    <summary>SQL</summary>
+    <pre style="font-size:0.8rem;background:var(--pond-bg);padding:0.5rem;border-radius:4px;overflow-x:auto;">{{ execution.sql }}</pre>
+  </details>
+  {% endif %}
+
+  {% if execution.status == 'complete' and execution.columns %}
+  <details open>
+    <summary>Results ({{ execution.rowcount }} row{{ 's' if execution.rowcount != 1 else '' }})</summary>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            {% for col in execution.columns %}
+            <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in execution.rows[:100] %}
+          <tr>
+            {% for cell in row %}
+            <td>{{ cell if cell is not none else '' }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+          {% if execution.rows|length > 100 %}
+          <tr><td colspan="{{ execution.columns|length }}" style="text-align:center;color:var(--pond-text-muted);">… {{ execution.rows|length - 100 }} more rows</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% elif execution.status == 'error' and execution.error %}
+  <div class="error-msg">{{ execution.error }}</div>
+  {% elif execution.status in ('pending', 'running') %}
+  <p style="color:var(--pond-text-muted);"
+     hx-get="/htmx/pondapi/{{ execution.execution_id }}/detail"
+     hx-trigger="every 2s"
+     hx-target="#pondapi-detail-{{ execution.execution_id }}"
+     hx-swap="outerHTML">
+    ⏳ Execution in progress…
+  </p>
+  {% endif %}
+</div>

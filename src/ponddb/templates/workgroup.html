@@ -1,91 +1,160 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PondDB — Workgroup {{ workgroup.name }}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: sans-serif; margin: 0; background: #f8fafc; }
-    header { background: #1e293b; color: #fff; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 1.3rem; }
-    header nav a { color: #cbd5e1; text-decoration: none; font-size: 0.9rem; margin-left: 1rem; }
-    .breadcrumb { padding: 1rem 2rem; font-size: 0.9rem; color: #64748b; }
-    .breadcrumb a { color: #3b82f6; text-decoration: none; }
-    main { max-width: 900px; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
-    h2.page-title { font-size: 1.6rem; margin: 0 0 1.5rem; color: #1e293b; }
-    .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
-    .card h3 { margin: 0 0 1rem; font-size: 1rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
-    .quota-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
-    .quota-item { background: #f8fafc; border-radius: 6px; padding: 0.75rem 1rem; }
-    .quota-item .label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-    .quota-item .value { font-size: 1.4rem; font-weight: 700; color: #3b82f6; margin-top: 0.2rem; }
-    .stat-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; font-size: 0.9rem; }
-    .stat-row .key { color: #64748b; min-width: 140px; }
-    .stat-row .val { color: #1e293b; font-weight: 500; }
-    .member-placeholder, .session-placeholder { color: #94a3b8; font-size: 0.9rem; }
-    .btn { display: inline-block; padding: 0.5rem 1.1rem; border-radius: 5px; text-decoration: none; font-size: 0.9rem; }
-    .btn-secondary { background: #e2e8f0; color: #334155; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🦆 PondDB</h1>
-    <nav>
-      <a href="/editor">SQL Editor</a>
-      <a href="/dashboard">Dashboard</a>
-    </nav>
-  </header>
+{% extends "base.html" %}
+{% from "_macros.html" import stat_card, status_badge, session_id_cell, relative_time, empty_state, progress_bar %}
+{% block title %}PondDB — Workgroup {{ workgroup.name }}{% endblock %}
 
-  <div class="breadcrumb">
-    <a href="/dashboard">← Back to Dashboard</a> / Workgroup: {{ workgroup.name }}
+{% block head_extra %}
+<style>
+  .wg-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--pond-border); margin-bottom: 1.5rem; }
+  .wg-tabs a {
+    padding: 0.6rem 1.25rem; text-decoration: none; font-size: 0.9rem; font-weight: 500;
+    color: var(--pond-text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px;
+  }
+  .wg-tabs a.active, .wg-tabs a:hover { color: var(--pond-primary); border-bottom-color: var(--pond-primary); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/dashboard">Dashboard</a> &rsaquo; Workgroup: {{ workgroup.name }}
+</div>
+
+<h2>Workgroup: {{ workgroup.name }}</h2>
+
+{# --- Tab navigation --- #}
+<nav class="wg-tabs" role="tablist">
+  <a href="#overview" class="active" role="tab" data-tab="overview">Overview</a>
+  <a href="#sessions" role="tab" data-tab="sessions">Sessions</a>
+  <a href="#history" role="tab" data-tab="history">History</a>
+  <a href="#apikeys" role="tab" data-tab="apikeys">API Keys</a>
+</nav>
+
+{# ===== Overview Tab ===== #}
+<div id="overview" class="tab-panel active">
+  {# Quota stat cards #}
+  <div class="grid">
+    <div class="stat-card">
+      <div class="stat-label">Max Sessions</div>
+      <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.max_sessions or "∞" }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Sessions</div>
+      <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.active_sessions or 0 }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Query Duration</div>
+      <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.max_query_duration_ms or "∞" }}ms</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Result Size</div>
+      <div class="stat-value" style="font-size:1.4rem;">{{ workgroup.max_result_mb or "∞" }}MB</div>
+    </div>
   </div>
 
-  <main>
-    <h2 class="page-title">Workgroup: {{ workgroup.name }}</h2>
+  {% if workgroup.quota and workgroup.quota.max_sessions and workgroup.quota.max_sessions > 0 %}
+  {% set pct = ((workgroup.active_sessions or 0) / workgroup.quota.max_sessions * 100)|round(1) %}
+  <article style="margin-top:1rem;">
+    <header>Utilization</header>
+    {{ progress_bar(pct, "%s%% of session quota used"|format(pct)) }}
+  </article>
+  {% endif %}
 
-    <!-- Quota & Limits -->
-    <div class="card">
-      <h3>Quota &amp; Limits</h3>
-      <div class="quota-grid">
-        <div class="quota-item">
-          <div class="label">Max Sessions</div>
-          <div class="value">{{ workgroup.max_sessions or "∞" }}</div>
-        </div>
-        <div class="quota-item">
-          <div class="label">Active Sessions</div>
-          <div class="value">{{ workgroup.active_sessions or 0 }}</div>
-        </div>
-        <div class="quota-item">
-          <div class="label">Max Query Duration</div>
-          <div class="value">{{ workgroup.max_query_duration_ms or "∞" }}ms</div>
-        </div>
-        <div class="quota-item">
-          <div class="label">Max Result</div>
-          <div class="value">{{ workgroup.max_result_mb or "∞" }}MB</div>
-        </div>
-      </div>
-    </div>
+  <article>
+    <header>Members &amp; Users</header>
+    <p style="color:var(--pond-text-muted);">No members configured for this workgroup.</p>
+  </article>
+</div>
 
-    <!-- Members & Users -->
-    <div class="card">
-      <h3>Members &amp; Users</h3>
-      <p class="member-placeholder">No members configured for this workgroup.</p>
-    </div>
+{# ===== Sessions Tab ===== #}
+<div id="sessions" class="tab-panel">
+  <div id="wg-sessions-container"
+       hx-get="/htmx/workgroup/{{ workgroup.name }}/sessions"
+       hx-trigger="every 10s"
+       hx-swap="innerHTML">
+    {% if wg_sessions %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Session ID</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in wg_sessions %}
+        <tr id="session-row-{{ s.session_id }}">
+          <td>{{ session_id_cell(s.session_id) }}</td>
+          <td>{{ status_badge(s.status if s.status is string else s.status.value) }}</td>
+          <td>{{ relative_time(s.created_at) if s.created_at else '—' }}</td>
+          <td>
+            <a href="/editor?session_id={{ s.session_id }}" class="btn btn-sm btn-primary">Open</a>
+            <button class="btn btn-sm btn-danger"
+                    hx-delete="/htmx/session/{{ s.session_id }}"
+                    hx-target="#session-row-{{ s.session_id }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="Terminate session {{ s.session_id[:8] }}?">
+              Terminate
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No active sessions in this workgroup.", "Launch SQL Editor", "/editor") }}
+    {% endif %}
+  </div>
+</div>
 
-    <!-- Active Sessions -->
-    <div class="card">
-      <h3>Active Sessions</h3>
-      {% if workgroup.active_sessions and workgroup.active_sessions > 0 %}
-      <p>{{ workgroup.active_sessions }} session(s) currently active in this workgroup.</p>
-      {% else %}
-      <p class="session-placeholder">No active sessions in this workgroup.</p>
-      {% endif %}
-      <div style="margin-top:1rem;">
-        <a href="/editor" class="btn btn-secondary">Open SQL Editor</a>
-      </div>
-    </div>
+{# ===== History Tab ===== #}
+<div id="history" class="tab-panel">
+  <article>
+    <header>Query History</header>
+    <p style="color:var(--pond-text-muted);">Recent queries executed in this workgroup.</p>
+    <a href="/history" role="button" class="secondary">View full query history &rarr;</a>
+  </article>
+</div>
 
-  </main>
-</body>
-</html>
+{# ===== API Keys Tab ===== #}
+<div id="apikeys" class="tab-panel">
+  <article>
+    <header>API Keys</header>
+    <p style="color:var(--pond-text-muted);">
+      Use the global API key to authenticate requests to this workgroup.
+      Per-workgroup keys are coming soon.
+    </p>
+    <p style="font-size:0.85rem;">
+      <strong>Auth header:</strong> <code>X-API-Key: &lt;your-key&gt;</code><br>
+      <strong>JWT endpoint:</strong> <code>POST /auth/token</code>
+    </p>
+  </article>
+</div>
+
+{# --- Tab switching JS --- #}
+<script>
+(function() {
+  const tabs = document.querySelectorAll('.wg-tabs a[data-tab]');
+  const panels = document.querySelectorAll('.tab-panel');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function(e) {
+      e.preventDefault();
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      this.classList.add('active');
+      const target = document.getElementById(this.dataset.tab);
+      if (target) target.classList.add('active');
+      // Update URL hash
+      history.replaceState(null, '', this.href);
+    });
+  });
+  // Activate tab from URL hash on load
+  const hash = location.hash.replace('#', '');
+  if (hash) {
+    const tab = document.querySelector('.wg-tabs a[data-tab="' + hash + '"]');
+    if (tab) tab.click();
+  }
+})();
+</script>
+{% endblock %}

@@ -67,7 +67,11 @@ def make_admin_router(
         session, err = _check_admin(request)
         if err is not None:
             return err
-        return _templates.TemplateResponse(request, "admin_home.html", {"session": session})
+        wg_list = list(workgroups.values())
+        return _templates.TemplateResponse(
+            request, "admin_home.html",
+            {"session": session, "active_page": "admin", "workgroups_nav": wg_list},
+        )
 
     @router.get("/invites", response_class=HTMLResponse)
     async def admin_invites(request: Request) -> Any:
@@ -76,9 +80,10 @@ def make_admin_router(
             return err
         tenant_id: str = session.get("tenant_id", "default")
         invites = await invite_store.list_invites(tenant_id)
+        wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_invites.html",
-            {"session": session, "invites": invites, "error": None},
+            {"session": session, "invites": invites, "error": None, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.post("/invites")
@@ -95,9 +100,10 @@ def make_admin_router(
 
         if not email or not _EMAIL_RE.match(email.strip()):
             invites = await invite_store.list_invites(tenant_id)
+            wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_invites.html",
-                {"session": session, "invites": invites, "error": "Invalid email address"},
+                {"session": session, "invites": invites, "error": "Invalid email address", "active_page": "admin", "workgroups_nav": wg_list},
                 status_code=400,
             )
 
@@ -129,9 +135,10 @@ def make_admin_router(
             await invite_store.revoke_invite(token)
         except ValueError:
             invites = await invite_store.list_invites(tenant_id)
+            wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_invites.html",
-                {"session": session, "invites": invites, "error": "Invite not found"},
+                {"session": session, "invites": invites, "error": "Invite not found", "active_page": "admin", "workgroups_nav": wg_list},
                 status_code=404,
             )
         return RedirectResponse(url="/admin/invites", status_code=303)
@@ -145,9 +152,10 @@ def make_admin_router(
         for wg in workgroups.values():
             ns_id = wg.get("namespace_id", "")
             wg_by_ns.setdefault(ns_id, []).append(wg)
+        wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_namespaces.html",
-            {"session": session, "namespaces": namespaces, "wg_by_ns": wg_by_ns},
+            {"session": session, "namespaces": namespaces, "wg_by_ns": wg_by_ns, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.get("/usage", response_class=HTMLResponse)
@@ -156,9 +164,10 @@ def make_admin_router(
         if err is not None:
             return err
         stats = get_stats()
+        wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_usage.html",
-            {"session": session, "stats": stats, "workgroups": list(workgroups.values())},
+            {"session": session, "stats": stats, "workgroups": wg_list, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.get("/workgroups/{wg_id}/quota", response_class=HTMLResponse)
@@ -169,9 +178,10 @@ def make_admin_router(
         if wg_id not in workgroups:
             return HTMLResponse("Not Found", status_code=404)
         wg = workgroups[wg_id]
+        wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_quota.html",
-            {"session": session, "workgroup": wg, "wg_id": wg_id, "error": None},
+            {"session": session, "workgroup": wg, "wg_id": wg_id, "error": None, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.post("/workgroups/{wg_id}/quota")
@@ -203,18 +213,21 @@ def make_admin_router(
             mqd = _parse(max_query_duration_ms)
             mrm = _parse(max_result_mb)
         except ValueError as exc:
+            wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_quota.html",
-                {"session": session, "workgroup": wg, "wg_id": wg_id, "error": str(exc)},
+                {"session": session, "workgroup": wg, "wg_id": wg_id, "error": str(exc), "active_page": "admin", "workgroups_nav": wg_list},
                 status_code=400,
             )
 
         if ms is not None and ms <= 0:
+            wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_quota.html",
                 {
                     "session": session, "workgroup": wg, "wg_id": wg_id,
                     "error": "max_sessions must be a positive integer",
+                    "active_page": "admin", "workgroups_nav": wg_list,
                 },
                 status_code=400,
             )

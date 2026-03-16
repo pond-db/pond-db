@@ -1,112 +1,68 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Edit Quota — PondDB Admin</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: sans-serif; margin: 0; background: #f8fafc; }
-    header { background: #1e293b; color: #fff; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 1.3rem; }
-    .header-actions { display: flex; align-items: center; gap: 1rem; }
-    .header-actions a { color: #cbd5e1; text-decoration: none; font-size: 0.9rem; }
-    .logout-form button { background: #475569; color: #fff; border: none; border-radius: 4px; padding: 0.4rem 0.9rem; cursor: pointer; font-size: 0.9rem; }
-    main { max-width: 640px; margin: 2rem auto; padding: 0 1.5rem; }
-    h2 { color: #1e293b; margin-top: 0; }
-    .breadcrumb { font-size: 0.875rem; color: #64748b; margin-bottom: 1rem; }
-    .breadcrumb a { color: #3b82f6; text-decoration: none; }
-    .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-    .form-group { margin-bottom: 1rem; }
-    label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.35rem; }
-    input[type="number"], input[type="text"] {
-      width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem;
-    }
-    .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; }
-    .btn { padding: 0.5rem 1.25rem; border-radius: 4px; font-size: 0.9rem; cursor: pointer; border: none; }
-    .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-secondary { background: #e2e8f0; color: #334155; text-decoration: none; display: inline-block; padding: 0.5rem 1.25rem; border-radius: 4px; font-size: 0.9rem; }
-    .error { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
-    .wg-info { background: #f1f5f9; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 0.875rem; color: #475569; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🦆 PondDB Admin — Quota</h1>
-    <div class="header-actions">
-      <a href="/admin">Admin</a>
-      <a href="/admin/namespaces">Namespaces</a>
-      <a href="/dashboard">Dashboard</a>
-      <form action="/logout" method="POST" class="logout-form">
-        <button type="submit">Logout</button>
-      </form>
+{% extends "base.html" %}
+{% block title %}Edit Quota — PondDB Admin{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="/dashboard">Dashboard</a> &rsaquo; <a href="/admin">Admin</a> &rsaquo;
+  <a href="/admin/namespaces">Namespaces</a> &rsaquo; Edit Quota
+</div>
+
+<h2>Edit Workgroup Quota</h2>
+
+<div style="background:var(--pond-bg);border-radius:6px;padding:0.75rem 1rem;margin-bottom:1.25rem;font-size:0.875rem;color:var(--pond-text-muted);">
+  <strong>Workgroup:</strong> {{ workgroup.name }}
+  &nbsp;|&nbsp; <strong>ID:</strong> {{ wg_id }}
+</div>
+
+{% if error %}
+<div class="error-msg">{{ error }}</div>
+{% endif %}
+
+<article>
+  <form action="/admin/workgroups/{{ wg_id }}/quota" method="POST">
+    <label for="max_sessions">
+      max_sessions (Max concurrent sessions)
+      <input
+        type="number"
+        id="max_sessions"
+        name="max_sessions"
+        min="1"
+        value="{{ workgroup.quota.max_sessions if workgroup.quota and workgroup.quota.max_sessions is not none else '' }}"
+        placeholder="Leave blank for unlimited"
+      >
+      <small>Maximum number of active sessions allowed in this workgroup. Must be &gt; 0.</small>
+    </label>
+
+    <label for="max_query_duration_ms">
+      max_query_duration_ms (Query timeout in ms)
+      <input
+        type="number"
+        id="max_query_duration_ms"
+        name="max_query_duration_ms"
+        min="0"
+        value="{{ workgroup.quota.max_query_duration_ms if workgroup.quota and workgroup.quota.max_query_duration_ms is not none else '' }}"
+        placeholder="Leave blank for unlimited"
+      >
+      <small>Maximum query duration in milliseconds. Leave blank for no limit.</small>
+    </label>
+
+    <label for="max_result_mb">
+      max_result_mb (Max result size in MB)
+      <input
+        type="number"
+        id="max_result_mb"
+        name="max_result_mb"
+        min="0"
+        value="{{ workgroup.quota.max_result_mb if workgroup.quota and workgroup.quota.max_result_mb is not none else '' }}"
+        placeholder="Leave blank for unlimited"
+      >
+      <small>Maximum query result size in megabytes. Leave blank for no limit.</small>
+    </label>
+
+    <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+      <button type="submit">Save Quota</button>
+      <a href="/admin/namespaces" role="button" class="secondary">Cancel</a>
     </div>
-  </header>
-
-  <main>
-    <div class="breadcrumb">
-      <a href="/dashboard">Dashboard</a> › <a href="/admin">Admin</a> ›
-      <a href="/admin/namespaces">Namespaces</a> › Edit Quota
-    </div>
-
-    <h2>Edit Workgroup Quota</h2>
-
-    <div class="wg-info">
-      <strong>Workgroup:</strong> {{ workgroup.name }}
-      &nbsp;|&nbsp; <strong>ID:</strong> {{ wg_id }}
-    </div>
-
-    {% if error %}
-    <div class="error">{{ error }}</div>
-    {% endif %}
-
-    <div class="card">
-      <form action="/admin/workgroups/{{ wg_id }}/quota" method="POST">
-        <div class="form-group">
-          <label for="max_sessions">max_sessions (Max concurrent sessions)</label>
-          <input
-            type="number"
-            id="max_sessions"
-            name="max_sessions"
-            min="1"
-            value="{{ workgroup.quota.max_sessions if workgroup.quota and workgroup.quota.max_sessions is not none else '' }}"
-            placeholder="Leave blank for unlimited"
-          >
-          <div class="hint">Maximum number of active sessions allowed in this workgroup. Must be &gt; 0.</div>
-        </div>
-
-        <div class="form-group">
-          <label for="max_query_duration_ms">max_query_duration_ms (Query timeout in ms)</label>
-          <input
-            type="number"
-            id="max_query_duration_ms"
-            name="max_query_duration_ms"
-            min="0"
-            value="{{ workgroup.quota.max_query_duration_ms if workgroup.quota and workgroup.quota.max_query_duration_ms is not none else '' }}"
-            placeholder="Leave blank for unlimited"
-          >
-          <div class="hint">Maximum query duration in milliseconds. Leave blank for no limit.</div>
-        </div>
-
-        <div class="form-group">
-          <label for="max_result_mb">max_result_mb (Max result size in MB)</label>
-          <input
-            type="number"
-            id="max_result_mb"
-            name="max_result_mb"
-            min="0"
-            value="{{ workgroup.quota.max_result_mb if workgroup.quota and workgroup.quota.max_result_mb is not none else '' }}"
-            placeholder="Leave blank for unlimited"
-          >
-          <div class="hint">Maximum query result size in megabytes. Leave blank for no limit.</div>
-        </div>
-
-        <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
-          <button type="submit" class="btn btn-primary">Save Quota</button>
-          <a href="/admin/namespaces" class="btn-secondary">Cancel</a>
-        </div>
-      </form>
-    </div>
-  </main>
-</body>
-</html>
+  </form>
+</article>
+{% endblock %}

@@ -1,0 +1,32 @@
+{# HTMX partial — workgroup sessions list (no <html>/<body>) #}
+{% from "_macros.html" import status_badge, session_id_cell %}
+{% if sessions %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Session ID</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in sessions %}
+    <tr id="session-row-{{ s.session_id }}">
+      <td>{{ session_id_cell(s.session_id) }}</td>
+      <td>{{ status_badge(s.status|default('active')) }}</td>
+      <td>
+        <button class="btn btn-sm btn-danger"
+                hx-delete="/htmx/session/{{ s.session_id }}"
+                hx-target="#session-row-{{ s.session_id }}"
+                hx-swap="outerHTML"
+                hx-confirm="Terminate session {{ s.session_id[:8] }}?">
+          Terminate
+        </button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="color:var(--pond-text-muted);">No active sessions in this workgroup.</p>
+{% endif %}

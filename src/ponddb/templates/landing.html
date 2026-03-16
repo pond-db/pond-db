@@ -1,69 +1,41 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PondDB — Self-Hosted DuckDB Analytics</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: sans-serif; margin: 0; background: #f8fafc; }
-    header { background: #1e293b; color: #fff; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 1.4rem; }
-    header nav a { color: #cbd5e1; text-decoration: none; margin-left: 1.5rem; font-size: 0.95rem; }
-    header nav a:hover { color: #fff; }
-    .hero { text-align: center; padding: 5rem 2rem 4rem; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #fff; }
-    .hero h2 { font-size: 2.2rem; margin: 0 0 1rem; }
-    .hero p { font-size: 1.1rem; color: #94a3b8; max-width: 600px; margin: 0 auto 2rem; }
-    .cta-btn { display: inline-block; padding: 0.75rem 2rem; border-radius: 6px; text-decoration: none; font-weight: 600; margin: 0.25rem; }
-    .cta-primary { background: #3b82f6; color: #fff; }
-    .cta-secondary { background: #334155; color: #e2e8f0; }
-    .features { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 3rem 2rem; justify-content: center; }
-    .feature { background: #fff; border-radius: 8px; padding: 1.5rem; max-width: 260px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .feature h3 { margin: 0 0 0.5rem; font-size: 1rem; }
-    .feature p { margin: 0; color: #64748b; font-size: 0.9rem; }
-    footer { text-align: center; padding: 2rem; color: #94a3b8; font-size: 0.85rem; background: #1e293b; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🦆 PondDB</h1>
-    <nav>
-      <a href="/editor">SQL Editor</a>
-      <a href="/login">Log In</a>
-    </nav>
-  </header>
+{% extends "base_public.html" %}
+{% block title %}PondDB — Self-Hosted DuckDB Analytics{% endblock %}
 
-  <section class="hero">
-    <h2>Self-Hosted DuckDB Analytics Platform</h2>
-    <p>
-      Run SQL queries on DuckDB with serverless session management.
-      Self-hosted, zero cloud dependency, full control over your data.
-    </p>
-    <a href="/login" class="cta-btn cta-primary">Get Started</a>
-    <a href="/editor" class="cta-btn cta-secondary">Try the SQL Editor</a>
-  </section>
+{% block content %}
+{# --- Hero section --- #}
+<section style="text-align:center; padding:4rem 0 3rem;">
+  <h1>Self-Hosted DuckDB Analytics Platform</h1>
+  <p style="max-width:600px; margin:0 auto 2rem; color:var(--pond-text-muted); font-size:1.1rem;">
+    Run SQL queries on DuckDB with serverless session management.
+    Self-hosted, zero cloud dependency, full control over your data.
+  </p>
+  <a href="/login" role="button">Get Started</a>
+  <a href="/editor" role="button" class="secondary">Try the SQL Editor</a>
+</section>
 
-  <section class="features">
-    <div class="feature">
-      <h3>🦆 DuckDB Engine</h3>
+{# --- Feature cards --- #}
+<section>
+  <div class="grid">
+    <article>
+      <h3>DuckDB Engine</h3>
       <p>Powered by DuckDB for fast in-process analytics queries.</p>
-    </div>
-    <div class="feature">
-      <h3>🔒 Self-Hosted</h3>
+    </article>
+    <article>
+      <h3>Self-Hosted</h3>
       <p>Your data stays on your infrastructure. Zero cloud dependency.</p>
-    </div>
-    <div class="feature">
-      <h3>⚡ Fast SQL</h3>
+    </article>
+    <article>
+      <h3>Fast SQL</h3>
       <p>Execute analytical queries instantly with the built-in SQL editor.</p>
-    </div>
-    <div class="feature">
-      <h3>📊 Analytics</h3>
+    </article>
+    <article>
+      <h3>Analytics</h3>
       <p>Full analytics capabilities with session-based tenant isolation.</p>
-    </div>
-  </section>
+    </article>
+  </div>
+</section>
+{% endblock %}
 
-  <footer>
-    <p>PondDB — Open Source Self-Hosted DuckDB Platform</p>
-  </footer>
-</body>
-</html>
+{% block footer %}
+<small>PondDB — Open Source Self-Hosted DuckDB Platform</small>
+{% endblock %}

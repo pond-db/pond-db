@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="/static/pond.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
+  <title>{% block title %}PondDB{% endblock %}</title>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  {% block body %}
+  <div class="app-layout">
+    {# --- Sidebar --- #}
+    <aside class="sidebar">
+      <div class="sidebar-brand">PondDB</div>
+      <nav>
+        <a href="/dashboard"{% if active_page == "dashboard" %} class="active"{% endif %}>Dashboard</a>
+        <a href="/editor"{% if active_page == "editor" %} class="active"{% endif %}>SQL Editor</a>
+        {% if workgroups_nav is defined and workgroups_nav %}
+        <div class="sidebar-section">Workgroups</div>
+        {% for wg in workgroups_nav %}
+        <a href="/workgroup/{{ wg.name }}" class="sidebar-wg">{{ wg.name }}</a>
+        {% endfor %}
+        {% endif %}
+        <div class="sidebar-section">Tools</div>
+        <a href="/history">Query History</a>
+        <a href="/datasets">Datasets</a>
+        <a href="/admin"{% if active_page == "admin" %} class="active"{% endif %}>Admin</a>
+      </nav>
+      <div class="sidebar-footer">
+        <form action="/logout" method="POST">
+          <button type="submit">Logout</button>
+        </form>
+      </div>
+    </aside>
+    {# --- Main content area --- #}
+    <div class="main-content">
+      {% if breadcrumb is defined and breadcrumb %}
+      <div class="breadcrumb">
+        {% for item in breadcrumb %}
+          {% if not loop.last %}<a href="{{ item.url }}">{{ item.label }}</a> &rsaquo; {% else %}{{ item.label }}{% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  {% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

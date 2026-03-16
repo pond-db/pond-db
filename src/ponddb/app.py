@@ -9,6 +9,7 @@ from typing import Any, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, Security
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -36,6 +37,7 @@ from ponddb.pondapi_execute import make_pondapi_execute_router
 from ponddb.pondapi_htmx import make_pondapi_htmx_router
 from ponddb.website_routes import make_website_router
 from ponddb.admin_routes import make_admin_router
+from ponddb.htmx_partials import make_htmx_router
 
 # ---------------------------------------------------------------------------
 # Write-operation detection (invalidates cache)
@@ -112,6 +114,9 @@ app = FastAPI(
     version=__version__,
     description="Lightweight self-hosted DuckDB compute platform",
 )
+
+# Serve static assets (pond.css)
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +221,7 @@ def _get_usage_stats() -> dict:
 
 
 app.include_router(make_admin_router(_invite_store, _workgroups, _namespaces, _get_usage_stats))
+app.include_router(make_htmx_router(_manager, _workgroups, _pondapi_db_conn))
 
 
 @app.get("/metrics", include_in_schema=False)
