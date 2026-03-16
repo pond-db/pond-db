@@ -1,18 +1,37 @@
 services:
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "8433:8433"
+    depends_on:
+      - ponddb
+    restart: unless-stopped
+
   ponddb:
     build: .
     container_name: ponddb
-    ports:
-      - "8432:8432"
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/tmp
+    security_opt:
+      - no-new-privileges:true
     environment:
       - POND_HOST=0.0.0.0
       - POND_PORT=8432
       - POND_SQLITE_PATH=/app/data/ponddb.db
       - POND_DATA_ROOT=/app/data
       - POND_LOG_LEVEL=info
-      - POND_JWT_SECRET=${POND_JWT_SECRET:-dev-secret-change-me}
-      - POND_API_KEY=${POND_API_KEY:-pond-alpha-key-2026}
-      - POND_WEBSITE_SESSION_SECRET=${POND_WEBSITE_SESSION_SECRET:-session-secret-change-me}
+      - POND_JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - POND_API_KEY_FILE=/run/secrets/api_key
+      - POND_WEBSITE_SESSION_SECRET_FILE=/run/secrets/session_secret
+    secrets:
+      - jwt_secret
+      - api_key
+      - session_secret
     command: ["uvicorn", "ponddb.app:app", "--host", "0.0.0.0", "--port", "8432", "--log-level", "info", "--access-log"]
     volumes:
       - pond-data:/app/data
@@ -29,5 +48,27 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: ["tunnel", "--no-autoupdate", "--url", "http://nginx:80"]
+    depends_on:
+      - nginx
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "cloudflared tunnel info || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 volumes:
   pond-data:
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  api_key:
+    file: ./secrets/api_key.txt
+  session_secret:
+    file: ./secrets/session_secret.txt

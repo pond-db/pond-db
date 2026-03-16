@@ -11,6 +11,9 @@ from typing import Any, Optional
 
 import duckdb
 
+import ponddb.subprocess_runner as _subprocess_runner
+from ponddb.sql_sandbox import BlockedSqlError, check_sql
+
 
 class SessionStatus(str, Enum):
     ACTIVE = "ACTIVE"
@@ -76,10 +79,20 @@ class SessionManager:
     def session_count(self) -> int:
         return len(self._sessions)
 
+    def _create_hardened_connection(self) -> duckdb.DuckDBPyConnection:
+        """Create a DuckDB connection with sandbox hardening applied."""
+        conn = duckdb.connect(":memory:", config={"enable_external_access": False})
+        memory_limit = os.environ.get("POND_SESSION_MEMORY_LIMIT", "2GB")
+        threads = int(os.environ.get("POND_SESSION_THREADS", "4"))
+        conn.execute(f"SET memory_limit = '{memory_limit}'")
+        conn.execute(f"SET threads = {threads}")
+        conn.execute("SET lock_configuration = true")
+        return conn
+
     def create_session(self, namespace: str = "default", workgroup_id: str = "default") -> str:
         sid = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
-        conn = duckdb.connect(":memory:")
+        conn = self._create_hardened_connection()
         self._sessions[sid] = _Session(
             session_id=sid,
             status=SessionStatus.ACTIVE,
@@ -173,7 +186,7 @@ class SessionManager:
         session = self._sessions[session_id]
         if session.status == SessionStatus.ACTIVE:
             raise ValueError(f"Session already active: {session_id}")
-        session.conn = duckdb.connect(":memory:")
+        session.conn = self._create_hardened_connection()
         session.status = SessionStatus.ACTIVE
         now = datetime.now(timezone.utc)
         session.last_active = now
@@ -198,7 +211,7 @@ class SessionManager:
                 created_at = created_at.replace(tzinfo=timezone.utc)
             if last_active.tzinfo is None:
                 last_active = last_active.replace(tzinfo=timezone.utc)
-            conn = duckdb.connect(":memory:") if status == SessionStatus.ACTIVE else None
+            conn = self._create_hardened_connection() if status == SessionStatus.ACTIVE else None
             self._sessions[sid] = _Session(
                 session_id=sid,
                 status=status,
@@ -216,9 +229,16 @@ class SessionManager:
 
         session = self._sessions[session_id]
 
+        # Sandbox check — raises BlockedSqlError before touching DuckDB
+        check_sql(sql)
+
         # Transparent resume for suspended sessions
         if session.status == SessionStatus.SUSPENDED:
             self.resume_session(session_id)
+
+        # Subprocess isolation path
+        if os.environ.get("POND_SUBPROCESS_ISOLATION", "").lower() == "true":
+            return _subprocess_runner.run_query_isolated(sql)
 
         start = time.perf_counter()
         try:

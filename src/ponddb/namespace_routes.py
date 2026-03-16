@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
+from ponddb import audit_log
 from ponddb.jwt_auth import require_admin
 
 
@@ -205,7 +206,7 @@ def make_namespace_workgroup_router(
     @router.post("/workgroups", status_code=201)
     async def create_workgroup(
         body: WorkgroupCreate,
-        _admin: dict = Depends(require_admin),
+        admin_claims: dict = Depends(require_admin),
     ) -> dict[str, Any]:
         if body.namespace_id not in _namespaces:
             raise HTTPException(status_code=404, detail=f"Namespace not found: {body.namespace_id}")
@@ -224,6 +225,13 @@ def make_namespace_workgroup_router(
             "updated_at": now,
         }
         _workgroups[wg_id] = record
+        tenant_id: str = admin_claims.get("tenant_id", "default")
+        await audit_log.log_event(
+            None,
+            "workgroup_created",
+            tenant_id=tenant_id,
+            detail=f"created workgroup {body.name} in namespace {body.namespace_id}",
+        )
         return record
 
     @router.get("/workgroups")

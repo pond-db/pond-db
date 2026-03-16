@@ -1,8 +1,8 @@
 """REST endpoints for the named query store — JWT tenant-aware."""
 
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel
 
 from ponddb.jwt_auth import require_auth
@@ -54,9 +54,11 @@ def make_query_router(store: MetadataStore) -> APIRouter:
             tenant_id=tenant_id, include_public=True, limit=limit, offset=offset
         )
 
+    _SLUG_RE = r"^[a-z0-9][a-z0-9-]*$"
+
     @router.get("/queries/{slug}")
     async def get_query(
-        slug: str,
+        slug: Annotated[str, Path(pattern=_SLUG_RE, max_length=255)],
         _auth: dict = Depends(require_auth),
     ) -> dict[str, Any]:
         tenant_id: str = _auth.get("tenant_id", "default")

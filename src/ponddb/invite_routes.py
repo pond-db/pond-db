@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
+from ponddb import audit_log
 from ponddb.invite_store import InviteStore
 from ponddb.jwt_auth import create_access_token, require_admin
 
@@ -110,6 +111,12 @@ def make_invite_router(invite_store: InviteStore) -> APIRouter:
             send_invite_email(req.email, invite["token"])
         except Exception as exc:
             logger.warning("Failed to send invite email: %s", exc)
+        await audit_log.log_event(
+            None,
+            "invite_created",
+            tenant_id=tenant_id,
+            detail=f"invited {req.email} as {req.role}",
+        )
         return invite
 
     @router.get("")
@@ -163,6 +170,13 @@ def make_invite_router(invite_store: InviteStore) -> APIRouter:
         tenant_id: str = result.get("tenant_id", "default")
         role: str = result.get("role", "member")
         access_token = create_access_token(tenant_id, role=role)
+
+        await audit_log.log_event(
+            None,
+            "user_provisioned",
+            tenant_id=tenant_id,
+            detail=f"provisioned {result.get('email')} as {role}",
+        )
 
         return {
             "tenant_id": tenant_id,

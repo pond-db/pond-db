@@ -169,6 +169,67 @@ pytest
 ruff check src/ tests/
 ```
 
+## Secret Management
+
+PondDB uses a single `POND_JWT_SECRET` environment variable to sign and verify JWT tokens.
+Keep this secret out of version control and rotate it regularly.
+
+### Scanning for leaked secrets (detect-secrets)
+
+This repo uses [detect-secrets](https://github.com/Yelp/detect-secrets) as a pre-commit hook
+to catch accidentally committed secrets before they reach the repository.
+
+Install the pre-commit hooks once after cloning:
+
+```bash
+pip install pre-commit detect-secrets
+pre-commit install
+```
+
+The hook compares every commit against `.secrets.baseline`. To update the baseline after
+intentionally adding a new allowed pattern:
+
+```bash
+detect-secrets scan --baseline .secrets.baseline
+```
+
+### Rotating the JWT secret (zero-downtime)
+
+Use `scripts/rotate_jwt_secret.sh` to atomically swap `POND_JWT_SECRET` and retain the old
+value as `POND_JWT_SECRET_V1` so tokens signed with the previous secret remain valid during
+the rollover window:
+
+```bash
+# Defaults: reads/writes .env in the current directory
+bash scripts/rotate_jwt_secret.sh
+
+# Or point at a specific env file and audit log
+POND_ENV_FILE=/etc/ponddb/.env \
+POND_AUDIT_LOG=/var/log/ponddb/rotation_audit.log \
+bash scripts/rotate_jwt_secret.sh
+```
+
+After rotation your `.env` will contain:
+
+```
+POND_JWT_SECRET=<new-64-char-hex-secret>   # used to sign new tokens
+POND_JWT_SECRET_V1=<old-secret>            # accepted for existing tokens during rollover
+```
+
+Once all clients have refreshed their tokens you can remove `POND_JWT_SECRET_V1`.
+The rotation script appends a JSON audit event to `POND_AUDIT_LOG` (default:
+`rotation_audit.log`) including an ISO-8601 timestamp and the first 8 characters of each
+secret for traceability.
+
+### Environment variable reference
+
+| Variable | Description |
+|---|---|
+| `POND_JWT_SECRET` | Active signing secret (required) |
+| `POND_JWT_SECRET_V1` | Previous secret — accepted during rotation rollover |
+| `POND_ENV_FILE` | Override path for the `.env` file used by `rotate_jwt_secret.sh` |
+| `POND_AUDIT_LOG` | Override path for the rotation audit log |
+
 ## License
 
 MIT

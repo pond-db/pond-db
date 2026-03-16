@@ -23,8 +23,10 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
+from ponddb import audit_log
 from ponddb.jwt_auth import require_auth
 from ponddb.session_manager import SessionManager
+from ponddb.sql_sandbox import BlockedSqlError, check_sql
 
 # Module-level thread pool — reused across reloads
 _executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="pondapi-exec")
@@ -137,22 +139,61 @@ def _row_to_result(row: sqlite3.Row) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _get_db_path(conn: sqlite3.Connection) -> Optional[str]:
+    """Return the filesystem path of the 'main' database, or None for in-memory."""
+    try:
+        rows = conn.execute("PRAGMA database_list").fetchall()
+        for row in rows:
+            if row[1] == "main" and row[2]:
+                return row[2]
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def _run_query_sync(
     manager: SessionManager,
+    db_path: Optional[str],
     db_conn: sqlite3.Connection,
     execution_id: str,
     session_id: str,
     sql: str,
 ) -> None:
-    """Execute SQL in a thread-pool worker and persist the result."""
+    """Execute SQL in a thread-pool worker and persist the result.
+
+    Opens a fresh SQLite connection (if db_path is known) so that concurrent
+    close() calls on the caller's connection cannot cause a C-level crash.
+    """
+    # Prefer a fresh per-thread connection to avoid races with conn.close()
+    own_conn: Optional[sqlite3.Connection] = None
+    if db_path:
+        try:
+            own_conn = sqlite3.connect(db_path, check_same_thread=False)
+            own_conn.row_factory = sqlite3.Row
+        except Exception:  # noqa: BLE001
+            own_conn = None
+    conn = own_conn if own_conn is not None else db_conn
+
     t0 = time.perf_counter()
     try:
         result = manager.execute_query(session_id, sql)
         elapsed_ms = (time.perf_counter() - t0) * 1000
-        _update_complete(db_conn, execution_id, result.columns, result.rows, result.rowcount, elapsed_ms)
+        try:
+            _update_complete(conn, execution_id, result.columns, result.rows, result.rowcount, elapsed_ms)
+        except Exception:  # noqa: BLE001
+            pass
     except Exception as exc:
         elapsed_ms = (time.perf_counter() - t0) * 1000
-        _update_error(db_conn, execution_id, str(exc), elapsed_ms)
+        try:
+            _update_error(conn, execution_id, str(exc), elapsed_ms)
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        if own_conn is not None:
+            try:
+                own_conn.close()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +221,7 @@ def make_pondapi_execute_router(
     test reloads get isolated state.
     """
     _init_table(db_conn)
+    _db_path = _get_db_path(db_conn)
 
     # Per-router-instance sliding-window rate limit state.
     # Maps tenant_id -> deque of submission timestamps (monotonic).
@@ -226,6 +268,19 @@ def make_pondapi_execute_router(
             raise HTTPException(status_code=404, detail=f"Session not found: {req.session_id}")
 
         tenant_id: str = auth.get("tenant_id", "default")
+
+        # Sandbox check — block dangerous SQL patterns before any execution
+        try:
+            check_sql(sql)
+        except BlockedSqlError as exc:
+            await audit_log.log_event(
+                None,
+                "sandbox_blocked",
+                tenant_id=tenant_id,
+                detail=f"blocked pattern: {exc.pattern}",
+            )
+            raise HTTPException(status_code=400, detail=f"SQL blocked: {exc.pattern}")
+
         rate_limit = int(os.environ.get("POND_PONDAPI_RATE_LIMIT", "10"))
         window = _WINDOW_SECONDS
 
@@ -243,9 +298,16 @@ def make_pondapi_execute_router(
         _insert_execution(db_conn, execution_id, tenant_id, req.session_id, sql, created_at)
 
         fut = _executor.submit(
-            _run_query_sync, manager, db_conn, execution_id, req.session_id, sql
+            _run_query_sync, manager, _db_path, db_conn, execution_id, req.session_id, sql
         )
         _in_flight[execution_id] = (tenant_id, fut)
+
+        await audit_log.log_event(
+            None,
+            "pondapi_execute",
+            tenant_id=tenant_id,
+            detail=f"execution_id={execution_id} session_id={req.session_id}",
+        )
 
         response.headers["X-RateLimit-Limit"] = str(rate_limit)
         response.headers["X-RateLimit-Remaining"] = str(max(0, rate_limit - current - 1))
