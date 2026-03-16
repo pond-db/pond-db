@@ -98,7 +98,8 @@ def make_website_router(
         if not expected or api_key != expected:
             ctx["error"] = "Invalid API key"
             return _templates.TemplateResponse(request, "login.html", ctx, status_code=200)
-        session_data = {"tenant_id": "default"}
+        # Master API key holder is always admin
+        session_data = {"tenant_id": "default", "role": "admin"}
         cookie_val = _sign_session(session_data)
         response = RedirectResponse(url="/dashboard", status_code=303)
         response.set_cookie(
