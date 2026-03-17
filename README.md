@@ -357,4 +357,4 @@ See [docs/security.md](docs/security.md) for the full rotation runbook.
 
 ---
 
-**Built with [DuckDB](https://duckdb.org)** · [pond-db.github.io](https://pond-db.github.io) · Made by [DatabaseCompany](https://github.com/DatabaseCompany)
+**Built on [DuckDB](https://duckdb.org)** · Created by Tianlu
