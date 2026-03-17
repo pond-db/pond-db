@@ -1,12 +1,14 @@
-{# HTMX partial — sessions table (no <html>/<body>) #}
+{# HTMX partial — sessions table (must match 7-column layout in sessions.html) #}
 {% from "_macros.html" import status_badge, session_id_cell, relative_time %}
 <table class="data-table">
   <thead>
     <tr>
       <th>Session ID</th>
       <th>Status</th>
-      <th>Created</th>
+      <th>Namespace</th>
       <th>Workgroup</th>
+      <th>Created</th>
+      <th>Last Active</th>
       <th>Actions</th>
     </tr>
   </thead>
@@ -17,21 +19,32 @@
     <tr id="session-row-{{ s.session_id }}">
       <td>{{ session_id_cell(s.session_id) }}</td>
       <td>{{ status_badge(st_str) }}</td>
-      <td>{{ relative_time(s.created_at) if s.created_at else '&#8212;' }}</td>
-      <td>{{ s.workgroup_id|default('&#8212;') }}</td>
+      <td>{{ s.namespace|default('default') }}</td>
       <td>
+        {% if s.workgroup_id and s.workgroup_id != 'default' %}
+        <a href="/workgroup/{{ s.workgroup_id }}">{{ s.workgroup_id }}</a>
+        {% else %}
+        <span style="color:var(--pond-gray);">default</span>
+        {% endif %}
+      </td>
+      <td>{{ relative_time(s.created_at) if s.created_at else '&#8212;' }}</td>
+      <td>{{ relative_time(s.last_active) if s.last_active else '&#8212;' }}</td>
+      <td>
+        <a href="/editor?session_id={{ s.session_id }}" class="btn btn-sm btn-primary" style="margin-right:0.25rem;">Open</a>
         {% if st_str|lower == 'suspended' %}
         <button class="btn btn-sm btn-primary"
                 hx-post="/htmx/session/{{ s.session_id }}/resume"
                 hx-target="#session-row-{{ s.session_id }}"
-                hx-swap="outerHTML">
+                hx-swap="outerHTML"
+                style="margin-right:0.25rem;">
           Resume
         </button>
         {% elif st_str|lower in ('active', 'running') %}
         <button class="btn btn-sm btn-warning"
                 hx-post="/htmx/session/{{ s.session_id }}/suspend"
                 hx-target="#session-row-{{ s.session_id }}"
-                hx-swap="outerHTML">
+                hx-swap="outerHTML"
+                style="margin-right:0.25rem;">
           Suspend
         </button>
         {% endif %}
@@ -45,7 +58,7 @@
       </td>
     </tr>
     {% else %}
-    <tr><td colspan="5" style="text-align:center;color:var(--pond-text-muted);">No active sessions.</td></tr>
+    <tr><td colspan="7" style="text-align:center;color:var(--pond-text-muted);">No active sessions.</td></tr>
     {% endfor %}
   </tbody>
 </table>

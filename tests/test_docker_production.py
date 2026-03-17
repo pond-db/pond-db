@@ -160,16 +160,22 @@ def test_compose_data_volume_is_named(compose: dict, ponddb_service: dict) -> No
 
 
 def test_compose_pond_jwt_secret_env_documented(ponddb_service: dict) -> None:
-    """Service environment should reference POND_JWT_SECRET for auth configuration."""
+    """Service should reference POND_JWT_SECRET via env or Docker secrets (not hardcoded)."""
     env = ponddb_service.get("environment", [])
-    # Accept either a list ["POND_JWT_SECRET=..."] or a dict form
+    secrets = ponddb_service.get("secrets", [])
     env_str = " ".join(env) if isinstance(env, list) else str(env)
-    # JWT secret may be injected from host env without a value; just check the key is mentioned
-    # OR it's acceptable to leave it out (operator provides it at runtime).
-    # This test is informational — we verify that if env lists it, it's formatted correctly.
-    # We do NOT require it to be present (runtime secret), but we verify nothing is hardcoded.
-    if "POND_JWT_SECRET" in env_str:
-        # Should not have a hardcoded non-empty value — value must be empty or env-var reference
+    # JWT secret can be provided via:
+    # 1. POND_JWT_SECRET env var (empty or env-var reference)
+    # 2. POND_JWT_SECRET_FILE env var pointing to a Docker secret
+    # 3. Docker secrets section
+    has_jwt_secret_file = "POND_JWT_SECRET_FILE" in env_str
+    has_jwt_secret = "POND_JWT_SECRET" in env_str and "POND_JWT_SECRET_FILE" not in env_str
+    has_docker_secret = any("jwt" in str(s).lower() for s in secrets)
+    assert has_jwt_secret_file or has_jwt_secret or has_docker_secret, (
+        "JWT secret must be configured via env var, _FILE env var, or Docker secrets"
+    )
+    # If using plain POND_JWT_SECRET env var (not _FILE), verify not hardcoded
+    if has_jwt_secret and not has_jwt_secret_file:
         for item in (env if isinstance(env, list) else []):
             if "POND_JWT_SECRET" in str(item):
                 assert "=" not in str(item) or str(item).endswith("=") or "$" in str(item), (

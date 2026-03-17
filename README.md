@@ -19,13 +19,13 @@ single Python package.
 - **Invite system** — token-based invites with optional SMTP email delivery
 - **Query store** — save, name, slug, public/private visibility, pagination
 - **Share links** — execute saved queries via `/q/{slug}`, rate-limited per IP
-- **Dataset manager** — CSV/Parquet upload, auto-registered as DuckDB views
+- **Dataset manager** — CSV/Parquet upload, auto-registered as DuckDB tables on session create/resume
 - **SQL editor** — CodeMirror 6, HTMX execution, schema sidebar with click-to-insert
-- **SaaS dashboard** — Pico.css, sidebar nav, stat cards, status badges
+- **SaaS dashboard** — Custom CSS, sidebar nav, stat cards, status badges
 - **Admin console** — invites, namespaces, workgroup quotas, usage monitoring
 - **Python SDK** — `DuckCloudClient` with auto-refresh, retry, session management
 - **CLI** — `pond serve`, `pond version`, `pond check`
-- **2,400+ tests**, 92% coverage
+- **2,550+ tests**, 92% coverage
 
 ## Quickstart
 
@@ -206,6 +206,17 @@ COLD ──► ACTIVE ──► SUSPENDED ──► DESTROYED
 - **ACTIVE → SUSPENDED**: idle watchdog fires after `POND_IDLE_TIMEOUT` seconds
 - **SUSPENDED → ACTIVE**: next query triggers transparent resume (<300 ms)
 - **ANY → DESTROYED**: `DELETE /session/{id}` or max age exceeded
+
+> **Session Lifecycle:** PondDB automatically suspends idle sessions after 5 minutes
+> and resumes them transparently when the next query arrives. Uploaded datasets are
+> always available after resume. Temporary tables created with `CREATE TEMP TABLE`
+> are lost on suspend — use uploaded datasets for persistent data.
+
+### Workgroup quotas
+
+When `max_concurrent_sessions` is set on a workgroup, PondDB enforces it at session
+creation time. If the limit is reached and a suspended session exists, PondDB will
+resume it instead of rejecting the request — smart scheduling with zero wasted resources.
 
 ## Development
 

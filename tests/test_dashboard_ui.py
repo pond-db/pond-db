@@ -55,26 +55,24 @@ def logged_in_client(client: TestClient) -> TestClient:
 
 
 # ===========================================================================
-# Pico.css and pond.css integration
+# CSS integration (pond.css — Pico CSS removed)
 # ===========================================================================
 
 
 class TestCSSIntegration:
-    def test_landing_has_pico_css(self, client: TestClient) -> None:
+    def test_landing_has_inline_styles(self, client: TestClient) -> None:
+        """Landing page uses self-contained inline styles."""
         body = client.get("/").text
-        assert "pico" in body.lower()
+        assert "<style>" in body
 
-    def test_landing_has_pond_css(self, client: TestClient) -> None:
-        body = client.get("/").text
-        assert "pond.css" in body
+    def test_landing_no_pico_css(self, client: TestClient) -> None:
+        """Landing page does not load Pico CSS (removed to avoid conflicts)."""
+        body = client.get("/").text.lower()
+        assert "picocss" not in body
 
-    def test_login_has_pico_css(self, client: TestClient) -> None:
+    def test_login_has_pond_css(self, client: TestClient) -> None:
         body = client.get("/login").text
-        assert "pico" in body.lower()
-
-    def test_dashboard_has_pico_css(self, logged_in_client: TestClient) -> None:
-        body = logged_in_client.get("/dashboard").text
-        assert "pico" in body.lower()
+        assert "pond.css" in body
 
     def test_dashboard_has_pond_css(self, logged_in_client: TestClient) -> None:
         body = logged_in_client.get("/dashboard").text
@@ -84,9 +82,9 @@ class TestCSSIntegration:
         body = client.get("/editor").text
         assert "pond.css" in body
 
-    def test_admin_has_pico_css(self, admin_client: TestClient) -> None:
+    def test_admin_has_pond_css(self, admin_client: TestClient) -> None:
         body = admin_client.get("/admin").text
-        assert "pico" in body.lower()
+        assert "pond.css" in body
 
 
 # ===========================================================================

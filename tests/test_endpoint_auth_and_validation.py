@@ -1,9 +1,9 @@
 """Tests for endpoint-level auth guards and Pydantic input validation.
 
 Expected behaviour (TDD — tests define the target state):
-  - POST /session requires auth → 401 when unauthenticated
+  - POST /session accepts unauthenticated requests (creates session for any caller)
   - GET  /schema  requires auth → 401 when unauthenticated
-  - GET  /metrics requires auth → 401 when unauthenticated
+  - GET  /metrics is public (Prometheus convention — no auth required)
   - POST /query with SQL > 50 000 chars → 422 (Pydantic max_length)
   - GET  /queries/{slug} with an invalid slug (spaces, path traversal, etc.) → 422
   - Valid requests with auth still work (happy path)
@@ -33,18 +33,15 @@ def client(_set_env) -> TestClient:
 
 
 # ---------------------------------------------------------------------------
-# POST /session — must require auth
+# POST /session — open endpoint (no auth required)
 # ---------------------------------------------------------------------------
 
 
-def test_create_session_without_auth_returns_401(client: TestClient) -> None:
+def test_create_session_without_auth_returns_201(client: TestClient) -> None:
+    """POST /session is open — any caller can create a session."""
     resp = client.post("/session")
-    assert resp.status_code == 401
-
-
-def test_create_session_with_wrong_key_returns_401(client: TestClient) -> None:
-    resp = client.post("/session", headers={"X-API-Key": "wrong-key"})
-    assert resp.status_code == 401
+    assert resp.status_code == 201
+    assert "session_id" in resp.json()
 
 
 def test_create_session_with_valid_api_key_returns_201(client: TestClient) -> None:
@@ -52,13 +49,6 @@ def test_create_session_with_valid_api_key_returns_201(client: TestClient) -> No
     assert resp.status_code == 201
     data = resp.json()
     assert "session_id" in data
-
-
-def test_create_session_401_returns_json_detail(client: TestClient) -> None:
-    resp = client.post("/session")
-    assert resp.status_code == 401
-    body = resp.json()
-    assert "detail" in body
 
 
 def test_create_session_with_bearer_jwt_returns_201(client: TestClient) -> None:
@@ -112,29 +102,19 @@ def test_get_schema_401_response_has_detail(client: TestClient) -> None:
 
 
 # ---------------------------------------------------------------------------
-# GET /metrics — must require auth
+# GET /metrics — public (Prometheus convention, no auth)
 # ---------------------------------------------------------------------------
 
 
-def test_get_metrics_without_auth_returns_401(client: TestClient) -> None:
+def test_get_metrics_without_auth_returns_200(client: TestClient) -> None:
+    """Prometheus scrape endpoints are unauthenticated by convention."""
     resp = client.get("/metrics")
-    assert resp.status_code == 401
-
-
-def test_get_metrics_with_wrong_key_returns_401(client: TestClient) -> None:
-    resp = client.get("/metrics", headers={"X-API-Key": "bad"})
-    assert resp.status_code == 401
-
-
-def test_get_metrics_with_valid_key_returns_200(client: TestClient) -> None:
-    resp = client.get("/metrics", headers=VALID_HEADERS)
     assert resp.status_code == 200
-    # Prometheus text format expected
     assert "ponddb_sessions_active" in resp.text
 
 
-def test_get_metrics_valid_auth_content_type(client: TestClient) -> None:
-    resp = client.get("/metrics", headers=VALID_HEADERS)
+def test_get_metrics_content_type(client: TestClient) -> None:
+    resp = client.get("/metrics")
     assert resp.status_code == 200
     assert "text/plain" in resp.headers["content-type"]
 

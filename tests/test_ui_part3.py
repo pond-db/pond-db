@@ -79,13 +79,16 @@ class TestLandingPage:
         assert resp.status_code == 200
         assert "login" not in resp.headers.get("location", "").lower()
 
-    def test_has_pico_css(self, client: TestClient) -> None:
+    def test_has_inline_styles(self, client: TestClient) -> None:
+        """Landing page has self-contained inline styles (no external CSS dependency)."""
         body = client.get("/").text
-        assert "pico" in body.lower()
+        assert "<style>" in body
+        assert ".landing-nav" in body
 
-    def test_has_pond_css(self, client: TestClient) -> None:
-        body = client.get("/").text
-        assert "pond.css" in body
+    def test_has_no_pico_css(self, client: TestClient) -> None:
+        """Landing page does not load Pico CSS (removed to avoid conflicts)."""
+        body = client.get("/").text.lower()
+        assert "picocss" not in body
 
 
 class TestLandingFeatures:
@@ -170,9 +173,10 @@ class TestLoginPage:
         body = client.get("/login").text
         assert "login-card" in body
 
-    def test_has_pico_css(self, client: TestClient) -> None:
+    def test_has_pond_css(self, client: TestClient) -> None:
+        """Login page loads pond.css (no Pico dependency)."""
         body = client.get("/login").text
-        assert "pico" in body.lower()
+        assert "pond.css" in body
 
 
 class TestLoginInviteBanner:
@@ -264,20 +268,21 @@ class TestPart3CSS:
         body = client.get("/static/pond.css").text
         assert ".landing-nav" in body
 
-    def test_has_hero(self, client: TestClient) -> None:
-        body = client.get("/static/pond.css").text
+    def test_landing_has_hero_inline(self, client: TestClient) -> None:
+        """Landing page hero styles are inlined (not in pond.css)."""
+        body = client.get("/").text
         assert ".hero" in body
 
-    def test_has_features_grid(self, client: TestClient) -> None:
-        body = client.get("/static/pond.css").text
+    def test_landing_has_features_grid_inline(self, client: TestClient) -> None:
+        body = client.get("/").text
         assert ".features-grid" in body
 
-    def test_has_feature_card(self, client: TestClient) -> None:
-        body = client.get("/static/pond.css").text
+    def test_landing_has_feature_card_inline(self, client: TestClient) -> None:
+        body = client.get("/").text
         assert ".feature-card" in body
 
-    def test_has_code_section(self, client: TestClient) -> None:
-        body = client.get("/static/pond.css").text
+    def test_landing_has_code_section_inline(self, client: TestClient) -> None:
+        body = client.get("/").text
         assert ".code-section" in body
 
     def test_has_login_card(self, client: TestClient) -> None:

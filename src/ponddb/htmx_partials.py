@@ -175,6 +175,8 @@ def make_htmx_router(
             manager.suspend_session(session_id)
         except KeyError:
             raise HTTPException(status_code=404, detail="Session not found")
+        except ValueError:
+            raise HTTPException(status_code=409, detail="Session already suspended")
         session = manager.get_session(session_id)
         return _templates.TemplateResponse(
             request,
@@ -190,6 +192,8 @@ def make_htmx_router(
             manager.resume_session(session_id)
         except KeyError:
             raise HTTPException(status_code=404, detail="Session not found")
+        except ValueError:
+            raise HTTPException(status_code=409, detail="Session already active")
         session = manager.get_session(session_id)
         return _templates.TemplateResponse(
             request,

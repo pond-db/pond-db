@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Settings — PondDB{% endblock %}
+
+{% block content %}
+<h2>Settings</h2>
+
+{# --- Instance Info --- #}
+<h3>Instance</h3>
+<div class="card">
+  <div class="detail-row">
+    <span class="detail-label">Version</span>
+    <span class="detail-value"><code>{{ version }}</code></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Host</span>
+    <span class="detail-value"><code>{{ config.host }}:{{ config.port }}</code></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Data Directory</span>
+    <span class="detail-value"><code>{{ config.data_root }}</code></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">SQLite Path</span>
+    <span class="detail-value"><code>{{ config.sqlite_path }}</code></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Log Level</span>
+    <span class="detail-value"><code>{{ config.log_level }}</code></span>
+  </div>
+</div>
+
+{# --- Session Configuration --- #}
+<h3>Session Configuration</h3>
+<div class="card">
+  <div class="detail-row">
+    <span class="detail-label">Idle Timeout</span>
+    <span class="detail-value">{{ config.idle_timeout }}s</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Max Session Age</span>
+    <span class="detail-value">{{ config.max_session_age }}s</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Memory Limit</span>
+    <span class="detail-value">{{ config.memory_limit }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Threads per Session</span>
+    <span class="detail-value">{{ config.threads }}</span>
+  </div>
+</div>
+
+{# --- API & Security --- #}
+<h3>API &amp; Security</h3>
+<div class="card">
+  <div class="detail-row">
+    <span class="detail-label">JWT Expiry</span>
+    <span class="detail-value">{{ config.jwt_expiry }}s</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Rate Limit</span>
+    <span class="detail-value">{{ config.rate_limit }} requests / {{ config.rate_window }}s</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Max Result Size</span>
+    <span class="detail-value">{{ config.max_result_mb }} MB</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">CORS Origins</span>
+    <span class="detail-value">{% if config.cors_origins %}<code>{{ config.cors_origins }}</code>{% else %}<span style="color:var(--pond-text-muted);">Not configured</span>{% endif %}</span>
+  </div>
+</div>
+
+{# --- Integrations --- #}
+<h3>Integrations</h3>
+<div class="card">
+  <div class="detail-row">
+    <span class="detail-label">Google OAuth</span>
+    <span class="detail-value">
+      {% if config.google_oauth %}<span class="badge badge-green">Configured</span>{% else %}<span class="badge badge-gray">Disabled</span>{% endif %}
+    </span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">GitHub OAuth</span>
+    <span class="detail-value">
+      {% if config.github_oauth %}<span class="badge badge-green">Configured</span>{% else %}<span class="badge badge-gray">Disabled</span>{% endif %}
+    </span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">SMTP (Invites)</span>
+    <span class="detail-value">
+      {% if config.smtp_configured %}<span class="badge badge-green">Configured</span>{% else %}<span class="badge badge-gray">Disabled</span>{% endif %}
+    </span>
+  </div>
+</div>
+
+{# --- Your Session --- #}
+<h3>Your Session</h3>
+<div class="card">
+  <div class="detail-row">
+    <span class="detail-label">Display Name</span>
+    <span class="detail-value">{{ current_user.display_name }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Role</span>
+    <span class="detail-value"><span class="badge badge-{{ 'green' if current_user.role == 'admin' else 'gray' }}">{{ current_user.role }}</span></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Tenant ID</span>
+    <span class="detail-value"><code>{{ current_user.tenant_id }}</code></span>
+  </div>
+</div>
+{% endblock %}

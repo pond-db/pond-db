@@ -188,6 +188,78 @@ def main() -> None:
     r = client.delete(f"/session/{session_id}")
     check(r.status_code == 200, f"DELETE /session/{session_id[:8]}... → {r.status_code}")
 
+    # ── 12. Session lifecycle (auto-suspend / transparent resume) ──────
+    import os
+    demo_timeout = int(os.environ.get("POND_DEMO_TIMEOUT", "10"))
+    step(f"12. Session lifecycle (idle timeout={demo_timeout}s)")
+
+    # Create a fresh session for the lifecycle demo
+    r = client.post("/session")
+    check(r.status_code == 201, "Created lifecycle demo session")
+    demo_sid = r.json().get("session_id", "")
+
+    # Execute a query to mark the session as active
+    r = client.post(
+        "/query",
+        json={"session_id": demo_sid, "sql": "SELECT 1 AS alive"},
+        headers=jwt_headers,
+    )
+    check(r.status_code == 200, "Query executed — session is ACTIVE")
+
+    # Verify session is active
+    r = client.get("/sessions")
+    sessions = r.json() if r.status_code == 200 else []
+    demo_session = [s for s in sessions if s.get("session_id") == demo_sid]
+    if demo_session:
+        status = demo_session[0].get("status", "")
+        check(
+            status in ("ACTIVE", "active"),
+            f"Session status: {status}",
+        )
+
+    # Wait for auto-suspend
+    print(f"  {YELLOW}⏳ Waiting {demo_timeout + 5}s for auto-suspend...{RESET}", end="", flush=True)
+    for i in range(demo_timeout + 5):
+        time.sleep(1)
+        remaining = demo_timeout + 5 - i - 1
+        print(f"\r  {YELLOW}⏳ Waiting {remaining}s for auto-suspend...   {RESET}", end="", flush=True)
+    print()
+
+    r = client.get("/sessions")
+    sessions = r.json() if r.status_code == 200 else []
+    demo_session = [s for s in sessions if s.get("session_id") == demo_sid]
+    if demo_session:
+        status = demo_session[0].get("status", "")
+        check(
+            status in ("SUSPENDED", "suspended"),
+            f"Session auto-suspended: {status}",
+        )
+    else:
+        fail(f"Session {demo_sid[:8]} not found after wait (may have been reaped)")
+
+    # Transparent resume by querying
+    step("13. Transparent resume on query")
+    r = client.post(
+        "/query",
+        json={"session_id": demo_sid, "sql": "SELECT 2 AS resumed"},
+        headers=jwt_headers,
+    )
+    check(r.status_code == 200, "Query succeeded — session transparently resumed")
+
+    r = client.get("/sessions")
+    sessions = r.json() if r.status_code == 200 else []
+    demo_session = [s for s in sessions if s.get("session_id") == demo_sid]
+    if demo_session:
+        status = demo_session[0].get("status", "")
+        check(
+            status in ("ACTIVE", "active"),
+            f"Session resumed to: {status}",
+        )
+
+    # Clean up lifecycle session
+    client.delete(f"/session/{demo_sid}")
+    ok("Lifecycle demo session terminated")
+
     # ── Summary ──────────────────────────────────────────────────────────
     elapsed = time.monotonic() - start_time
     total = passed + failed

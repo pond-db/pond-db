@@ -5,7 +5,8 @@ Defines expected behavior for Prometheus-format metrics export:
   - ponddb_query_duration_seconds (histogram)
   - ponddb_compute_units_total (counter)
 
-Tests import from ponddb.app and will fail until the endpoint is implemented.
+/metrics is unauthenticated (Prometheus convention).
+Other operations (session, query) require auth.
 """
 
 import importlib
@@ -20,6 +21,8 @@ VALID_KEY = "test-metrics-key-abc"
 @pytest.fixture(autouse=True)
 def _set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("POND_API_KEY", VALID_KEY)
+    monkeypatch.setenv("POND_JWT_SECRET", "test-metrics-jwt")
+    monkeypatch.setenv("POND_WEBSITE_SESSION_SECRET", "test-metrics-session")
 
 
 @pytest.fixture
@@ -36,8 +39,8 @@ def auth_headers() -> dict[str, str]:
 
 
 @pytest.fixture
-def session_id(client: TestClient) -> str:
-    resp = client.post("/session")
+def session_id(client: TestClient, auth_headers: dict) -> str:
+    resp = client.post("/session", headers=auth_headers)
     assert resp.status_code == 201
     return resp.json()["session_id"]
 
@@ -90,27 +93,29 @@ def test_metrics_sessions_active_zero_when_no_sessions(client: TestClient) -> No
 
 
 def test_metrics_sessions_active_increments_on_create(
-    client: TestClient,
+    client: TestClient, auth_headers: dict,
 ) -> None:
-    client.post("/session")
+    client.post("/session", headers=auth_headers)
     resp = client.get("/metrics")
     value = _extract_gauge(resp.text, "ponddb_sessions_active")
     assert value >= 1.0
 
 
 def test_metrics_sessions_active_decrements_on_destroy(
-    client: TestClient, session_id: str
+    client: TestClient, session_id: str, auth_headers: dict,
 ) -> None:
     before = _extract_gauge(client.get("/metrics").text, "ponddb_sessions_active")
-    client.delete(f"/session/{session_id}")
+    client.delete(f"/session/{session_id}", headers=auth_headers)
     after = _extract_gauge(client.get("/metrics").text, "ponddb_sessions_active")
     assert after == before - 1.0
 
 
-def test_metrics_sessions_active_counts_multiple_sessions(client: TestClient) -> None:
-    client.post("/session")
-    client.post("/session")
-    client.post("/session")
+def test_metrics_sessions_active_counts_multiple_sessions(
+    client: TestClient, auth_headers: dict,
+) -> None:
+    client.post("/session", headers=auth_headers)
+    client.post("/session", headers=auth_headers)
+    client.post("/session", headers=auth_headers)
     value = _extract_gauge(client.get("/metrics").text, "ponddb_sessions_active")
     assert value == 3.0
 

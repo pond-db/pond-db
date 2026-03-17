@@ -1,4 +1,22 @@
-/* === PondDB Custom Styles — layered on Pico.css v2 === */
+/* === PondDB Custom Styles -- standalone, no Pico dependency === */
+
+/* --- Minimal Reset --- */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; color: #111827; background: var(--pond-bg); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, h5, h6 { margin: 0 0 0.5rem; line-height: 1.2; }
+p { margin: 0 0 1rem; }
+a { color: var(--pond-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+input, button, select, textarea { font: inherit; }
+input[type="text"], input[type="password"], input[type="email"], input[type="search"] {
+  display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db;
+  border-radius: 6px; font-size: 0.95rem; background: #fff; color: #111827;
+}
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus, input[type="search"]:focus {
+  outline: none; border-color: var(--pond-primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+table { border-collapse: collapse; }
+img { max-width: 100%; }
 
 /* --- Color Variables --- */
 :root {
@@ -223,19 +241,14 @@ code.session-id { font-size: 0.8rem; background: #f1f5f9; padding: 0.1rem 0.3rem
 .btn-warning { background: var(--pond-warning); color: #fff; }
 .btn-warning:hover { background: #b45309; }
 
-/* --- Landing Page --- */
-.landing-nav { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; }
+/* --- Public Nav (landing, login) --- */
+.landing-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 32px; max-width: 1200px; margin: 0 auto;
+}
 .landing-nav a { text-decoration: none; color: var(--pond-text-muted); font-size: 0.95rem; }
-.landing-nav a:hover { color: var(--pond-primary); }
-.hero { text-align: center; padding: 80px 20px; max-width: 640px; margin: 0 auto; }
-.hero h1 { font-size: 3rem; font-weight: 800; color: #111827; margin-bottom: 16px; }
-.hero p { font-size: 1.25rem; color: #6b7280; margin-bottom: 32px; }
-.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 960px; margin: 0 auto; padding: 0 20px; }
-.feature-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; }
-.feature-card h3 { color: #111827; margin-bottom: 8px; }
-.feature-card p { color: #6b7280; font-size: 0.95rem; }
-.code-section { background: #111827; padding: 48px 20px; margin: 48px 0; }
-.code-block { max-width: 640px; margin: 0 auto; background: #1f2937; border-radius: 8px; padding: 20px; color: #e5e7eb; font-family: monospace; overflow-x: auto; }
+.landing-nav a:hover { color: var(--pond-primary); text-decoration: none; }
+.landing-nav .btn { color: #fff; }
 .landing-footer { text-align: center; padding: 32px; color: #9ca3af; font-size: 0.875rem; }
 .landing-footer a { color: #6b7280; text-decoration: none; }
 .landing-footer a:hover { color: var(--pond-primary); }
@@ -268,8 +281,5 @@ code.session-id { font-size: 0.8rem; background: #f1f5f9; padding: 0.1rem 0.3rem
   .main-content { margin-left: 0; padding: 1rem; }
   .stats-row { grid-template-columns: 1fr; }
   .wg-grid { grid-template-columns: 1fr; }
-  .features-grid { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 2rem; }
-  .hero { padding: 40px 16px; }
   .login-card { margin: 40px 16px; }
 }

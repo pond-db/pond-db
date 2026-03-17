@@ -1,8 +1,8 @@
-"""Website routes: landing, login, dashboard, and workgroup pages.
+"""Website routes: landing, login, dashboard, settings, and workgroup pages.
 
 Cookie-based auth model:
   POST /login  → validates POND_API_KEY, sets signed session cookie
-  /dashboard, /workgroup/* → require valid session cookie
+  /dashboard, /workgroup/*, /settings → require valid session cookie
 """
 
 import base64
@@ -18,6 +18,9 @@ from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from ponddb.jwt_auth import _get_api_key, _get_session_secret as _jwt_get_session_secret
+
+from ponddb import __version__
 from ponddb.session_manager import SessionManager
 
 _templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -26,7 +29,7 @@ COOKIE_NAME = "pond_session"
 
 
 def _get_session_secret() -> str:
-    return os.environ.get("POND_WEBSITE_SESSION_SECRET", "change-me-default-secret")
+    return _jwt_get_session_secret()
 
 
 def _sign_session(data: dict) -> str:
@@ -94,7 +97,7 @@ def make_website_router(
         if not api_key or not api_key.strip():
             ctx["error"] = "API key is required"
             return _templates.TemplateResponse(request, "login.html", ctx, status_code=400)
-        expected = os.environ.get("POND_API_KEY", "")
+        expected = _get_api_key()
         if not expected or api_key != expected:
             ctx["error"] = "Invalid API key"
             return _templates.TemplateResponse(request, "login.html", ctx, status_code=200)
@@ -224,6 +227,43 @@ def make_website_router(
                     {"label": "Dashboard", "url": "/dashboard"},
                     {"label": f"Workgroup: {wg_name}"},
                 ],
+            },
+        )
+
+    @router.get("/settings", response_class=HTMLResponse)
+    async def settings_page(request: Request) -> Response:
+        session = _get_session(request)
+        if not session:
+            return RedirectResponse(url="/login", status_code=302)
+        current_user = _build_current_user(session)
+        wg_list = list(workgroups.values())
+        config = {
+            "host": os.environ.get("POND_HOST", "0.0.0.0"),
+            "port": os.environ.get("POND_PORT", "8432"),
+            "data_root": os.environ.get("POND_DATA_ROOT", "./data"),
+            "sqlite_path": os.environ.get("POND_SQLITE_PATH", ":memory:"),
+            "log_level": os.environ.get("POND_LOG_LEVEL", "INFO"),
+            "idle_timeout": os.environ.get("POND_IDLE_TIMEOUT", "300"),
+            "max_session_age": os.environ.get("POND_MAX_SESSION_AGE", "86400"),
+            "memory_limit": os.environ.get("POND_SESSION_MEMORY_LIMIT", "2GB"),
+            "threads": os.environ.get("POND_SESSION_THREADS", "4"),
+            "jwt_expiry": os.environ.get("POND_JWT_EXPIRY_SECONDS", "3600"),
+            "rate_limit": os.environ.get("POND_PONDAPI_RATE_LIMIT", "10"),
+            "rate_window": os.environ.get("POND_PONDAPI_RATE_WINDOW", "60"),
+            "max_result_mb": os.environ.get("POND_MAX_RESULT_MB", "100"),
+            "cors_origins": os.environ.get("POND_CORS_ORIGINS", ""),
+            "google_oauth": bool(os.environ.get("POND_GOOGLE_CLIENT_ID")),
+            "github_oauth": bool(os.environ.get("POND_GITHUB_CLIENT_ID")),
+            "smtp_configured": bool(os.environ.get("POND_SMTP_HOST")),
+        }
+        return _templates.TemplateResponse(
+            request, "settings.html",
+            {
+                "current_user": current_user,
+                "config": config,
+                "version": __version__,
+                "active_page": "settings",
+                "workgroups_nav": wg_list,
             },
         )
 

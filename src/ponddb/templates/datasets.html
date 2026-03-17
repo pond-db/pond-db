@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "_macros.html" import empty_state %}
+{% block title %}Datasets — PondDB{% endblock %}
+
+{% block content %}
+<h2>Datasets</h2>
+
+{# --- Upload Form --- #}
+<div style="margin-bottom:24px;padding:16px;border:1px solid var(--pond-border);border-radius:8px;">
+  <h4 style="margin-bottom:8px;">Upload Dataset</h4>
+  <form id="upload-form" enctype="multipart/form-data" style="display:flex;gap:12px;align-items:center;">
+    <input type="file" name="file" accept=".csv,.parquet,.json" required style="flex:1;">
+    <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+  </form>
+  <div id="upload-status" style="margin-top:8px;font-size:0.85rem;"></div>
+</div>
+
+{# --- Dataset List --- #}
+{% if datasets %}
+<table class="pond-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Format</th>
+      <th>Size</th>
+      <th>Rows</th>
+      <th>Columns</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ds in datasets %}
+    <tr id="row-{{ ds.name }}">
+      <td><code>{{ ds.name }}</code></td>
+      <td><span class="badge badge-gray">{{ ds.format }}</span></td>
+      <td>{{ "%.1f"|format(ds.size_bytes / 1024) }} KB</td>
+      <td>{{ ds.row_count if ds.row_count is not none else "—" }}</td>
+      <td>{{ ds.columns|length if ds.columns else "—" }}</td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteDataset('{{ ds.name }}')">Delete</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+{{ empty_state("No datasets uploaded yet.", "Upload your first CSV or Parquet file above.") }}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('upload-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var status = document.getElementById('upload-status');
+  var formData = new FormData(this);
+  status.textContent = 'Uploading...';
+  status.style.color = 'var(--pond-text-muted)';
+  try {
+    var resp = await fetch('/datasets', {method: 'POST', body: formData});
+    if (resp.ok) {
+      status.textContent = 'Upload successful!';
+      status.style.color = 'var(--pond-success)';
+      setTimeout(function() { window.location.reload(); }, 800);
+    } else {
+      var data = await resp.json();
+      status.textContent = 'Error: ' + (data.detail || resp.statusText);
+      status.style.color = 'var(--pond-danger)';
+    }
+  } catch(err) {
+    status.textContent = 'Upload failed: ' + err.message;
+    status.style.color = 'var(--pond-danger)';
+  }
+});
+
+async function deleteDataset(name) {
+  if (!confirm('Delete dataset "' + name + '"?')) return;
+  var resp = await fetch('/datasets/' + encodeURIComponent(name), {method: 'DELETE'});
+  if (resp.ok) {
+    var row = document.getElementById('row-' + name);
+    if (row) row.remove();
+  } else {
+    alert('Delete failed');
+  }
+}
+</script>
+{% endblock %}

@@ -116,17 +116,22 @@ class DatasetManager:
         return True
 
     def register_in_session(self, conn: duckdb.DuckDBPyConnection) -> None:
-        """Create VIEWs for all registered datasets in the given connection."""
+        """Load all registered datasets as TABLEs in the given connection.
+
+        Must be called BEFORE ``enable_external_access`` is set to false,
+        because ``read_csv_auto`` / ``read_parquet`` need file I/O access.
+        Data is copied into in-memory tables so queries work after hardening.
+        """
         for info in self._datasets.values():
             try:
                 if info.format == "csv":
                     conn.execute(
-                        f"CREATE VIEW {info.name} AS "
+                        f"CREATE TABLE IF NOT EXISTS {info.name} AS "
                         f"SELECT * FROM read_csv_auto('{info.file_path}')"
                     )
                 else:
                     conn.execute(
-                        f"CREATE VIEW {info.name} AS "
+                        f"CREATE TABLE IF NOT EXISTS {info.name} AS "
                         f"SELECT * FROM read_parquet('{info.file_path}')"
                     )
             except Exception:

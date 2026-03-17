@@ -1,23 +1,23 @@
-"""REST endpoints for the dataset manager (POST/GET/DELETE /datasets)."""
+"""REST endpoints for the dataset manager (POST/GET/DELETE /datasets).
 
-import os
-from typing import Optional
+Auth: accepts Bearer JWT, X-API-Key header, or session cookie (via require_auth).
+GET /datasets serves HTML for browsers (Accept: text/html) and JSON for API clients.
+"""
 
-from fastapi import APIRouter, HTTPException, Security, UploadFile
-from fastapi.security.api_key import APIKeyHeader
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 from ponddb.dataset_manager import DatasetManager
+from ponddb.jwt_auth import require_auth
 
-_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-
-
-async def _require_api_key(key: Optional[str] = Security(_api_key_header)) -> None:
-    expected = os.environ.get("POND_API_KEY", "")
-    if not key or not key.strip() or key != expected or not expected:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+_templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
-def _info_to_dict(info) -> dict:
+def _info_to_dict(info: Any) -> dict:
     return {
         "name": info.name,
         "format": info.format,
@@ -31,8 +31,10 @@ def _info_to_dict(info) -> dict:
 def make_dataset_router(manager: DatasetManager) -> APIRouter:
     router = APIRouter()
 
-    @router.post("/datasets", status_code=201, dependencies=[Security(_require_api_key)])
-    async def upload_dataset(file: UploadFile) -> dict:
+    @router.post("/datasets", status_code=201)
+    async def upload_dataset(
+        file: UploadFile, _auth: dict = Depends(require_auth),
+    ) -> dict:
         content = await file.read()
         filename = file.filename or ""
         try:
@@ -43,19 +45,44 @@ def make_dataset_router(manager: DatasetManager) -> APIRouter:
             raise HTTPException(status_code=409, detail=str(exc))
         return _info_to_dict(info)
 
-    @router.get("/datasets", dependencies=[Security(_require_api_key)])
-    async def list_datasets() -> list[dict]:
-        return [_info_to_dict(d) for d in manager.list_datasets()]
+    @router.get("/datasets")
+    async def list_datasets(
+        request: Request, _auth: dict = Depends(require_auth),
+    ) -> Any:
+        datasets = [_info_to_dict(d) for d in manager.list_datasets()]
 
-    @router.get("/datasets/{name}", dependencies=[Security(_require_api_key)])
-    async def get_dataset(name: str) -> dict:
+        # Content negotiation: HTML for browsers, JSON for API clients
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            from ponddb.website_routes import _get_session, _build_current_user
+            session = _get_session(request)
+            if not session:
+                return RedirectResponse(url="/login", status_code=302)
+            return _templates.TemplateResponse(
+                request, "datasets.html",
+                {
+                    "datasets": datasets,
+                    "current_user": _build_current_user(session),
+                    "active_page": "datasets",
+                    "workgroups_nav": [],
+                },
+            )
+
+        return datasets
+
+    @router.get("/datasets/{name}")
+    async def get_dataset(
+        name: str, _auth: dict = Depends(require_auth),
+    ) -> dict:
         info = manager.get_dataset(name)
         if info is None:
             raise HTTPException(status_code=404, detail=f"Dataset not found: {name!r}")
         return _info_to_dict(info)
 
-    @router.delete("/datasets/{name}", dependencies=[Security(_require_api_key)])
-    async def delete_dataset(name: str) -> dict:
+    @router.delete("/datasets/{name}")
+    async def delete_dataset(
+        name: str, _auth: dict = Depends(require_auth),
+    ) -> dict:
         removed = manager.delete_dataset(name)
         if not removed:
             raise HTTPException(status_code=404, detail=f"Dataset not found: {name!r}")

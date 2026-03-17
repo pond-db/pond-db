@@ -53,6 +53,15 @@ def _check_admin(request: Request) -> tuple[Optional[dict], Optional[Any]]:
     return session, None
 
 
+def _current_user_from_session(session: dict) -> dict:
+    """Build current_user context dict from admin session cookie."""
+    return {
+        "display_name": session.get("display_name", "Admin"),
+        "role": session.get("role", "admin"),
+        "tenant_id": session.get("tenant_id", "default"),
+    }
+
+
 def make_admin_router(
     invite_store: InviteStore,
     workgroups: dict,
@@ -70,7 +79,7 @@ def make_admin_router(
         wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_home.html",
-            {"session": session, "active_page": "admin", "workgroups_nav": wg_list},
+            {"session": session, "current_user": _current_user_from_session(session), "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.get("/invites", response_class=HTMLResponse)
@@ -83,7 +92,7 @@ def make_admin_router(
         wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_invites.html",
-            {"session": session, "invites": invites, "error": None, "active_page": "admin", "workgroups_nav": wg_list},
+            {"session": session, "current_user": _current_user_from_session(session), "invites": invites, "error": None, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.post("/invites")
@@ -103,7 +112,7 @@ def make_admin_router(
             wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_invites.html",
-                {"session": session, "invites": invites, "error": "Invalid email address", "active_page": "admin", "workgroups_nav": wg_list},
+                {"session": session, "current_user": _current_user_from_session(session), "invites": invites, "error": "Invalid email address", "active_page": "admin", "workgroups_nav": wg_list},
                 status_code=400,
             )
 
@@ -138,7 +147,7 @@ def make_admin_router(
             wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_invites.html",
-                {"session": session, "invites": invites, "error": "Invite not found", "active_page": "admin", "workgroups_nav": wg_list},
+                {"session": session, "current_user": _current_user_from_session(session), "invites": invites, "error": "Invite not found", "active_page": "admin", "workgroups_nav": wg_list},
                 status_code=404,
             )
         return RedirectResponse(url="/admin/invites", status_code=303)
@@ -155,7 +164,7 @@ def make_admin_router(
         wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_namespaces.html",
-            {"session": session, "namespaces": namespaces, "wg_by_ns": wg_by_ns, "active_page": "admin", "workgroups_nav": wg_list},
+            {"session": session, "current_user": _current_user_from_session(session), "namespaces": namespaces, "wg_by_ns": wg_by_ns, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.get("/usage", response_class=HTMLResponse)
@@ -167,7 +176,7 @@ def make_admin_router(
         wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_usage.html",
-            {"session": session, "stats": stats, "workgroups": wg_list, "active_page": "admin", "workgroups_nav": wg_list},
+            {"session": session, "current_user": _current_user_from_session(session), "stats": stats, "workgroups": wg_list, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.get("/workgroups/{wg_id}/quota", response_class=HTMLResponse)
@@ -181,7 +190,7 @@ def make_admin_router(
         wg_list = list(workgroups.values())
         return _templates.TemplateResponse(
             request, "admin_quota.html",
-            {"session": session, "workgroup": wg, "wg_id": wg_id, "error": None, "active_page": "admin", "workgroups_nav": wg_list},
+            {"session": session, "current_user": _current_user_from_session(session), "workgroup": wg, "wg_id": wg_id, "error": None, "active_page": "admin", "workgroups_nav": wg_list},
         )
 
     @router.post("/workgroups/{wg_id}/quota")
@@ -216,7 +225,7 @@ def make_admin_router(
             wg_list = list(workgroups.values())
             return _templates.TemplateResponse(
                 request, "admin_quota.html",
-                {"session": session, "workgroup": wg, "wg_id": wg_id, "error": str(exc), "active_page": "admin", "workgroups_nav": wg_list},
+                {"session": session, "current_user": _current_user_from_session(session), "workgroup": wg, "wg_id": wg_id, "error": str(exc), "active_page": "admin", "workgroups_nav": wg_list},
                 status_code=400,
             )
 
@@ -225,7 +234,8 @@ def make_admin_router(
             return _templates.TemplateResponse(
                 request, "admin_quota.html",
                 {
-                    "session": session, "workgroup": wg, "wg_id": wg_id,
+                    "session": session, "current_user": _current_user_from_session(session),
+                    "workgroup": wg, "wg_id": wg_id,
                     "error": "max_sessions must be a positive integer",
                     "active_page": "admin", "workgroups_nav": wg_list,
                 },

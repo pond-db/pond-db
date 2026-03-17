@@ -16,7 +16,7 @@ from duckcloud.exceptions import DuckCloudError
 
 
 @pytest.fixture
-def base_url() -> str:
+def server_url() -> str:
     return "http://localhost:8432"
 
 
@@ -26,8 +26,8 @@ def api_key() -> str:
 
 
 @pytest.fixture
-def client(base_url: str, api_key: str) -> DuckCloudClient:
-    return DuckCloudClient(base_url=base_url, api_key=api_key, max_retries=3)
+def client(server_url: str, api_key: str) -> DuckCloudClient:
+    return DuckCloudClient(base_url=server_url, api_key=api_key, max_retries=3)
 
 
 @pytest.fixture

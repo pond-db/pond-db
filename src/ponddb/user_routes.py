@@ -6,7 +6,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from ponddb.jwt_auth import verify_access_token
+from ponddb.jwt_auth import _get_api_key, verify_access_token
 from ponddb.user_store import UserStore
 
 
@@ -33,7 +33,7 @@ def make_user_router(user_store: UserStore) -> APIRouter:
                     "scopes": ["query", "read"],
                 }
             # Fall back to static POND_API_KEY
-            expected = os.environ.get("POND_API_KEY", "")
+            expected = _get_api_key()
             if expected and api_key_header == expected:
                 return {"tenant_id": "default", "scopes": ["query", "read", "write"], "type": "access"}
             raise HTTPException(status_code=401, detail="Invalid API key")

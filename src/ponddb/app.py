@@ -1,14 +1,17 @@
 """FastAPI application — PondDB server entry point."""
 
+import asyncio
+import logging
 import os
 import re
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, Security
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,6 +22,7 @@ from ponddb.cors_middleware import AllowlistCORSMiddleware
 from ponddb.dataset_manager import DatasetManager
 from ponddb.dataset_routes import make_dataset_router
 from ponddb.jwt_auth import (
+    _get_api_key,
     create_access_token,
     create_refresh_token,
     require_auth,
@@ -110,15 +114,36 @@ _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 async def _require_api_key(key: str | None = Security(_api_key_header)) -> None:
     """Dependency: validate X-API-Key against POND_API_KEY env var."""
-    expected = os.environ.get("POND_API_KEY", "")
+    expected = _get_api_key()
     if not key or not key.strip() or key != expected or not expected:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+_logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Start background tasks on startup, clean up on shutdown."""
+    poll = float(os.environ.get("POND_WATCHDOG_INTERVAL", "30"))
+    task = asyncio.create_task(_manager.start_watchdog(poll_interval=poll))
+    _logger.info("Session watchdog started (poll=%.0fs)", poll)
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        _logger.info("Session watchdog stopped")
 
 
 app = FastAPI(
     title="PondDB",
     version=__version__,
     description="Lightweight self-hosted DuckDB compute platform",
+    lifespan=_lifespan,
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -155,7 +180,7 @@ class RevokeRequest(BaseModel):
 @app.post("/auth/token", response_model=TokenResponse)
 async def issue_token(req: TokenRequest, request: Request) -> dict[str, Any]:
     """Exchange an API key for JWT access + refresh tokens."""
-    expected = os.environ.get("POND_API_KEY", "")
+    expected = _get_api_key()
     if not req.api_key or req.api_key != expected or not expected:
         raise HTTPException(status_code=401, detail="Invalid API key")
     tenant_id = req.tenant_id or "default"
@@ -283,6 +308,7 @@ app.include_router(make_invite_router(_invite_store))
 
 _data_root = os.environ.get("POND_DATA_ROOT", "./data")
 _dataset_manager = DatasetManager(_data_root)
+_manager.dataset_manager = _dataset_manager  # auto-register datasets in new/resumed sessions
 app.include_router(make_dataset_router(_dataset_manager))
 
 # Shared state for workgroup quota tracking (passed into the namespace router)
@@ -317,7 +343,7 @@ app.include_router(make_htmx_router(_manager, _workgroups, _pondapi_db_conn, sto
 
 
 @app.get("/metrics", include_in_schema=False)
-async def metrics(_auth: dict = Depends(require_auth)) -> Response:
+async def metrics() -> Response:
     text = _render_metrics(_manager.session_count)
     return Response(content=text, media_type="text/plain; version=0.0.4; charset=utf-8")
 
@@ -576,13 +602,14 @@ async def get_schema(
 
 @app.get("/history")
 async def get_history(
+    request: Request,
     _auth: dict = Depends(require_auth),
     status: Optional[str] = Query(default=None),
     start: Optional[str] = Query(default=None),
     end: Optional[str] = Query(default=None),
     limit: int = Query(default=50),
     offset: int = Query(default=0),
-) -> list[dict]:
+) -> Any:
     if status is not None and status not in _VALID_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid status: {status!r}. Must be 'success' or 'error'")
 
@@ -611,6 +638,28 @@ async def get_history(
         limit=limit,
         offset=offset,
     )
+
+    # Content negotiation: HTML page for browsers, JSON for API clients
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        from ponddb.website_routes import _get_session, _build_current_user
+        session = _get_session(request)
+        if not session:
+            return RedirectResponse(url="/login", status_code=302)
+        wg_list = list(_workgroups.values())
+        return _templates.TemplateResponse(
+            request, "history.html",
+            {
+                "history": rows,
+                "status_filter": status or "",
+                "limit": limit,
+                "offset": offset,
+                "current_user": _build_current_user(session),
+                "active_page": "history",
+                "workgroups_nav": wg_list,
+            },
+        )
+
     return rows
 
 

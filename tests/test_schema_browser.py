@@ -26,6 +26,8 @@ VALID_KEY = "test-schema-browser-key"
 @pytest.fixture(autouse=True)
 def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("POND_API_KEY", VALID_KEY)
+    monkeypatch.setenv("POND_JWT_SECRET", "test-schema-jwt")
+    monkeypatch.setenv("POND_WEBSITE_SESSION_SECRET", "test-schema-session")
 
 
 @pytest.fixture
@@ -39,15 +41,15 @@ def client(_set_env) -> TestClient:
 
 
 @pytest.fixture
-def session_id(client: TestClient) -> str:
-    resp = client.post("/session")
-    assert resp.status_code == 201, resp.text
-    return resp.json()["session_id"]
+def auth_headers() -> dict[str, str]:
+    return {"X-API-Key": VALID_KEY}
 
 
 @pytest.fixture
-def auth_headers() -> dict[str, str]:
-    return {"X-API-Key": VALID_KEY}
+def session_id(client: TestClient, auth_headers: dict) -> str:
+    resp = client.post("/session", headers=auth_headers)
+    assert resp.status_code == 201, resp.text
+    return resp.json()["session_id"]
 
 
 # ---------------------------------------------------------------------------
@@ -55,19 +57,25 @@ def auth_headers() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def test_schema_returns_200_for_valid_session(client: TestClient, session_id: str) -> None:
-    resp = client.get(f"/schema?session_id={session_id}")
+def test_schema_returns_200_for_valid_session(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     assert resp.status_code == 200
 
 
-def test_schema_returns_json_content_type(client: TestClient, session_id: str) -> None:
-    resp = client.get(f"/schema?session_id={session_id}")
+def test_schema_returns_json_content_type(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     assert "application/json" in resp.headers["content-type"]
 
 
-def test_schema_empty_session_returns_list(client: TestClient, session_id: str) -> None:
+def test_schema_empty_session_returns_list(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """Fresh DuckDB in-memory session with no user tables returns a list (possibly empty)."""
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     assert isinstance(data, list)
 
@@ -80,7 +88,7 @@ def test_schema_response_structure(client: TestClient, session_id: str, auth_hea
         json={"session_id": session_id, "sql": "CREATE TABLE test_tbl (id INTEGER, name VARCHAR)"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     assert isinstance(data, list)
     # Find our created table
@@ -99,7 +107,7 @@ def test_schema_column_has_name_and_type(client: TestClient, session_id: str, au
         json={"session_id": session_id, "sql": "CREATE TABLE typed_tbl (id INTEGER, label VARCHAR, score DOUBLE)"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     tables = {t["table_name"]: t for t in data}
     assert "typed_tbl" in tables
@@ -116,7 +124,7 @@ def test_schema_column_names_are_correct(client: TestClient, session_id: str, au
         json={"session_id": session_id, "sql": "CREATE TABLE col_test (alpha INTEGER, beta VARCHAR)"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     tables = {t["table_name"]: t for t in data}
     col_names = [c["name"] for c in tables["col_test"]["columns"]]
@@ -131,7 +139,7 @@ def test_schema_column_types_are_strings(client: TestClient, session_id: str, au
         json={"session_id": session_id, "sql": "CREATE TABLE type_test (x INTEGER, y DOUBLE, z VARCHAR)"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     tables = {t["table_name"]: t for t in data}
     for col in tables["type_test"]["columns"]:
@@ -151,7 +159,7 @@ def test_schema_includes_multiple_tables(client: TestClient, session_id: str, au
         json={"session_id": session_id, "sql": "CREATE TABLE beta_tbl (val VARCHAR)"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     names = [t["table_name"] for t in data]
     assert "alpha_tbl" in names
@@ -165,7 +173,7 @@ def test_schema_only_returns_user_tables_not_system(client: TestClient, session_
         json={"session_id": session_id, "sql": "CREATE TABLE user_visible (id INTEGER)"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     names = [t["table_name"] for t in data]
     # System schema entries should not appear directly
@@ -178,21 +186,21 @@ def test_schema_only_returns_user_tables_not_system(client: TestClient, session_
 # ---------------------------------------------------------------------------
 
 
-def test_schema_missing_session_id_returns_422(client: TestClient) -> None:
+def test_schema_missing_session_id_returns_422(client: TestClient, auth_headers: dict) -> None:
     """session_id is required; omitting it returns 422 Unprocessable Entity."""
-    resp = client.get("/schema")
+    resp = client.get("/schema", headers=auth_headers)
     assert resp.status_code == 422
 
 
-def test_schema_unknown_session_returns_404(client: TestClient) -> None:
+def test_schema_unknown_session_returns_404(client: TestClient, auth_headers: dict) -> None:
     """Non-existent session_id returns 404 Not Found."""
-    resp = client.get("/schema?session_id=does-not-exist-0000")
+    resp = client.get("/schema?session_id=does-not-exist-0000", headers=auth_headers)
     assert resp.status_code == 404
 
 
-def test_schema_response_detail_on_missing_session(client: TestClient) -> None:
+def test_schema_response_detail_on_missing_session(client: TestClient, auth_headers: dict) -> None:
     """404 response should include a 'detail' key."""
-    resp = client.get("/schema?session_id=ghost-session")
+    resp = client.get("/schema?session_id=ghost-session", headers=auth_headers)
     data = resp.json()
     assert "detail" in data
 
@@ -204,8 +212,8 @@ def test_schema_response_detail_on_missing_session(client: TestClient) -> None:
 
 def test_schema_is_session_scoped(client: TestClient, auth_headers: dict) -> None:
     """Tables created in session A must not appear in session B."""
-    sid_a = client.post("/session").json()["session_id"]
-    sid_b = client.post("/session").json()["session_id"]
+    sid_a = client.post("/session", headers=auth_headers).json()["session_id"]
+    sid_b = client.post("/session", headers=auth_headers).json()["session_id"]
 
     client.post(
         "/query",
@@ -213,15 +221,15 @@ def test_schema_is_session_scoped(client: TestClient, auth_headers: dict) -> Non
         headers=auth_headers,
     )
 
-    resp_b = client.get(f"/schema?session_id={sid_b}")
+    resp_b = client.get(f"/schema?session_id={sid_b}", headers=auth_headers)
     names_b = [t["table_name"] for t in resp_b.json()]
     assert "session_a_table" not in names_b
 
 
 def test_schema_tables_are_independent_per_session(client: TestClient, auth_headers: dict) -> None:
     """Tables created in session B must appear in session B but not session A."""
-    sid_a = client.post("/session").json()["session_id"]
-    sid_b = client.post("/session").json()["session_id"]
+    sid_a = client.post("/session", headers=auth_headers).json()["session_id"]
+    sid_b = client.post("/session", headers=auth_headers).json()["session_id"]
 
     client.post(
         "/query",
@@ -229,11 +237,11 @@ def test_schema_tables_are_independent_per_session(client: TestClient, auth_head
         headers=auth_headers,
     )
 
-    resp_a = client.get(f"/schema?session_id={sid_a}")
+    resp_a = client.get(f"/schema?session_id={sid_a}", headers=auth_headers)
     names_a = [t["table_name"] for t in resp_a.json()]
     assert "only_in_b" not in names_a
 
-    resp_b = client.get(f"/schema?session_id={sid_b}")
+    resp_b = client.get(f"/schema?session_id={sid_b}", headers=auth_headers)
     names_b = [t["table_name"] for t in resp_b.json()]
     assert "only_in_b" in names_b
 
@@ -243,10 +251,12 @@ def test_schema_tables_are_independent_per_session(client: TestClient, auth_head
 # ---------------------------------------------------------------------------
 
 
-def test_schema_after_session_destroy_returns_404(client: TestClient, session_id: str) -> None:
+def test_schema_after_session_destroy_returns_404(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """Destroyed session returns 404 for schema request."""
-    client.delete(f"/session/{session_id}")
-    resp = client.get(f"/schema?session_id={session_id}")
+    client.delete(f"/session/{session_id}", headers=auth_headers)
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     assert resp.status_code == 404
 
 
@@ -350,7 +360,7 @@ def test_schema_includes_view(client: TestClient, session_id: str, auth_headers:
         json={"session_id": session_id, "sql": "CREATE VIEW my_view AS SELECT 1 AS num"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     names = [t["table_name"] for t in data]
     assert "my_view" in names
@@ -363,7 +373,7 @@ def test_schema_view_has_columns(client: TestClient, session_id: str, auth_heade
         json={"session_id": session_id, "sql": "CREATE VIEW view_cols AS SELECT 42 AS answer, 'hello' AS greeting"},
         headers=auth_headers,
     )
-    resp = client.get(f"/schema?session_id={session_id}")
+    resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
     data = resp.json()
     tables = {t["table_name"]: t for t in data}
     assert "view_cols" in tables

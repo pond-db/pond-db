@@ -99,7 +99,7 @@ def make_pondapi_htmx_router(
         _insert_execution(db_conn, execution_id, tenant_id, session_id, sql, created_at)
 
         fut = _executor.submit(
-            _run_query_sync, manager, db_conn, execution_id, session_id, sql
+            _run_query_sync, manager, None, db_conn, execution_id, session_id, sql
         )
         _in_flight[execution_id] = (tenant_id, fut)
 

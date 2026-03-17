@@ -1,25 +1,36 @@
-{# HTMX partial — single session row (no <html>/<body>) #}
+{# HTMX partial — single session row (must match 7-column layout in sessions.html) #}
 {% from "_macros.html" import status_badge, session_id_cell, relative_time %}
 {% set st = session.status|default('active') %}
 {% set st_str = st if st is string else st.value %}
 <tr id="session-row-{{ session.session_id }}">
   <td>{{ session_id_cell(session.session_id) }}</td>
   <td>{{ status_badge(st_str) }}</td>
-  <td>{{ relative_time(session.created_at) if session.created_at else '&#8212;' }}</td>
-  <td>{{ session.workgroup_id|default('&#8212;') }}</td>
+  <td>{{ session.namespace|default('default') }}</td>
   <td>
+    {% if session.workgroup_id and session.workgroup_id != 'default' %}
+    <a href="/workgroup/{{ session.workgroup_id }}">{{ session.workgroup_id }}</a>
+    {% else %}
+    <span style="color:var(--pond-gray);">default</span>
+    {% endif %}
+  </td>
+  <td>{{ relative_time(session.created_at) if session.created_at else '&#8212;' }}</td>
+  <td>{{ relative_time(session.last_active) if session.last_active else '&#8212;' }}</td>
+  <td>
+    <a href="/editor?session_id={{ session.session_id }}" class="btn btn-sm btn-primary" style="margin-right:0.25rem;">Open</a>
     {% if st_str|lower == 'suspended' %}
     <button class="btn btn-sm btn-primary"
             hx-post="/htmx/session/{{ session.session_id }}/resume"
             hx-target="#session-row-{{ session.session_id }}"
-            hx-swap="outerHTML">
+            hx-swap="outerHTML"
+            style="margin-right:0.25rem;">
       Resume
     </button>
     {% elif st_str|lower in ('active', 'running') %}
     <button class="btn btn-sm btn-warning"
             hx-post="/htmx/session/{{ session.session_id }}/suspend"
             hx-target="#session-row-{{ session.session_id }}"
-            hx-swap="outerHTML">
+            hx-swap="outerHTML"
+            style="margin-right:0.25rem;">
       Suspend
     </button>
     {% endif %}

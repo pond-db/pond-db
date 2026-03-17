@@ -109,7 +109,7 @@ class TestFailedAuthEvent:
     """failed_auth event is logged when require_auth rejects a request."""
 
     def test_failed_auth_logged_on_missing_token(self, env_setup, captured_events):
-        """GET /metrics with no Authorization header → failed_auth logged."""
+        """GET /schema with no Authorization header → failed_auth logged."""
         import importlib
         import ponddb.app as app_module
 
@@ -121,7 +121,7 @@ class TestFailedAuthEvent:
         client = TestClient(app, raise_server_exceptions=False)
 
         resp = client.get(
-            "/metrics",
+            "/schema?session_id=nonexistent",
             headers={"X-Forwarded-For": TEST_IP, "User-Agent": TEST_UA},
         )
         assert resp.status_code == 401
@@ -130,7 +130,7 @@ class TestFailedAuthEvent:
         assert evts, "Expected a 'failed_auth' event in security_audit_log"
 
     def test_failed_auth_logged_on_bad_bearer(self, env_setup, captured_events):
-        """GET /metrics with garbled Bearer token → failed_auth logged."""
+        """GET /schema with garbled Bearer token → failed_auth logged."""
         import importlib
         import ponddb.app as app_module
 
@@ -142,7 +142,7 @@ class TestFailedAuthEvent:
         client = TestClient(app, raise_server_exceptions=False)
 
         resp = client.get(
-            "/metrics",
+            "/schema?session_id=nonexistent",
             headers={
                 "Authorization": "Bearer this.is.garbage",
                 "X-Forwarded-For": TEST_IP,
@@ -167,7 +167,7 @@ class TestFailedAuthEvent:
         client = TestClient(app, raise_server_exceptions=False)
 
         client.get(
-            "/metrics",
+            "/schema?session_id=nonexistent",
             headers={"X-Forwarded-For": TEST_IP, "User-Agent": TEST_UA},
         )
 
@@ -188,7 +188,7 @@ class TestFailedAuthEvent:
         client = TestClient(app, raise_server_exceptions=False)
 
         client.get(
-            "/metrics",
+            "/schema?session_id=nonexistent",
             headers={"X-Forwarded-For": TEST_IP, "User-Agent": TEST_UA},
         )
 
@@ -209,7 +209,7 @@ class TestFailedAuthEvent:
         client = TestClient(app, raise_server_exceptions=False)
 
         client.get(
-            "/metrics",
+            "/schema?session_id=nonexistent",
             headers={"Authorization": "Bearer bad.token.value", "X-Forwarded-For": TEST_IP},
         )
 

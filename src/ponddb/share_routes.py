@@ -13,6 +13,7 @@ import duckdb
 from fastapi import APIRouter, HTTPException, Request, Response, Security
 from fastapi.security.api_key import APIKeyHeader
 
+from ponddb.jwt_auth import _get_api_key
 from ponddb.metadata_store import MetadataStore
 from ponddb.query_store import QueryNotFoundError
 
@@ -61,7 +62,7 @@ def _get_client_ip(request: Request) -> str:
 
 def _is_valid_key(key: Optional[str]) -> bool:
     """Check if the provided API key matches the configured key."""
-    expected = os.environ.get("POND_API_KEY", "")
+    expected = _get_api_key()
     return bool(key and key.strip() and expected and key == expected)
 
 

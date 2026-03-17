@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, empty_state, relative_time %}
+{% block title %}Query History — PondDB{% endblock %}
+
+{% block content %}
+<h2>Query History</h2>
+
+{# --- Filters --- #}
+<div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;">
+  <select id="status-filter" style="width:auto;">
+    <option value="">All statuses</option>
+    <option value="success"{% if status_filter == "success" %} selected{% endif %}>Success</option>
+    <option value="error"{% if status_filter == "error" %} selected{% endif %}>Error</option>
+  </select>
+  <span style="color:var(--pond-text-muted);font-size:0.85rem;">{{ history|length }} queries shown</span>
+</div>
+
+{% if history %}
+<table class="pond-table">
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>SQL</th>
+      <th>Duration</th>
+      <th>Rows</th>
+      <th>Executed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for h in history %}
+    <tr>
+      <td>
+        {% if h.status == "success" %}
+        <span class="badge badge-green">success</span>
+        {% elif h.status == "error" %}
+        <span class="badge badge-red">error</span>
+        {% else %}
+        <span class="badge badge-gray">{{ h.status }}</span>
+        {% endif %}
+      </td>
+      <td><code style="font-size:0.8rem;">{{ h.sql[:80] }}{% if h.sql|length > 80 %}…{% endif %}</code></td>
+      <td>{{ "%.0f"|format(h.duration_ms) }}ms</td>
+      <td>{{ h.rows_returned }}</td>
+      <td>{{ relative_time(h.executed_at) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{# --- Pagination --- #}
+<div style="display:flex;justify-content:space-between;margin-top:12px;">
+  {% if offset > 0 %}
+  <a href="/history?offset={{ offset - limit }}&limit={{ limit }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="btn btn-secondary btn-sm">&larr; Newer</a>
+  {% else %}
+  <span></span>
+  {% endif %}
+  {% if history|length == limit %}
+  <a href="/history?offset={{ offset + limit }}&limit={{ limit }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="btn btn-secondary btn-sm">Older &rarr;</a>
+  {% endif %}
+</div>
+{% else %}
+{{ empty_state("No query history yet.", "Open SQL Editor", "/editor") }}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('status-filter').addEventListener('change', function() {
+  var status = this.value;
+  var url = '/history?limit={{ limit }}';
+  if (status) url += '&status=' + status;
+  window.location.href = url;
+});
+document.querySelectorAll('time[datetime]').forEach(function(el) {
+  var diff = Date.now() - new Date(el.getAttribute('datetime'));
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) el.textContent = 'just now';
+  else if (mins < 60) el.textContent = mins + 'm ago';
+  else if (mins < 1440) el.textContent = Math.floor(mins / 60) + 'h ago';
+  else el.textContent = Math.floor(mins / 1440) + 'd ago';
+});
+</script>
+{% endblock %}
