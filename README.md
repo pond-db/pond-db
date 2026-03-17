@@ -172,7 +172,7 @@ PondAPI is async by design — submit SQL, get an execution ID, poll for results
 
 📊 **PondAPI** — Async HTTP query API. POST SQL, poll for results. Build apps on top of PondDB.
 
-🤖 **AI Agent Ready** — HTTP API + SQL sandbox = safe, structured data access for any AI agent
+🤖 **Agent-Ready** — Give AI agent teams a shared SQL database. LangGraph, CrewAI, Claude Code (MCP) compatible.
 
 👥 **Workgroups** — Isolated compute environments per team. Separate quotas, data, and access.
 
@@ -198,7 +198,7 @@ PondAPI is async by design — submit SQL, get an execution ID, poll for results
 
 **🏠 Homelab** — Self-host alongside Nextcloud and Gitea. Your data never leaves your network.
 
-**🤖 AI agent backend** — Give your LLM agent a PondDB API key. It queries real data instead of hallucinating numbers.
+**🤖 AI agent backend** — Your agent team needs shared state? PondDB workgroup = agent team workspace. Agents write results as SQL tables, query each other's outputs. No hallucinated numbers.
 
 ## Architecture
 
