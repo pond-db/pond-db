@@ -113,22 +113,44 @@ curl http://localhost:8432/pondapi/execute/abc-123/result \
 # {"status": "complete", "rows": [{"answer": 42}], "elapsed_ms": 12}
 ```
 
-## For AI Agents
+## For AI Agent Teams
 
-PondDB gives AI agents structured data access. Instead of hallucinating numbers, agents query real data via HTTP.
+Multi-agent systems fail 37% of the time because agents can't share state consistently
+([O'Reilly, 2026](https://www.oreilly.com/radar/why-multi-agent-systems-need-memory-engineering/)).
+Every framework reinvents shared memory. PondDB provides it as infrastructure.
 
-### Why agents need PondDB
+**How PondDB maps to multi-agent concepts:**
 
-| Without PondDB | With PondDB |
-|----------------|-------------|
-| Agent guesses numbers from training data | Agent queries live data with SQL |
-| "Revenue was approximately $2M" | `SELECT SUM(revenue) FROM sales` → $2,847,103 |
-| No access control | Scoped API keys per agent |
-| No audit trail | Full query history with timestamps |
+| Agent Concept | PondDB Equivalent |
+|---------------|-------------------|
+| Agent workspace | PondDB session (isolated DuckDB connection) |
+| Team/crew shared state | Workgroup (shared datasets + queries) |
+| Structured memory | SQL tables (not lossy context window) |
+| Concurrent access | FOR UPDATE SKIP LOCKED (no race conditions) |
+| Resource limits | Workgroup quotas (sessions, compute, result size) |
+| Audit trail | pondapi_executions + security_audit_log |
 
-### How agents connect
+**SQL instead of hallucination:**
 
-Any agent that can make HTTP calls can use PondDB:
+Without PondDB:
+> Agent: "Revenue was approximately $2.3M last quarter" *(hallucinated)*
+
+With PondDB:
+> Agent → `query_ponddb("SELECT SUM(revenue) FROM sales WHERE quarter='Q4'")`
+> Agent: "Revenue was $2,147,832 in Q4" *(verified from data)*
+
+**Works with every framework:**
+
+| Framework | Integration | Status |
+|-----------|------------|--------|
+| LangGraph | PondDB tools for agents | ✅ [Example](./examples/langgraph-data-analyst/) |
+| CrewAI | PondDB as crew shared workspace | 🔜 Coming |
+| Claude Code | MCP server | 🔜 Coming |
+| AutoGen | PondDB for multi-agent debate state | 🔜 Coming |
+| OpenClaw | Analytics skill | 🔜 Coming |
+| Any HTTP client | PondAPI (POST SQL, poll results) | ✅ Works now |
+
+Any agent that can make HTTP calls can use PondDB today:
 
 ```bash
 # Agent submits a query
@@ -143,14 +165,6 @@ curl http://localhost:8432/pondapi/execute/{id}/result \
 ```
 
 PondAPI is async by design — submit SQL, get an execution ID, poll for results. Perfect for agents that need to interleave reasoning with data retrieval.
-
-### Agent-friendly features
-
-- **Async HTTP API** — non-blocking query execution via PondAPI
-- **Scoped API keys** — give each agent its own key with limited permissions
-- **SQL sandbox** — 15 blocked patterns prevent agents from accessing files or changing config
-- **Session auto-management** — sessions suspend when idle, resume transparently
-- **Query history** — full audit trail of every query an agent runs
 
 ## Features
 
