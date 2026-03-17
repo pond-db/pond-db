@@ -27,7 +27,7 @@ Generated: 2026-03-17
 - [x] **No secrets in current code (grep results clean)**
   - No hardcoded passwords, API keys, or JWT secrets in source
   - No hardcoded internal IPs in source code (test fixtures using 192.168.x.x are acceptable)
-  - Personal email `2014houtianlu@gmail.com` removed from `landing.html` and `test_ui_part3.py`
+  - Personal email `[REDACTED]` removed from `landing.html` and `test_ui_part3.py`
   - Contact email now configurable via `POND_CONTACT_EMAIL` env var
 
 - [x] **Secrets in git history documented**

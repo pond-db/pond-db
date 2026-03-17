@@ -38,7 +38,7 @@ All 53 tests in `test_ui_part3.py` pass. Landing page (with feature cards, code 
 
 ### Phase 3: Secret Scan — COMPLETE
 
-Current code clean. Personal email `2014houtianlu@gmail.com` scrubbed from `landing.html` → replaced with configurable `{{ contact_email }}` Jinja2 variable (set via `POND_CONTACT_EMAIL` env var, default: `contact@databasecompany.com`).
+Current code clean. Personal email `[REDACTED]` scrubbed from `landing.html` → replaced with configurable `{{ contact_email }}` Jinja2 variable (set via `POND_CONTACT_EMAIL` env var, default: `contact@databasecompany.com`).
 
 Git history issue: commit `81666e9` still contains the email. **Requires BFG Repo Cleaner before making repo public** — see `BLOCKERS.md` for exact commands.
 

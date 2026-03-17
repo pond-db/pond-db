@@ -37,10 +37,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -e '.[dev]'
+        run: |
+          pip install -e '.[dev]'
+          pip install -e src/sdk/
 
       - name: Run tests (excluding browser tests that require a live server)
-        run: pytest tests/ -m 'not browser' --cov=src/ponddb --cov-report=term-missing -v --tb=short
+        run: pytest tests/ --ignore=tests/test_browser.py --cov=src/ponddb --cov-report=term-missing -v --tb=short
 
   build:
     runs-on: ubuntu-latest

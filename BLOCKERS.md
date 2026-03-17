@@ -5,7 +5,7 @@
 **Severity:** Medium  
 **Status:** Blocked — manual intervention required
 
-The personal email `2014houtianlu@gmail.com` appears in commit `81666e9` (UI refactor part 3/3). This commit added it to:
+The personal email `[REDACTED]` appears in commit `81666e9` (UI refactor part 3/3). This commit added it to:
 1. `src/ponddb/templates/landing.html` (mailto link)
 2. `tests/test_ui_part3.py` (test assertion)
 
@@ -18,7 +18,7 @@ Both have been scrubbed from current code, but the email remains in git history.
 wget https://repo1.maven.org/maven2/com/madgit/bfg/1.14.0/bfg-1.14.0.jar -O bfg.jar
 
 # 2. Create a file with strings to replace
-echo '2014houtianlu@gmail.com==>contact@databasecompany.com' > replacements.txt
+echo '[REDACTED]==>contact@databasecompany.com' > replacements.txt
 
 # 3. Make a fresh bare clone of the repo (BFG needs a bare clone)
 git clone --mirror git@github.com:DatabaseCompany/db-engine.git db-engine-mirror.git

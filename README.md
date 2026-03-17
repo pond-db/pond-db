@@ -1,11 +1,4 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/pond-db/pond-db/main/.github/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/pond-db/pond-db/main/.github/logo-light.svg">
-    <img alt="PondDB" src="https://raw.githubusercontent.com/pond-db/pond-db/main/.github/logo-light.svg" height="80">
-  </picture>
-</p>
-
+<h1 align="center">PondDB</h1>
 <h3 align="center">Share DuckDB with your team — or let your AI agents query it.</h3>
 
 <p align="center">
