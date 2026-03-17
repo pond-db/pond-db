@@ -355,4 +355,4 @@ See [docs/security.md](docs/security.md) for the full rotation runbook.
 
 ---
 
-**Built on [DuckDB](https://duckdb.org)** · Created by Tianlu
+**Built on [DuckDB](https://duckdb.org)** · Created by [Tianlu](https://github.com/houtianlu)
