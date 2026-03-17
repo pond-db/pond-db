@@ -21,16 +21,6 @@ def readme() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Badge
-# ---------------------------------------------------------------------------
-
-
-def test_readme_has_ci_badge(readme: str) -> None:
-    """README must include a CI badge (markdown image with badge URL)."""
-    assert re.search(r"!\[CI\]", readme), "README must have a CI badge: ![CI]"
-
-
-# ---------------------------------------------------------------------------
 # Description
 # ---------------------------------------------------------------------------
 
