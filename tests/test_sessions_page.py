@@ -13,7 +13,6 @@ import hashlib
 import hmac
 import importlib
 import json
-import os
 
 import pytest
 from fastapi.testclient import TestClient

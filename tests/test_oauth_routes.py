@@ -10,13 +10,9 @@ Covers:
   - Successful flow issues PondDB access + refresh tokens
 """
 
-import base64
-import hashlib
-import hmac
-import json
 import os
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -37,7 +33,7 @@ os.environ.setdefault("POND_GITHUB_CLIENT_SECRET", "github-client-secret")
 @pytest.fixture(scope="module")
 def client():
     from ponddb.app import app
-    from ponddb.oauth_routes import make_oauth_router  # will ImportError until implemented
+    from ponddb.api.oauth_routes import make_oauth_router  # will ImportError until implemented
 
     app.include_router(make_oauth_router())
     return TestClient(app, follow_redirects=False)
@@ -45,7 +41,7 @@ def client():
 
 @pytest.fixture(scope="module")
 def state_utils():
-    from ponddb import oauth_state  # will ImportError until implemented
+    from ponddb.auth import oauth_state  # will ImportError until implemented
 
     return oauth_state
 
@@ -183,7 +179,7 @@ class TestAuthCallback:
     """Mock the Authlib token exchange so tests don't hit real OAuth servers."""
 
     def _make_valid_state(self, provider: str = "google") -> str:
-        from ponddb import oauth_state
+        from ponddb.auth import oauth_state
 
         return oauth_state.generate_state(provider)
 
@@ -222,15 +218,15 @@ class TestAuthCallback:
     def test_provider_mismatch_in_state_returns_400(self, client):
         # State generated for github but used on google callback
         state = self._make_valid_state("github")
-        with patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock) as mock_ex:
+        with patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock) as mock_ex:
             mock_ex.return_value = {"access_token": "tok", "token_type": "bearer"}
-            with patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock) as mock_ui:
+            with patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock) as mock_ui:
                 mock_ui.return_value = {"id": "123", "email": "u@example.com"}
                 resp = client.get(f"/auth/google/callback?code=abc&state={state}")
         assert resp.status_code == 400
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_successful_google_callback_returns_tokens(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "google-access-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -246,8 +242,8 @@ class TestAuthCallback:
         assert "refresh_token" in body
         assert body.get("token_type", "").lower() == "bearer"
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_successful_github_callback_returns_tokens(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "github-access-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -262,8 +258,8 @@ class TestAuthCallback:
         assert "access_token" in body
         assert "refresh_token" in body
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_issued_access_token_is_valid_jwt(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "tok", "token_type": "bearer"}
         mock_user.return_value = {"sub": "uid-99", "email": "x@example.com"}
@@ -271,33 +267,33 @@ class TestAuthCallback:
         resp = client.get(f"/auth/google/callback?code=auth-code&state={state}")
         access_token = resp.json()["access_token"]
         # Verify it's a valid PondDB JWT
-        from ponddb.jwt_auth import verify_access_token
+        from ponddb.auth.jwt_auth import verify_access_token
 
         claims = verify_access_token(access_token)
         assert claims["type"] == "access"
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_tenant_id_derived_from_provider_user_id(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "tok", "token_type": "bearer"}
         mock_user.return_value = {"sub": "google-uid-789", "email": "a@b.com"}
         state = self._make_valid_state("google")
         resp = client.get(f"/auth/google/callback?code=auth-code&state={state}")
         access_token = resp.json()["access_token"]
-        from ponddb.jwt_auth import verify_access_token
+        from ponddb.auth.jwt_auth import verify_access_token
 
         claims = verify_access_token(access_token)
         assert "google" in claims["tenant_id"] or "789" in claims["tenant_id"]
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
     def test_token_exchange_failure_returns_502(self, mock_exchange, client):
         mock_exchange.side_effect = RuntimeError("Provider unreachable")
         state = self._make_valid_state("google")
         resp = client.get(f"/auth/google/callback?code=auth-code&state={state}")
         assert resp.status_code in (502, 500)
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_user_info_failure_returns_502(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "tok", "token_type": "bearer"}
         mock_user.side_effect = RuntimeError("Userinfo endpoint down")
@@ -313,13 +309,13 @@ class TestAuthCallback:
 
 class TestProviderConfig:
     def test_get_supported_providers(self):
-        from ponddb.oauth_routes import SUPPORTED_PROVIDERS
+        from ponddb.api.oauth_routes import SUPPORTED_PROVIDERS
 
         assert "google" in SUPPORTED_PROVIDERS
         assert "github" in SUPPORTED_PROVIDERS
 
     def test_google_config_has_required_keys(self):
-        from ponddb.oauth_routes import SUPPORTED_PROVIDERS
+        from ponddb.api.oauth_routes import SUPPORTED_PROVIDERS
 
         google = SUPPORTED_PROVIDERS["google"]
         assert "client_id_env" in google
@@ -329,7 +325,7 @@ class TestProviderConfig:
         assert "userinfo_url" in google
 
     def test_github_config_has_required_keys(self):
-        from ponddb.oauth_routes import SUPPORTED_PROVIDERS
+        from ponddb.api.oauth_routes import SUPPORTED_PROVIDERS
 
         github = SUPPORTED_PROVIDERS["github"]
         assert "client_id_env" in github
@@ -339,12 +335,12 @@ class TestProviderConfig:
         assert "userinfo_url" in github
 
     def test_google_authorize_url_is_google(self):
-        from ponddb.oauth_routes import SUPPORTED_PROVIDERS
+        from ponddb.api.oauth_routes import SUPPORTED_PROVIDERS
 
         assert "google" in SUPPORTED_PROVIDERS["google"]["authorize_url"].lower()
 
     def test_github_authorize_url_is_github(self):
-        from ponddb.oauth_routes import SUPPORTED_PROVIDERS
+        from ponddb.api.oauth_routes import SUPPORTED_PROVIDERS
 
         assert "github" in SUPPORTED_PROVIDERS["github"]["authorize_url"].lower()
 
@@ -368,20 +364,20 @@ class TestMakeOauthRouter:
     def test_make_oauth_router_returns_router(self):
         from fastapi import APIRouter
 
-        from ponddb.oauth_routes import make_oauth_router
+        from ponddb.api.oauth_routes import make_oauth_router
 
         router = make_oauth_router()
         assert isinstance(router, APIRouter)
 
     def test_router_has_initiate_route(self):
-        from ponddb.oauth_routes import make_oauth_router
+        from ponddb.api.oauth_routes import make_oauth_router
 
         router = make_oauth_router()
         paths = [r.path for r in router.routes]
         assert any("/auth/{provider}" in p for p in paths)
 
     def test_router_has_callback_route(self):
-        from ponddb.oauth_routes import make_oauth_router
+        from ponddb.api.oauth_routes import make_oauth_router
 
         router = make_oauth_router()
         paths = [r.path for r in router.routes]

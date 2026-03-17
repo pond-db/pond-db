@@ -11,11 +11,9 @@ Defines expected behavior for the query store layer:
 
 import pytest
 import pytest_asyncio
-import tempfile
-import os
 from datetime import datetime, timezone
 
-from ponddb.metadata_store import MetadataStore
+from ponddb.store.metadata_store import MetadataStore
 
 
 @pytest_asyncio.fixture

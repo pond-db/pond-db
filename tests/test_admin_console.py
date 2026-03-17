@@ -23,8 +23,6 @@ import hashlib
 import hmac
 import importlib
 import json
-import os
-from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -103,7 +101,7 @@ def member_client(env_setup) -> TestClient:
 
 
 def _admin_jwt_headers() -> dict[str, str]:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token(ADMIN_TENANT, role="admin")
     return {"Authorization": f"Bearer {token}"}
 
@@ -336,7 +334,6 @@ class TestAdminCreateInviteForm:
 class TestAdminRevokeInvite:
     def _create_invite(self, admin_client: TestClient, email: str) -> str:
         """Create an invite and return its token."""
-        from ponddb.invite_store import InviteStore
         resp = admin_client.post(
             "/admin/invites",
             data={"email": email, "role": "member"},

@@ -1,3 +1,7 @@
+# Copyright (c) 2026 DatabaseCompany
+# Licensed under the Business Source License 1.1
+# See LICENSE file for details
+
 """FastAPI application — PondDB server entry point."""
 
 import asyncio
@@ -10,7 +14,6 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, Security
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
@@ -18,36 +21,36 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from ponddb import __version__
-from ponddb.cors_middleware import AllowlistCORSMiddleware
-from ponddb.dataset_manager import DatasetManager
-from ponddb.dataset_routes import make_dataset_router
-from ponddb.jwt_auth import (
+from ponddb.security.cors_middleware import AllowlistCORSMiddleware
+from ponddb.store.dataset_manager import DatasetManager
+from ponddb.api.dataset_routes import make_dataset_router
+from ponddb.auth.jwt_auth import (
     _get_api_key,
     create_access_token,
     create_refresh_token,
     require_auth,
     verify_refresh_token,
 )
-from ponddb import token_blocklist
-from ponddb.metadata_store import MetadataStore
-from ponddb.namespace_routes import check_and_reserve_session_slot, make_namespace_workgroup_router
-from ponddb.query_routes import make_query_router
-from ponddb.result_cache import ResultCache
-from ponddb.session_manager import QueryError, SessionManager, WorkgroupAccessError
-from ponddb.sql_sandbox import BlockedSqlError
-from ponddb.invite_routes import make_invite_router
-from ponddb.invite_store import InviteStore
-from ponddb.oauth_routes import make_oauth_router
-from ponddb.share_routes import make_share_router
-from ponddb.user_routes import make_user_router
-from ponddb.user_store import UserStore
-from ponddb.pondapi_execute import make_pondapi_execute_router
-from ponddb.pondapi_htmx import make_pondapi_htmx_router
-from ponddb.website_routes import make_website_router
-from ponddb.admin_routes import make_admin_router
-from ponddb.htmx_partials import make_htmx_router
-from ponddb.security_headers import SecurityHeadersMiddleware
-from ponddb.health_security import make_health_security_router
+from ponddb.auth import token_blocklist
+from ponddb.store.metadata_store import MetadataStore
+from ponddb.api.namespace_routes import check_and_reserve_session_slot, make_namespace_workgroup_router
+from ponddb.api.query_routes import make_query_router
+from ponddb.pondapi.result_cache import ResultCache
+from ponddb.engine.session_manager import QueryError, SessionManager, WorkgroupAccessError
+from ponddb.security.sql_sandbox import BlockedSqlError
+from ponddb.api.invite_routes import make_invite_router
+from ponddb.store.invite_store import InviteStore
+from ponddb.api.oauth_routes import make_oauth_router
+from ponddb.api.share_routes import make_share_router
+from ponddb.api.user_routes import make_user_router
+from ponddb.store.user_store import UserStore
+from ponddb.pondapi.executor import make_pondapi_execute_router
+from ponddb.pondapi.htmx import make_pondapi_htmx_router
+from ponddb.api.website_routes import make_website_router
+from ponddb.api.admin_routes import make_admin_router
+from ponddb.api.htmx_partials import make_htmx_router
+from ponddb.security.security_headers import SecurityHeadersMiddleware
+from ponddb.security.health_security import make_health_security_router
 
 # ---------------------------------------------------------------------------
 # Write-operation detection (invalidates cache)
@@ -203,8 +206,8 @@ async def issue_token(req: TokenRequest, request: Request) -> dict[str, Any]:
 @app.post("/auth/refresh")
 async def refresh_token(req: RefreshRequest, request: Request) -> dict[str, Any]:
     """Issue a new access token using a valid refresh token."""
-    from ponddb import audit_log
-    from ponddb.audit_log import AuditLogMiddleware
+    from ponddb.security import audit_log
+    from ponddb.security.audit_log import AuditLogMiddleware
 
     client_ip: Optional[str] = request.headers.get("X-Forwarded-For") or None
     user_agent: Optional[str] = request.headers.get("User-Agent") or None
@@ -249,8 +252,8 @@ async def revoke_token(req: RevokeRequest, request: Request) -> dict[str, Any]:
     """Revoke a token by adding its jti to the blocklist."""
     from jose import JWTError
     from jose import jwt as jose_jwt
-    from ponddb import audit_log
-    from ponddb.audit_log import AuditLogMiddleware
+    from ponddb.security import audit_log
+    from ponddb.security.audit_log import AuditLogMiddleware
 
     secret = os.environ.get("POND_JWT_SECRET", "")
     if not secret:
@@ -325,7 +328,7 @@ _cache = ResultCache(ttl_seconds=300)
 _dataset_versions: dict[str, int] = {}
 
 # PondAPI async execution router (uses the same SQLite connection as MetadataStore)
-import sqlite3 as _sqlite3
+import sqlite3 as _sqlite3  # noqa: E402
 _pondapi_db_conn = _sqlite3.connect(":memory:", check_same_thread=False)
 _pondapi_db_conn.row_factory = _sqlite3.Row
 app.include_router(make_pondapi_execute_router(_manager, _pondapi_db_conn))
@@ -645,7 +648,7 @@ async def get_history(
     # Content negotiation: HTML page for browsers, JSON for API clients
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
-        from ponddb.website_routes import _get_session, _build_current_user
+        from ponddb.api.website_routes import _get_session, _build_current_user
         session = _get_session(request)
         if not session:
             return RedirectResponse(url="/login", status_code=302)

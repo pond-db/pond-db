@@ -64,7 +64,7 @@ def captured_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     async def fake_log_event(pool: Any, event_type: str, **kwargs: Any) -> None:
         events.append({"event_type": event_type, **kwargs})
 
-    monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event)
+    monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event)
     return events
 
 
@@ -75,7 +75,7 @@ def captured_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
 @pytest.fixture()
 def admin_headers() -> dict[str, str]:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
 
     token = create_access_token("default", role="admin")
     return {"Authorization": f"Bearer {token}"}
@@ -91,8 +91,8 @@ class TestPondapiExecuteEvent:
 
     @pytest.fixture()
     def client_and_session(self, captured_events: list) -> tuple:
-        from ponddb.session_manager import SessionManager
-        from ponddb.pondapi_execute import make_pondapi_execute_router
+        from ponddb.engine.session_manager import SessionManager
+        from ponddb.pondapi.executor import make_pondapi_execute_router
 
         manager = SessionManager()
         sid = manager.create_session()
@@ -105,7 +105,7 @@ class TestPondapiExecuteEvent:
         app = FastAPI()
         app.include_router(router)
 
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         token = create_access_token("acme-corp")
         headers = {"Authorization": f"Bearer {token}"}
@@ -173,8 +173,8 @@ class TestSandboxBlockedEvent:
 
     @pytest.fixture()
     def client_and_session(self, captured_events: list) -> tuple:
-        from ponddb.session_manager import SessionManager
-        from ponddb.pondapi_execute import make_pondapi_execute_router
+        from ponddb.engine.session_manager import SessionManager
+        from ponddb.pondapi.executor import make_pondapi_execute_router
 
         manager = SessionManager()
         sid = manager.create_session()
@@ -187,7 +187,7 @@ class TestSandboxBlockedEvent:
         app = FastAPI()
         app.include_router(router)
 
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         token = create_access_token("attacker-corp")
         headers = {"Authorization": f"Bearer {token}"}
@@ -271,8 +271,8 @@ class TestInviteCreatedEvent:
 
     @pytest.fixture()
     def invite_client(self, captured_events: list, admin_headers: dict) -> tuple:
-        from ponddb.invite_store import InviteStore
-        from ponddb.invite_routes import make_invite_router
+        from ponddb.store.invite_store import InviteStore
+        from ponddb.api.invite_routes import make_invite_router
 
         invite_store = MagicMock(spec=InviteStore)
         invite_store.create_invite = AsyncMock(
@@ -350,8 +350,8 @@ class TestUserProvisionedEvent:
 
     @pytest.fixture()
     def accept_client(self, captured_events: list) -> TestClient:
-        from ponddb.invite_store import InviteStore
-        from ponddb.invite_routes import make_invite_router
+        from ponddb.store.invite_store import InviteStore
+        from ponddb.api.invite_routes import make_invite_router
 
         invite_store = MagicMock(spec=InviteStore)
         invite_store.get_invite = AsyncMock(
@@ -424,8 +424,8 @@ class TestUserProvisionedEvent:
         self, captured_events: list
     ) -> None:
         """ValueError from accept_invite → 40x response, no user_provisioned event."""
-        from ponddb.invite_store import InviteStore
-        from ponddb.invite_routes import make_invite_router
+        from ponddb.store.invite_store import InviteStore
+        from ponddb.api.invite_routes import make_invite_router
 
         invite_store = MagicMock(spec=InviteStore)
         invite_store.get_invite = AsyncMock(
@@ -465,7 +465,7 @@ class TestWorkgroupCreatedEvent:
 
     @pytest.fixture()
     def wg_client(self, captured_events: list, admin_headers: dict) -> tuple:
-        from ponddb.namespace_routes import make_namespace_workgroup_router
+        from ponddb.api.namespace_routes import make_namespace_workgroup_router
 
         namespaces: dict[str, Any] = {}
         workgroups: dict[str, Any] = {}

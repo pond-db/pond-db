@@ -9,7 +9,6 @@ Defines expected behavior for:
 Tests import from ponddb.app and will fail until routes are implemented.
 """
 
-import os
 import importlib
 
 import pytest

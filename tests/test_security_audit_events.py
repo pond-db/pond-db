@@ -16,9 +16,7 @@ Each event must produce a security_audit_log row containing:
 """
 
 import importlib
-import os
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -53,7 +51,7 @@ def captured_events(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     async def fake_log_event(pool: Any, event_type: str, **kwargs: Any) -> None:
         events.append({"event_type": event_type, **kwargs})
 
-    monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=True)
+    monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=True)
     return events
 
 
@@ -64,7 +62,7 @@ def app_client(env_setup, captured_events):
 
     importlib.reload(app_module)
     from ponddb.app import app
-    from ponddb.audit_log import AuditLogMiddleware
+    from ponddb.security.audit_log import AuditLogMiddleware
 
     app.add_middleware(AuditLogMiddleware, dsn=None)
     return TestClient(app, raise_server_exceptions=False)
@@ -78,7 +76,7 @@ def valid_tokens(env_setup):
 
     importlib.reload(app_module)
     from ponddb.app import app
-    from ponddb.audit_log import AuditLogMiddleware
+    from ponddb.security.audit_log import AuditLogMiddleware
 
     app.add_middleware(AuditLogMiddleware, dsn=None)
     client = TestClient(app, raise_server_exceptions=False)
@@ -115,7 +113,7 @@ class TestFailedAuthEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -136,7 +134,7 @@ class TestFailedAuthEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -161,7 +159,7 @@ class TestFailedAuthEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -182,7 +180,7 @@ class TestFailedAuthEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -203,7 +201,7 @@ class TestFailedAuthEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -235,8 +233,8 @@ class TestBruteForceLockoutEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
-        from ponddb.brute_force import BruteForceGuard, BruteForceMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
+        from ponddb.auth.brute_force import BruteForceGuard, BruteForceMiddleware
 
         guard = guard or BruteForceGuard(lockout_threshold=3)
         app.add_middleware(BruteForceMiddleware, guard=guard)
@@ -245,7 +243,7 @@ class TestBruteForceLockoutEvent:
 
     def test_lockout_event_logged_when_ip_blocked(self, env_setup, captured_events):
         """An IP that is locked → POST /auth/token returns 429 and logs brute_force_lockout."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=1)
         app, _ = self._make_app_with_brute_force(guard=guard)
@@ -266,7 +264,7 @@ class TestBruteForceLockoutEvent:
 
     def test_lockout_event_captures_ip(self, env_setup, captured_events):
         """brute_force_lockout event includes the locked ip_address."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=1)
         app, _ = self._make_app_with_brute_force(guard=guard)
@@ -285,7 +283,7 @@ class TestBruteForceLockoutEvent:
 
     def test_lockout_event_captures_user_agent(self, env_setup, captured_events):
         """brute_force_lockout event includes user_agent."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=1)
         app, _ = self._make_app_with_brute_force(guard=guard)
@@ -304,7 +302,7 @@ class TestBruteForceLockoutEvent:
 
     def test_unlocked_ip_does_not_log_lockout(self, env_setup, captured_events):
         """An IP below the threshold does NOT trigger a brute_force_lockout event."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=10)  # high threshold, won't trigger
         app, _ = self._make_app_with_brute_force(guard=guard)
@@ -321,7 +319,7 @@ class TestBruteForceLockoutEvent:
 
     def test_lockout_detail_contains_ip(self, env_setup, captured_events):
         """brute_force_lockout detail field mentions the offending IP."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=1)
         app, _ = self._make_app_with_brute_force(guard=guard)
@@ -350,7 +348,7 @@ class TestTokenRevokeEvent:
 
     def _get_valid_access_token(self) -> str:
         """Issue a real access token using jwt_auth helpers."""
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         return create_access_token(TEST_TENANT)
 
@@ -361,7 +359,7 @@ class TestTokenRevokeEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -384,7 +382,7 @@ class TestTokenRevokeEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -407,7 +405,7 @@ class TestTokenRevokeEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -430,7 +428,7 @@ class TestTokenRevokeEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -453,7 +451,7 @@ class TestTokenRevokeEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -480,7 +478,7 @@ class TestTokenRevokeEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -505,7 +503,7 @@ class TestTokenRefreshEvent:
     """token_refresh event is logged on POST /auth/refresh (success and failure)."""
 
     def _get_refresh_token(self) -> str:
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         return create_refresh_token(TEST_TENANT)
 
@@ -516,7 +514,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -539,7 +537,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -562,7 +560,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -585,7 +583,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -608,7 +606,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -635,7 +633,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)
@@ -661,7 +659,7 @@ class TestTokenRefreshEvent:
 
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
         client = TestClient(app, raise_server_exceptions=False)

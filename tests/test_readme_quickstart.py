@@ -307,7 +307,7 @@ def test_ponddb_has_version() -> None:
 
 
 def test_ponddb_exports_client_class() -> None:
-    """ponddb package must export a client class (PondDB or DuckCloudClient)."""
+    """ponddb package must export a client class (PondDB or PondClient)."""
     import ponddb
     # README says: from ponddb import PondDB
     assert hasattr(ponddb, "PondDB"), (

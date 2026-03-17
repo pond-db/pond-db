@@ -27,7 +27,7 @@ def reset_env():
 
 def _get_oauth_state():
     """Lazy import so collection succeeds before module exists."""
-    from ponddb import oauth_state
+    from ponddb.auth import oauth_state
 
     return oauth_state
 

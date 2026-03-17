@@ -53,12 +53,12 @@ def session_id(client) -> str:
 
 
 def test_result_cache_importable() -> None:
-    """ResultCache must be importable from ponddb.result_cache."""
-    from ponddb.result_cache import ResultCache  # noqa: F401
+    """ResultCache must be importable from ponddb.pondapi.result_cache."""
+    from ponddb.pondapi.result_cache import ResultCache  # noqa: F401
 
 
 def test_result_cache_instantiates() -> None:
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache(ttl_seconds=300)
     assert cache is not None
@@ -66,7 +66,7 @@ def test_result_cache_instantiates() -> None:
 
 def test_result_cache_default_ttl_is_300() -> None:
     """Default TTL is 300 seconds (5 minutes)."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     assert cache.ttl_seconds == 300
@@ -74,7 +74,7 @@ def test_result_cache_default_ttl_is_300() -> None:
 
 def test_result_cache_get_miss_on_empty() -> None:
     """get() returns None when the key is not cached."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     result = cache.get("nonexistent-cache-key")
@@ -83,7 +83,7 @@ def test_result_cache_get_miss_on_empty() -> None:
 
 def test_result_cache_set_then_get() -> None:
     """set() followed by get() returns the stored value."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     data = {"columns": ["x"], "rows": [[42]], "rowcount": 1, "elapsed_ms": 5.0}
@@ -94,7 +94,7 @@ def test_result_cache_set_then_get() -> None:
 
 def test_result_cache_get_returns_copy_or_same_data() -> None:
     """get() returns data equivalent to what was set."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     data = {"columns": ["a", "b"], "rows": [[1, 2], [3, 4]], "rowcount": 2, "elapsed_ms": 10.0}
@@ -107,7 +107,7 @@ def test_result_cache_get_returns_copy_or_same_data() -> None:
 
 def test_result_cache_expiry_after_ttl() -> None:
     """Entries are inaccessible after TTL seconds have elapsed."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache(ttl_seconds=1)
     data = {"columns": ["x"], "rows": [[99]], "rowcount": 1, "elapsed_ms": 2.0}
@@ -122,7 +122,7 @@ def test_result_cache_expiry_after_ttl() -> None:
 
 def test_result_cache_unexpired_entry_still_accessible() -> None:
     """Entry within TTL window remains accessible."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache(ttl_seconds=10)
     data = {"rows": [[1]]}
@@ -135,7 +135,7 @@ def test_result_cache_unexpired_entry_still_accessible() -> None:
 
 def test_result_cache_set_overwrites_existing_key() -> None:
     """set() on an existing key replaces the old value."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     cache.set("k", {"rows": [[1]]})
@@ -146,7 +146,7 @@ def test_result_cache_set_overwrites_existing_key() -> None:
 
 def test_result_cache_independent_keys() -> None:
     """Different keys are stored independently."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     cache.set("k1", {"rows": [[1]]})
@@ -157,7 +157,7 @@ def test_result_cache_independent_keys() -> None:
 
 def test_result_cache_invalidate_removes_entry() -> None:
     """invalidate(key) removes a specific cached entry."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     cache.set("k", {"rows": [[99]]})
@@ -167,7 +167,7 @@ def test_result_cache_invalidate_removes_entry() -> None:
 
 def test_result_cache_invalidate_nonexistent_key_is_noop() -> None:
     """invalidate() on a missing key does not raise."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     cache.invalidate("does-not-exist")  # Must not raise
@@ -175,7 +175,7 @@ def test_result_cache_invalidate_nonexistent_key_is_noop() -> None:
 
 def test_result_cache_clear_removes_all_entries() -> None:
     """clear() evicts all cached entries."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     cache.set("k1", {"rows": [[1]]})
@@ -193,7 +193,7 @@ def test_result_cache_clear_removes_all_entries() -> None:
 
 
 def test_make_key_returns_string() -> None:
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     key = cache.make_key("SELECT 1", "v0")
@@ -203,7 +203,7 @@ def test_make_key_returns_string() -> None:
 
 def test_make_key_is_deterministic() -> None:
     """Same SQL and version always produce the same key."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     k1 = cache.make_key("SELECT 42 AS answer", "dataset-v1")
@@ -213,7 +213,7 @@ def test_make_key_is_deterministic() -> None:
 
 def test_make_key_differs_on_sql() -> None:
     """Different SQL strings produce different keys."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     k1 = cache.make_key("SELECT 1", "v0")
@@ -223,7 +223,7 @@ def test_make_key_differs_on_sql() -> None:
 
 def test_make_key_differs_on_version() -> None:
     """Same SQL with different dataset version produces a different key."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     k1 = cache.make_key("SELECT 1", "v0")
@@ -233,7 +233,7 @@ def test_make_key_differs_on_version() -> None:
 
 def test_make_key_whitespace_sensitivity() -> None:
     """SQL with different whitespace produces different keys."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     k1 = cache.make_key("SELECT 1", "v0")
@@ -243,7 +243,7 @@ def test_make_key_whitespace_sensitivity() -> None:
 
 def test_make_key_case_sensitivity() -> None:
     """SQL case differences produce different keys (no normalisation expected)."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     k1 = cache.make_key("select 1", "v0")
@@ -253,7 +253,7 @@ def test_make_key_case_sensitivity() -> None:
 
 def test_make_key_is_not_plain_sql() -> None:
     """Cache key should not be the raw SQL string (must be hashed)."""
-    from ponddb.result_cache import ResultCache
+    from ponddb.pondapi.result_cache import ResultCache
 
     cache = ResultCache()
     sql = "SELECT 1"

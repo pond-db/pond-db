@@ -16,7 +16,6 @@ New API expected in ponddb.jwt_auth:
 import hashlib
 import hmac
 import importlib
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -64,9 +63,9 @@ def client(env_setup) -> TestClient:
 def refresh_token_with_fp(env_setup) -> str:
     """Create a refresh token that includes the fp claim for DEVICE_IP + DEVICE_UA."""
     import importlib
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
     importlib.reload(jwt_module)
-    from ponddb.jwt_auth import create_refresh_token
+    from ponddb.auth.jwt_auth import create_refresh_token
     return create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
 
 
@@ -74,9 +73,9 @@ def refresh_token_with_fp(env_setup) -> str:
 def refresh_token_no_fp(env_setup) -> str:
     """Create a refresh token without fp claim (no ip/ua provided)."""
     import importlib
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
     importlib.reload(jwt_module)
-    from ponddb.jwt_auth import create_refresh_token
+    from ponddb.auth.jwt_auth import create_refresh_token
     return create_refresh_token(TENANT_ID)
 
 
@@ -87,12 +86,12 @@ def refresh_token_no_fp(env_setup) -> str:
 
 class TestComputeFingerprint:
     def test_compute_fingerprint_is_importable(self):
-        """compute_fingerprint must be importable from ponddb.jwt_auth."""
-        from ponddb.jwt_auth import compute_fingerprint  # noqa: F401
+        """compute_fingerprint must be importable from ponddb.auth.jwt_auth."""
+        from ponddb.auth.jwt_auth import compute_fingerprint  # noqa: F401
 
     def test_compute_fingerprint_deterministic(self):
         """Same inputs → same output."""
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         fp1 = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT)
         fp2 = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT)
@@ -100,7 +99,7 @@ class TestComputeFingerprint:
 
     def test_compute_fingerprint_different_ip_yields_different_fp(self):
         """Different IP → different fingerprint."""
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         fp1 = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT)
         fp2 = compute_fingerprint(DIFFERENT_IP, DEVICE_UA, FP_SALT)
@@ -108,7 +107,7 @@ class TestComputeFingerprint:
 
     def test_compute_fingerprint_different_ua_yields_different_fp(self):
         """Different User-Agent → different fingerprint."""
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         fp1 = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT)
         fp2 = compute_fingerprint(DEVICE_IP, DIFFERENT_UA, FP_SALT)
@@ -116,7 +115,7 @@ class TestComputeFingerprint:
 
     def test_compute_fingerprint_is_hmac_sha256(self):
         """fp must be HMAC-SHA256 of (ip + "|" + ua) keyed with salt."""
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         message = (DEVICE_IP + "|" + DEVICE_UA).encode()
         expected = hmac.new(FP_SALT.encode(), message, hashlib.sha256).hexdigest()
@@ -124,7 +123,7 @@ class TestComputeFingerprint:
 
     def test_compute_fingerprint_without_ip(self):
         """When include_ip=False, only UA is used in HMAC message."""
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         message = DEVICE_UA.encode()
         expected = hmac.new(FP_SALT.encode(), message, hashlib.sha256).hexdigest()
@@ -133,14 +132,14 @@ class TestComputeFingerprint:
 
     def test_compute_fingerprint_without_ip_ignores_ip_value(self):
         """include_ip=False: fingerprint is the same regardless of IP."""
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         fp_ip1 = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT, include_ip=False)
         fp_ip2 = compute_fingerprint(DIFFERENT_IP, DEVICE_UA, FP_SALT, include_ip=False)
         assert fp_ip1 == fp_ip2
 
     def test_compute_fingerprint_returns_string(self):
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         result = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT)
         assert isinstance(result, str)
@@ -155,7 +154,7 @@ class TestComputeFingerprint:
 class TestCreateRefreshTokenFingerprint:
     def test_refresh_token_includes_fp_when_ip_and_ua_provided(self):
         """Token created with ip+ua must contain an fp claim."""
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -163,7 +162,7 @@ class TestCreateRefreshTokenFingerprint:
 
     def test_refresh_token_fp_matches_expected_hmac(self):
         """fp claim value must equal compute_fingerprint(ip, ua, salt)."""
-        from ponddb.jwt_auth import compute_fingerprint, create_refresh_token
+        from ponddb.auth.jwt_auth import compute_fingerprint, create_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -172,7 +171,7 @@ class TestCreateRefreshTokenFingerprint:
 
     def test_refresh_token_no_fp_when_no_ip_ua(self):
         """Token created without ip/ua must NOT contain an fp claim."""
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         token = create_refresh_token(TENANT_ID)
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -180,7 +179,7 @@ class TestCreateRefreshTokenFingerprint:
 
     def test_refresh_token_fp_only_when_both_ip_and_ua(self):
         """fp is only added when both ip AND ua are provided; partial → no fp."""
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         # ip only
         token_ip = create_refresh_token(TENANT_ID, ip=DEVICE_IP)
@@ -194,7 +193,7 @@ class TestCreateRefreshTokenFingerprint:
 
     def test_refresh_token_still_has_required_claims(self):
         """Adding fp must not drop any existing required claims."""
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -204,19 +203,18 @@ class TestCreateRefreshTokenFingerprint:
 
     def test_refresh_token_fp_uses_configured_salt(self, monkeypatch):
         """fp must change when salt changes."""
-        from ponddb.jwt_auth import create_refresh_token
 
         monkeypatch.setenv("POND_FINGERPRINT_SALT", "salt-one-xxxxxxxxxxxxxxxxxx")
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token as crt
+        from ponddb.auth.jwt_auth import create_refresh_token as crt
         token1 = crt(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims1 = jose_jwt.decode(token1, JWT_SECRET, algorithms=["HS256"])
 
         monkeypatch.setenv("POND_FINGERPRINT_SALT", "salt-two-xxxxxxxxxxxxxxxxxx")
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token as crt2
+        from ponddb.auth.jwt_auth import create_refresh_token as crt2
         token2 = crt2(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims2 = jose_jwt.decode(token2, JWT_SECRET, algorithms=["HS256"])
 
@@ -231,7 +229,7 @@ class TestCreateRefreshTokenFingerprint:
 class TestVerifyRefreshTokenFingerprint:
     def test_verify_same_ip_and_ua_succeeds(self):
         """verify_refresh_token must succeed when IP and UA match the fp claim."""
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims = verify_refresh_token(token, ip=DEVICE_IP, user_agent=DEVICE_UA)
@@ -240,7 +238,7 @@ class TestVerifyRefreshTokenFingerprint:
     def test_verify_different_ip_raises_401(self):
         """verify_refresh_token must raise HTTPException(401) when IP differs."""
         from fastapi import HTTPException
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         with pytest.raises(HTTPException) as exc_info:
@@ -250,7 +248,7 @@ class TestVerifyRefreshTokenFingerprint:
     def test_verify_different_ua_raises_401(self):
         """verify_refresh_token must raise HTTPException(401) when UA differs."""
         from fastapi import HTTPException
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         with pytest.raises(HTTPException) as exc_info:
@@ -260,7 +258,7 @@ class TestVerifyRefreshTokenFingerprint:
     def test_verify_both_different_raises_401(self):
         """verify_refresh_token raises 401 when both IP and UA differ."""
         from fastapi import HTTPException
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         with pytest.raises(HTTPException) as exc_info:
@@ -269,7 +267,7 @@ class TestVerifyRefreshTokenFingerprint:
 
     def test_verify_token_without_fp_succeeds_when_no_fingerprint_provided(self):
         """Old tokens without fp claim pass when no ip/ua is given (backward compat)."""
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID)
         claims = verify_refresh_token(token)
@@ -281,7 +279,7 @@ class TestVerifyRefreshTokenFingerprint:
         This ensures backward compatibility: tokens issued before this feature
         was added are not suddenly invalidated.
         """
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID)  # no fp
         claims = verify_refresh_token(token, ip=DEVICE_IP, user_agent=DEVICE_UA)
@@ -289,7 +287,7 @@ class TestVerifyRefreshTokenFingerprint:
 
     def test_verify_returns_full_claims_on_success(self):
         """Successful verify must return the full JWT claims dict."""
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims = verify_refresh_token(token, ip=DEVICE_IP, user_agent=DEVICE_UA)
@@ -308,9 +306,9 @@ class TestFingerprintIPDisabled:
         """When POND_FINGERPRINT_IP=false, fp is HMAC of UA only (IP excluded)."""
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import compute_fingerprint, create_refresh_token
+        from ponddb.auth.jwt_auth import compute_fingerprint, create_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -321,9 +319,9 @@ class TestFingerprintIPDisabled:
         """POND_FINGERPRINT_IP=false: different IP is accepted at verify time."""
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         # Now verify with a different IP — should succeed
@@ -334,10 +332,10 @@ class TestFingerprintIPDisabled:
         """POND_FINGERPRINT_IP=false: UA mismatch still raises 401."""
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
         from fastapi import HTTPException
-        from ponddb.jwt_auth import create_refresh_token, verify_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         with pytest.raises(HTTPException) as exc_info:
@@ -357,9 +355,9 @@ class TestRefreshEndpointFingerprint:
         # /auth/token doesn't yet accept IP/UA — it will once the endpoint is updated.
         # For now, create the token directly via jwt_auth.
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         return create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
 
@@ -407,9 +405,9 @@ class TestRefreshEndpointFingerprint:
     def test_refresh_no_fp_token_still_works(self, client: TestClient):
         """POST /auth/refresh with a token that has no fp claim succeeds (backward compat)."""
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         token = create_refresh_token(TENANT_ID)  # no fp
         resp = client.post(
@@ -425,9 +423,9 @@ class TestRefreshEndpointFingerprint:
         """POND_FINGERPRINT_IP=false: /auth/refresh accepts different IP."""
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         # Token issued with POND_FINGERPRINT_IP=false (fp = HMAC(UA only))
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
@@ -454,9 +452,9 @@ class TestRefreshEndpointFingerprint:
         """POND_FINGERPRINT_IP=false: /auth/refresh still rejects different UA."""
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
 
@@ -478,9 +476,9 @@ class TestRefreshEndpointFingerprint:
     def test_refresh_endpoint_extracts_ip_from_x_forwarded_for(self, client: TestClient):
         """The /auth/refresh endpoint uses X-Forwarded-For header for IP extraction."""
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import create_refresh_token
+        from ponddb.auth.jwt_auth import create_refresh_token
 
         # Issue token with specific IP
         specific_ip = "172.16.0.5"
@@ -539,9 +537,9 @@ class TestIssueTokenWithFingerprint:
         claims = jose_jwt.decode(refresh_tok, JWT_SECRET, algorithms=["HS256"])
 
         import importlib
-        import ponddb.jwt_auth as jwt_module
+        import ponddb.auth.jwt_auth as jwt_module
         importlib.reload(jwt_module)
-        from ponddb.jwt_auth import compute_fingerprint
+        from ponddb.auth.jwt_auth import compute_fingerprint
 
         expected_fp = compute_fingerprint(DEVICE_IP, DEVICE_UA, FP_SALT)
         assert claims["fp"] == expected_fp

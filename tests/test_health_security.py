@@ -9,7 +9,6 @@ Defines the expected behavior:
   - nginx should block this from public (tested via expected response format for internal use)
 """
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 
@@ -135,14 +134,14 @@ def test_security_health_security_headers_true_by_default(client: TestClient) ->
 
 def test_security_health_503_when_sql_sandbox_disabled(client: TestClient, monkeypatch) -> None:
     """Emptying BLOCKED_PATTERNS disables the sandbox — a P0 failure → 503."""
-    from ponddb import sql_sandbox
+    from ponddb.security import sql_sandbox
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     assert resp.status_code == 503
 
 
 def test_security_health_sql_sandbox_false_when_patterns_empty(client: TestClient, monkeypatch) -> None:
-    from ponddb import sql_sandbox
+    from ponddb.security import sql_sandbox
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     data = resp.json()
@@ -150,7 +149,7 @@ def test_security_health_sql_sandbox_false_when_patterns_empty(client: TestClien
 
 
 def test_security_health_status_degraded_when_p0_fails(client: TestClient, monkeypatch) -> None:
-    from ponddb import sql_sandbox
+    from ponddb.security import sql_sandbox
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     data = resp.json()
@@ -159,7 +158,7 @@ def test_security_health_status_degraded_when_p0_fails(client: TestClient, monke
 
 def test_security_health_503_still_returns_json(client: TestClient, monkeypatch) -> None:
     """503 response must still have JSON body — monitoring tools parse it."""
-    from ponddb import sql_sandbox
+    from ponddb.security import sql_sandbox
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     assert resp.status_code == 503

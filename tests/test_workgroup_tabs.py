@@ -56,7 +56,7 @@ def logged_in_client(client: TestClient) -> TestClient:
 @pytest.fixture
 def admin_headers() -> dict[str, str]:
     """Create admin JWT headers for workgroup management."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token("default", role="admin")
     return {"Authorization": f"Bearer {token}"}
 

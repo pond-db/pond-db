@@ -375,7 +375,7 @@ def test_result_cross_tenant_access_denied(
     client: TestClient, session_id: str
 ) -> None:
     """Tenant A cannot read tenant B's execution result."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
 
     token_a = create_access_token("tenant-alpha")
     token_b = create_access_token("tenant-beta")

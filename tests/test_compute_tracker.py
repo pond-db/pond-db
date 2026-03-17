@@ -9,15 +9,13 @@ Defines expected behavior for:
 
 import hashlib
 import sqlite3
-import tempfile
-import time
 from datetime import datetime, timezone
 
 import duckdb
 import pytest
 
-from ponddb.compute_tracker import ComputeSample, ComputeTracker
-from ponddb.metadata_store import MetadataStore
+from ponddb.engine.compute_tracker import ComputeSample, ComputeTracker
+from ponddb.store.metadata_store import MetadataStore
 
 
 # ---------------------------------------------------------------------------

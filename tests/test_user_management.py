@@ -12,12 +12,9 @@ Defines expected behavior for:
   - Org/workgroup membership tables (CRUD)
 """
 
-import hashlib
 import importlib
 import os
-import secrets
 from datetime import datetime, timezone, timedelta
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -62,7 +59,7 @@ def client(env_vars) -> TestClient:
 @pytest.fixture
 def user_store(env_vars):
     """Isolated in-memory UserStore for unit tests."""
-    from ponddb.user_store import UserStore
+    from ponddb.store.user_store import UserStore
     store = UserStore(":memory:")
     store.initialize_blocking()
     return store
@@ -70,13 +67,13 @@ def user_store(env_vars):
 
 @pytest.fixture
 def admin_token(env_vars) -> str:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     return create_access_token("admin-tenant", role="admin")
 
 
 @pytest.fixture
 def user_token(env_vars) -> str:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     return create_access_token("user-tenant-abc")
 
 
@@ -99,37 +96,37 @@ class TestUserStoreTables:
     """UserStore must create and expose all four tables."""
 
     def test_user_store_can_be_instantiated(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         assert store is not None
 
     def test_initialize_blocking_creates_users_table(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         # Should not raise — table exists
         store._conn.execute("SELECT * FROM users LIMIT 0")
 
     def test_initialize_blocking_creates_org_members_table(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         store._conn.execute("SELECT * FROM org_members LIMIT 0")
 
     def test_initialize_blocking_creates_workgroup_members_table(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         store._conn.execute("SELECT * FROM workgroup_members LIMIT 0")
 
     def test_initialize_blocking_creates_api_keys_table(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         store._conn.execute("SELECT * FROM api_keys LIMIT 0")
 
     def test_initialize_is_idempotent(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         store.initialize_blocking()  # second call must not raise
@@ -797,11 +794,11 @@ class TestOAuthCallbackProvisioning:
     """When OAuth callback succeeds, a user record should be upserted in the users table."""
 
     def _make_state(self, provider: str) -> str:
-        from ponddb import oauth_state
+        from ponddb.auth import oauth_state
         return oauth_state.generate_state(provider)
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_google_callback_provisions_user_in_db(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "g-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -817,8 +814,8 @@ class TestOAuthCallbackProvisioning:
         body = resp.json()
         assert "access_token" in body
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_callback_response_includes_user_info(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "g-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -833,8 +830,8 @@ class TestOAuthCallbackProvisioning:
         assert "access_token" in body
         assert "token_type" in body
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_callback_second_login_same_user(self, mock_user, mock_exchange, client):
         """Second OAuth login for same user should not duplicate DB records."""
         mock_exchange.return_value = {"access_token": "g-tok", "token_type": "bearer"}
@@ -852,13 +849,13 @@ class TestOAuthCallbackProvisioning:
         assert resp2.status_code == 200
 
         # Both responses should carry the same tenant_id in the JWT
-        from ponddb.jwt_auth import verify_access_token
+        from ponddb.auth.jwt_auth import verify_access_token
         claims1 = verify_access_token(resp1.json()["access_token"])
         claims2 = verify_access_token(resp2.json()["access_token"])
         assert claims1["tenant_id"] == claims2["tenant_id"]
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_github_callback_provisions_user(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "gh-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -880,8 +877,8 @@ class TestOAuthCallbackProvisioning:
 
 
 class TestGetUsersMe:
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_get_me_after_oauth_returns_user(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "g-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -889,7 +886,7 @@ class TestGetUsersMe:
             "email": "me@example.com",
             "name": "Me User",
         }
-        from ponddb import oauth_state
+        from ponddb.auth import oauth_state
         state = oauth_state.generate_state("google")
         login = client.get(f"/auth/google/callback?code=code&state={state}")
         access_token = login.json()["access_token"]
@@ -908,8 +905,8 @@ class TestGetUsersMe:
         resp = client.get("/users/me", headers={"Authorization": "Bearer invalid.token.here"})
         assert resp.status_code == 401
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_get_me_returns_id_email_display_name_role(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "g-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -917,7 +914,7 @@ class TestGetUsersMe:
             "email": "me2@example.com",
             "name": "Me Two",
         }
-        from ponddb import oauth_state
+        from ponddb.auth import oauth_state
         state = oauth_state.generate_state("google")
         login = client.get(f"/auth/google/callback?code=code&state={state}")
         access_token = login.json()["access_token"]
@@ -928,8 +925,8 @@ class TestGetUsersMe:
         for field in ("id", "email", "display_name", "role", "created_at"):
             assert field in body, f"Missing field: {field}"
 
-    @patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
-    @patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock)
+    @patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock)
     def test_get_me_does_not_return_sensitive_fields(self, mock_user, mock_exchange, client):
         mock_exchange.return_value = {"access_token": "g-tok", "token_type": "bearer"}
         mock_user.return_value = {
@@ -937,7 +934,7 @@ class TestGetUsersMe:
             "email": "me3@example.com",
             "name": "Me Three",
         }
-        from ponddb import oauth_state
+        from ponddb.auth import oauth_state
         state = oauth_state.generate_state("google")
         login = client.get(f"/auth/google/callback?code=code&state={state}")
         access_token = login.json()["access_token"]
@@ -950,7 +947,7 @@ class TestGetUsersMe:
 
     def test_get_me_with_jwt_for_unprovisioned_tenant_returns_404(self, client):
         """A JWT with a tenant_id that has no users row returns 404."""
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
         token = create_access_token("tenant-with-no-user-record")
         resp = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 404
@@ -963,14 +960,14 @@ class TestGetUsersMe:
 
 class TestApiKeyEndpoints:
     def _oauth_login(self, client, sub: str, email: str, name: str, provider: str = "google") -> str:
-        with patch("ponddb.oauth_routes._exchange_code_for_token", new_callable=AsyncMock) as mock_ex, \
-             patch("ponddb.oauth_routes._fetch_user_info", new_callable=AsyncMock) as mock_ui:
+        with patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock) as mock_ex, \
+             patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock) as mock_ui:
             mock_ex.return_value = {"access_token": "tok", "token_type": "bearer"}
             if provider == "google":
                 mock_ui.return_value = {"sub": sub, "email": email, "name": name}
             else:
                 mock_ui.return_value = {"id": sub, "login": name, "email": email}
-            from ponddb import oauth_state
+            from ponddb.auth import oauth_state
             state = oauth_state.generate_state(provider)
             login = client.get(f"/auth/{provider}/callback?code=code&state={state}")
         return login.json()["access_token"]
@@ -1107,7 +1104,7 @@ class TestApiKeyEndpoints:
 
 class TestUsersTableSchema:
     def test_users_table_has_id_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(users)")
@@ -1115,7 +1112,7 @@ class TestUsersTableSchema:
         assert "id" in cols
 
     def test_users_table_has_email_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(users)")
@@ -1123,7 +1120,7 @@ class TestUsersTableSchema:
         assert "email" in cols
 
     def test_users_table_has_provider_columns(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(users)")
@@ -1132,7 +1129,7 @@ class TestUsersTableSchema:
         assert "provider_id" in cols
 
     def test_users_table_has_tenant_id_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(users)")
@@ -1140,7 +1137,7 @@ class TestUsersTableSchema:
         assert "tenant_id" in cols
 
     def test_users_table_has_role_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(users)")
@@ -1148,7 +1145,7 @@ class TestUsersTableSchema:
         assert "role" in cols
 
     def test_users_table_has_display_name_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(users)")
@@ -1156,7 +1153,7 @@ class TestUsersTableSchema:
         assert "display_name" in cols
 
     def test_api_keys_table_has_key_hash_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(api_keys)")
@@ -1164,7 +1161,7 @@ class TestUsersTableSchema:
         assert "key_hash" in cols
 
     def test_api_keys_table_has_revoked_column(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(api_keys)")
@@ -1172,7 +1169,7 @@ class TestUsersTableSchema:
         assert "revoked" in cols
 
     def test_org_members_table_has_org_id_and_user_id(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(org_members)")
@@ -1181,7 +1178,7 @@ class TestUsersTableSchema:
         assert "user_id" in cols
 
     def test_workgroup_members_table_has_workgroup_id_and_user_id(self):
-        from ponddb.user_store import UserStore
+        from ponddb.store.user_store import UserStore
         store = UserStore(":memory:")
         store.initialize_blocking()
         cursor = store._conn.execute("PRAGMA table_info(workgroup_members)")

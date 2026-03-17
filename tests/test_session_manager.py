@@ -1,7 +1,7 @@
 """Tests for the SessionManager library class.
 
 Defines expected behavior for the ponddb.session_manager module.
-Tests import ponddb.session_manager — they will fail with ImportError
+Tests import ponddb.engine.session_manager — they will fail with ImportError
 until the module is implemented.
 
 SessionManager manages DuckDB connections per session:
@@ -23,7 +23,7 @@ import pytest
 @pytest.fixture
 def manager():
     """Fresh SessionManager instance for each test."""
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager()
     yield mgr
@@ -65,7 +65,7 @@ def test_session_count_increments(manager) -> None:
 
 
 def test_new_session_is_active(manager) -> None:
-    from ponddb.session_manager import SessionStatus
+    from ponddb.engine.session_manager import SessionStatus
 
     sid = manager.create_session()
     info = manager.get_session(sid)
@@ -246,21 +246,21 @@ def test_execute_query_boolean_value(manager, session_id: str) -> None:
 
 
 def test_execute_query_invalid_sql_raises(manager, session_id: str) -> None:
-    from ponddb.session_manager import QueryError
+    from ponddb.engine.session_manager import QueryError
 
     with pytest.raises(QueryError):
         manager.execute_query(session_id, "SELECT FROM WHERE GARBAGE")
 
 
 def test_execute_query_unknown_table_raises(manager, session_id: str) -> None:
-    from ponddb.session_manager import QueryError
+    from ponddb.engine.session_manager import QueryError
 
     with pytest.raises(QueryError):
         manager.execute_query(session_id, "SELECT * FROM does_not_exist")
 
 
 def test_execute_query_empty_sql_raises(manager, session_id: str) -> None:
-    from ponddb.session_manager import QueryError
+    from ponddb.engine.session_manager import QueryError
 
     with pytest.raises((QueryError, ValueError)):
         manager.execute_query(session_id, "")
@@ -278,7 +278,7 @@ def test_execute_query_unknown_session_raises(manager) -> None:
 
 def test_sessions_are_isolated(manager) -> None:
     """Table created in session A must not be visible in session B."""
-    from ponddb.session_manager import QueryError
+    from ponddb.engine.session_manager import QueryError
 
     sid_a = manager.create_session()
     sid_b = manager.create_session()
@@ -354,7 +354,7 @@ def test_list_sessions_filter_no_match_returns_empty(manager) -> None:
 
 
 def test_suspend_session_changes_status(manager, session_id: str) -> None:
-    from ponddb.session_manager import SessionStatus
+    from ponddb.engine.session_manager import SessionStatus
 
     manager.suspend_session(session_id)
     info = manager.get_session(session_id)
@@ -373,7 +373,7 @@ def test_suspend_unknown_session_raises(manager) -> None:
 
 
 def test_resume_session_changes_status_to_active(manager, session_id: str) -> None:
-    from ponddb.session_manager import SessionStatus
+    from ponddb.engine.session_manager import SessionStatus
 
     manager.suspend_session(session_id)
     manager.resume_session(session_id)
@@ -403,7 +403,7 @@ def test_suspend_then_destroy(manager, session_id: str) -> None:
 
 
 def test_execute_query_resumes_suspended_session(manager, session_id: str) -> None:
-    from ponddb.session_manager import SessionStatus
+    from ponddb.engine.session_manager import SessionStatus
 
     manager.suspend_session(session_id)
     # Query should transparently resume the session
@@ -425,7 +425,7 @@ def test_check_workgroup_access_passes_matching(manager) -> None:
 
 
 def test_check_workgroup_access_raises_on_mismatch(manager) -> None:
-    from ponddb.session_manager import WorkgroupAccessError
+    from ponddb.engine.session_manager import WorkgroupAccessError
 
     sid = manager.create_session(workgroup_id="wg_a")
     with pytest.raises(WorkgroupAccessError):
@@ -449,7 +449,7 @@ def test_check_workgroup_access_unknown_session_raises(manager) -> None:
 
 
 def test_workgroup_quota_exceeded_raises(manager) -> None:
-    from ponddb.session_manager import WorkgroupQuotaExceeded
+    from ponddb.engine.session_manager import WorkgroupQuotaExceeded
 
     manager.create_session(workgroup_id="wg_limited", max_concurrent_sessions=1)
     with pytest.raises(WorkgroupQuotaExceeded):
@@ -457,7 +457,7 @@ def test_workgroup_quota_exceeded_raises(manager) -> None:
 
 
 def test_workgroup_quota_resumes_suspended_session(manager) -> None:
-    from ponddb.session_manager import SessionStatus
+    from ponddb.engine.session_manager import SessionStatus
 
     # Create 2 sessions without limit to build up state
     sid_active = manager.create_session(workgroup_id="wg_x")
@@ -494,7 +494,7 @@ def test_workgroup_quota_no_limit_when_none(manager) -> None:
 
 @pytest.mark.asyncio
 async def test_watchdog_suspends_idle_sessions() -> None:
-    from ponddb.session_manager import SessionManager, SessionStatus
+    from ponddb.engine.session_manager import SessionManager, SessionStatus
 
     mgr = SessionManager(idle_timeout=0)  # 0s → immediately idle
     sid = mgr.create_session()
@@ -507,7 +507,7 @@ async def test_watchdog_suspends_idle_sessions() -> None:
 
 @pytest.mark.asyncio
 async def test_watchdog_skips_recently_active_sessions() -> None:
-    from ponddb.session_manager import SessionManager, SessionStatus
+    from ponddb.engine.session_manager import SessionManager, SessionStatus
 
     mgr = SessionManager(idle_timeout=9999)  # very long timeout
     sid = mgr.create_session()
@@ -520,7 +520,7 @@ async def test_watchdog_skips_recently_active_sessions() -> None:
 
 @pytest.mark.asyncio
 async def test_watchdog_returns_list() -> None:
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager(idle_timeout=9999)
     result = await mgr.run_watchdog_once()
@@ -534,7 +534,7 @@ async def test_watchdog_returns_list() -> None:
 
 @pytest.mark.asyncio
 async def test_reaper_destroys_stale_suspended_sessions() -> None:
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager(idle_timeout=0)
     sid = mgr.create_session()
@@ -546,7 +546,7 @@ async def test_reaper_destroys_stale_suspended_sessions() -> None:
 
 @pytest.mark.asyncio
 async def test_reaper_skips_recently_suspended_sessions() -> None:
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -559,7 +559,7 @@ async def test_reaper_skips_recently_suspended_sessions() -> None:
 
 @pytest.mark.asyncio
 async def test_reaper_returns_list() -> None:
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager()
     result = await mgr.run_reaper_once()

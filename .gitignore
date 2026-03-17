@@ -10,3 +10,11 @@ build/
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
+secrets/
+data/
+*.log
+.coverage
+.nyc_output/
+htmlcov/
+*.DS_Store
+node_modules/

@@ -13,9 +13,7 @@ Expected behavior:
 - Writes are fire-and-forget: response is not delayed by Postgres
 """
 
-import asyncio
-import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,26 +28,26 @@ class TestModuleStructure:
     """audit_log.py exposes the expected public API."""
 
     def test_module_importable(self):
-        from ponddb import audit_log  # noqa: F401
+        from ponddb.security import audit_log  # noqa: F401
 
     def test_audit_log_middleware_class_exists(self):
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         assert AuditLogMiddleware is not None
 
     def test_schema_sql_constant_exists(self):
-        from ponddb.audit_log import SCHEMA_SQL
+        from ponddb.security.audit_log import SCHEMA_SQL
 
         assert isinstance(SCHEMA_SQL, str)
         assert len(SCHEMA_SQL) > 0
 
     def test_log_event_function_exists(self):
-        from ponddb.audit_log import log_event
+        from ponddb.security.audit_log import log_event
 
         assert callable(log_event)
 
     def test_middleware_instantiable(self):
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
         from starlette.applications import Starlette
 
         app = Starlette()
@@ -66,7 +64,7 @@ class TestSchemaDDL:
     """SCHEMA_SQL contains correct DDL for security_audit_log."""
 
     def _get_schema(self) -> str:
-        from ponddb.audit_log import SCHEMA_SQL
+        from ponddb.security.audit_log import SCHEMA_SQL
 
         return SCHEMA_SQL.lower()
 
@@ -162,14 +160,14 @@ def client_with_audit(env_setup, mock_pool, monkeypatch):
     import ponddb.app as app_module
     importlib.reload(app_module)
     from ponddb.app import app
-    from ponddb.audit_log import AuditLogMiddleware
+    from ponddb.security.audit_log import AuditLogMiddleware
 
     # Wrap the app with AuditLogMiddleware; inject mock pool so no real Postgres needed
     app.add_middleware(AuditLogMiddleware, dsn="postgresql://localhost/ponddb_test")
 
     # Patch the pool creation so the middleware uses our mock pool
     monkeypatch.setattr(
-        "ponddb.audit_log.AuditLogMiddleware._pool",
+        "ponddb.security.audit_log.AuditLogMiddleware._pool",
         pool,
         raising=False,
     )
@@ -192,13 +190,13 @@ class TestLoginEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             written_events.append(event_type)
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -214,13 +212,13 @@ class TestLoginEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             written_events.append(event_type)
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -236,13 +234,13 @@ class TestLoginEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             captured_kwargs.append({"event_type": event_type, **kwargs})
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -264,13 +262,13 @@ class TestLoginEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             captured.append({"event_type": event_type, **kwargs})
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -295,7 +293,7 @@ class TestSandboxBlockEventLogged:
     """Blocked SQL queries → sandbox_block event in security_audit_log."""
 
     def _make_auth_headers(self) -> dict:
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         token = create_access_token("default")
         return {"Authorization": f"Bearer {token}"}
@@ -307,13 +305,13 @@ class TestSandboxBlockEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             written_events.append(event_type)
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -340,13 +338,13 @@ class TestSandboxBlockEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             captured.append({"event_type": event_type, **kwargs})
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -374,13 +372,13 @@ class TestSandboxBlockEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             captured.append({"event_type": event_type, **kwargs})
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -389,7 +387,7 @@ class TestSandboxBlockEventLogged:
         session_resp = client.post("/session")
         session_id = session_resp.json()["session_id"]
 
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         token = create_access_token("tenant-xyz")
         headers = {"Authorization": f"Bearer {token}"}
@@ -412,13 +410,13 @@ class TestSandboxBlockEventLogged:
         async def fake_log_event(pool, event_type: str, **kwargs):
             written_events.append(event_type)
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", fake_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", fake_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -451,13 +449,13 @@ class TestPostgresDownResiliency:
         async def failing_log_event(pool, event_type: str, **kwargs):
             raise ConnectionRefusedError("Postgres is down")
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", failing_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", failing_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -474,13 +472,13 @@ class TestPostgresDownResiliency:
         async def failing_log_event(pool, event_type: str, **kwargs):
             raise OSError("Postgres unreachable")
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", failing_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", failing_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -489,7 +487,7 @@ class TestPostgresDownResiliency:
         session_resp = client.post("/session")
         session_id = session_resp.json()["session_id"]
 
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         token = create_access_token("default")
         headers = {"Authorization": f"Bearer {token}"}
@@ -508,13 +506,13 @@ class TestPostgresDownResiliency:
         async def failing_log_event(pool, event_type: str, **kwargs):
             raise RuntimeError("DB pool exhausted")
 
-        monkeypatch.setattr("ponddb.audit_log.log_event", failing_log_event, raising=False)
+        monkeypatch.setattr("ponddb.security.audit_log.log_event", failing_log_event, raising=False)
 
         import importlib
         import ponddb.app as app_module
         importlib.reload(app_module)
         from ponddb.app import app
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
 
         app.add_middleware(AuditLogMiddleware, dsn=None)
 
@@ -523,7 +521,7 @@ class TestPostgresDownResiliency:
         session_resp = client.post("/session")
         session_id = session_resp.json()["session_id"]
 
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
 
         token = create_access_token("default")
         headers = {"Authorization": f"Bearer {token}"}
@@ -537,7 +535,7 @@ class TestPostgresDownResiliency:
 
     def test_pool_connect_failure_does_not_crash_startup(self, monkeypatch):
         """AuditLogMiddleware.__init__ with unreachable DSN does not raise synchronously."""
-        from ponddb.audit_log import AuditLogMiddleware
+        from ponddb.security.audit_log import AuditLogMiddleware
         from starlette.applications import Starlette
 
         # A DSN that will never connect; middleware must not raise at construction time
@@ -561,7 +559,7 @@ class TestLogEventHelper:
 
     @pytest.mark.asyncio
     async def test_log_event_executes_insert(self):
-        from ponddb.audit_log import log_event
+        from ponddb.security.audit_log import log_event
 
         conn = AsyncMock()
         conn.execute = AsyncMock(return_value=None)
@@ -587,7 +585,7 @@ class TestLogEventHelper:
 
     @pytest.mark.asyncio
     async def test_log_event_passes_event_type(self):
-        from ponddb.audit_log import log_event
+        from ponddb.security.audit_log import log_event
 
         conn = AsyncMock()
         conn.execute = AsyncMock(return_value=None)
@@ -606,7 +604,7 @@ class TestLogEventHelper:
     @pytest.mark.asyncio
     async def test_log_event_swallows_exceptions(self):
         """log_event must not propagate exceptions — it is fire-and-forget."""
-        from ponddb.audit_log import log_event
+        from ponddb.security.audit_log import log_event
 
         conn = AsyncMock()
         conn.execute = AsyncMock(side_effect=ConnectionRefusedError("down"))
@@ -621,7 +619,7 @@ class TestLogEventHelper:
     @pytest.mark.asyncio
     async def test_log_event_with_none_pool_does_not_raise(self):
         """If pool is None (Postgres not configured), log_event is a no-op."""
-        from ponddb.audit_log import log_event
+        from ponddb.security.audit_log import log_event
 
         # Should return silently, not crash
         await log_event(None, event_type="login_success", tenant_id="t4")

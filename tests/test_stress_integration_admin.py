@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 
 from tests.stress_helpers import (
     admin_jwt_headers,
-    create_session,
     jwt_headers,
     make_client,
 )

@@ -14,7 +14,6 @@ Behaviors under test:
 11. Tokens obtained via /auth/refresh also carry a jti
 """
 
-import os
 import time
 import uuid
 from unittest import mock
@@ -174,8 +173,8 @@ def test_revoked_access_token_rejected_on_query_endpoint(client: TestClient) -> 
 def test_verify_access_token_raises_401_for_revoked_jti(env_setup) -> None:
     """verify_access_token must raise HTTPException(401) when jti is blocklisted."""
     from fastapi import HTTPException
-    from ponddb.jwt_auth import create_access_token, verify_access_token
-    from ponddb import token_blocklist
+    from ponddb.auth.jwt_auth import create_access_token, verify_access_token
+    from ponddb.auth import token_blocklist
 
     token = create_access_token("revoke-test-tenant")
     claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -200,8 +199,8 @@ def test_verify_access_token_raises_401_for_revoked_jti(env_setup) -> None:
 
 def test_verify_access_token_allows_when_redis_unavailable(env_setup) -> None:
     """verify_access_token must fail open when Redis/blocklist is unreachable."""
-    from ponddb.jwt_auth import create_access_token, verify_access_token
-    from ponddb import token_blocklist
+    from ponddb.auth.jwt_auth import create_access_token, verify_access_token
+    from ponddb.auth import token_blocklist
 
     token = create_access_token("failopen-tenant")
 
@@ -226,7 +225,7 @@ def test_protected_endpoint_allows_when_redis_unavailable(client: TestClient) ->
     resp = client.post("/auth/token", json={"api_key": VALID_API_KEY})
     token = resp.json()["access_token"]
 
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     with mock.patch.object(
         token_blocklist,
         "is_revoked",
@@ -409,26 +408,26 @@ def test_revoked_access_token_cannot_be_used_after_refresh_issued_new_one(
 
 def test_token_blocklist_module_is_importable() -> None:
     """The ponddb.token_blocklist module must exist and be importable."""
-    from ponddb import token_blocklist  # noqa: F401
+    from ponddb.auth import token_blocklist  # noqa: F401
 
 
 def test_token_blocklist_has_add_to_blocklist() -> None:
     """token_blocklist must expose an add_to_blocklist(jti) function."""
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     assert callable(getattr(token_blocklist, "add_to_blocklist", None)), \
         "token_blocklist must have add_to_blocklist()"
 
 
 def test_token_blocklist_has_is_revoked() -> None:
     """token_blocklist must expose an is_revoked(jti) function."""
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     assert callable(getattr(token_blocklist, "is_revoked", None)), \
         "token_blocklist must have is_revoked()"
 
 
 def test_token_blocklist_has_logger() -> None:
     """token_blocklist must expose a logger for Redis-failure logging."""
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     import logging
     assert isinstance(getattr(token_blocklist, "logger", None), logging.Logger), \
         "token_blocklist must have a logging.Logger named 'logger'"
@@ -436,14 +435,14 @@ def test_token_blocklist_has_logger() -> None:
 
 def test_is_revoked_returns_false_for_unknown_jti(env_setup) -> None:
     """is_revoked must return False for a jti that was never revoked."""
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     result = token_blocklist.is_revoked("completely-unknown-jti-" + str(uuid.uuid4()))
     assert result is False
 
 
 def test_add_then_is_revoked_returns_true(env_setup) -> None:
     """add_to_blocklist followed by is_revoked must return True."""
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     jti = "test-jti-" + str(uuid.uuid4())
     token_blocklist.add_to_blocklist(jti)
     try:
@@ -454,6 +453,6 @@ def test_add_then_is_revoked_returns_true(env_setup) -> None:
 
 def test_token_blocklist_has_remove_from_blocklist() -> None:
     """token_blocklist must expose a remove_from_blocklist(jti) for test cleanup."""
-    from ponddb import token_blocklist
+    from ponddb.auth import token_blocklist
     assert callable(getattr(token_blocklist, "remove_from_blocklist", None)), \
         "token_blocklist must have remove_from_blocklist() for test cleanup"

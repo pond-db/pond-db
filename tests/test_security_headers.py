@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 # ---------------------------------------------------------------------------
 
 def make_app(dev_mode: bool) -> FastAPI:
-    from ponddb.security_headers import SecurityHeadersMiddleware
+    from ponddb.security.security_headers import SecurityHeadersMiddleware
 
     app = FastAPI()
     app.add_middleware(SecurityHeadersMiddleware, dev_mode=dev_mode)
@@ -187,7 +187,7 @@ class TestHeaderValues:
 
 class TestDefaultMode:
     def test_default_is_prod_mode(self):
-        from ponddb.security_headers import SecurityHeadersMiddleware
+        from ponddb.security.security_headers import SecurityHeadersMiddleware
 
         app = FastAPI()
         app.add_middleware(SecurityHeadersMiddleware)  # no dev_mode arg
@@ -202,7 +202,7 @@ class TestDefaultMode:
             assert h in resp.headers, f"Default mode missing header: {h}"
 
     def test_default_has_hsts(self):
-        from ponddb.security_headers import SecurityHeadersMiddleware
+        from ponddb.security.security_headers import SecurityHeadersMiddleware
 
         app = FastAPI()
         app.add_middleware(SecurityHeadersMiddleware)
@@ -224,7 +224,7 @@ class TestAppIntegration:
     """Verify security_headers.py is imported and wired into app.py."""
 
     def test_security_headers_importable_from_ponddb(self):
-        from ponddb import security_headers  # noqa: F401
+        from ponddb.security import security_headers  # noqa: F401
         assert hasattr(security_headers, "SecurityHeadersMiddleware")
 
     def test_app_has_security_headers_middleware(self):

@@ -5,8 +5,6 @@ Tests FAIL until implementation is complete.
 """
 
 import importlib
-import os
-import time
 from typing import Any
 
 import pytest
@@ -43,13 +41,13 @@ def client(env_setup) -> TestClient:
 
 
 def _admin_headers() -> dict[str, str]:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token(ADMIN_TENANT, role="admin")
     return {"Authorization": f"Bearer {token}"}
 
 
 def _user_headers() -> dict[str, str]:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token(REGULAR_TENANT)
     return {"Authorization": f"Bearer {token}"}
 
@@ -553,19 +551,19 @@ class TestCheckAndReserveCallable:
     """check_and_reserve_session_slot must be importable and callable."""
 
     def test_function_is_importable(self) -> None:
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         assert hasattr(nr, "check_and_reserve_session_slot"), \
             "check_and_reserve_session_slot not found in ponddb.namespace_routes"
 
     def test_function_is_callable(self) -> None:
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None and callable(fn), \
             "check_and_reserve_session_slot must be callable"
 
     def test_raises_on_quota_exceeded(self) -> None:
         """Direct call with a quota-exceeded workgroup raises an appropriate exception."""
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None, "check_and_reserve_session_slot not found"
 
@@ -585,7 +583,7 @@ class TestCheckAndReserveCallable:
 
     def test_succeeds_when_slot_available(self) -> None:
         """Direct call with available slots should return without raising."""
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None, "check_and_reserve_session_slot not found"
 
@@ -602,7 +600,7 @@ class TestCheckAndReserveCallable:
 
     def test_returns_reservation_info(self) -> None:
         """Direct call should return some confirmation (dict or truthy value)."""
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None, "check_and_reserve_session_slot not found"
 
@@ -616,7 +614,7 @@ class TestCheckAndReserveCallable:
 
     def test_unlimited_workgroup_never_raises(self) -> None:
         """Workgroup with no quota (None max_sessions) should never block."""
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None
 
@@ -640,12 +638,12 @@ class TestReconciliationTask:
     """reconcile_workgroup_usage must be importable and correct stale counts."""
 
     def test_reconcile_function_is_importable(self) -> None:
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         assert hasattr(nr, "reconcile_workgroup_usage"), \
             "reconcile_workgroup_usage not found in ponddb.namespace_routes"
 
     def test_reconcile_function_is_callable(self) -> None:
-        import ponddb.namespace_routes as nr
+        import ponddb.api.namespace_routes as nr
         fn = getattr(nr, "reconcile_workgroup_usage", None)
         assert callable(fn), "reconcile_workgroup_usage must be callable"
 

@@ -26,45 +26,45 @@ class TestModuleStructure:
     """brute_force.py exposes the expected public API."""
 
     def test_module_importable(self):
-        from ponddb import brute_force  # noqa: F401
+        from ponddb.auth import brute_force  # noqa: F401
 
     def test_brute_force_guard_class_exists(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         assert BruteForceGuard is not None
 
     def test_brute_force_guard_instantiable_with_defaults(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert guard is not None
 
     def test_brute_force_guard_has_is_locked(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert callable(getattr(guard, "is_locked", None))
 
     def test_brute_force_guard_has_record_failure(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert callable(getattr(guard, "record_failure", None))
 
     def test_brute_force_guard_has_record_success(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert callable(getattr(guard, "record_success", None))
 
     def test_brute_force_guard_has_get_failure_count(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert callable(getattr(guard, "get_failure_count", None))
 
     def test_default_lockout_threshold_is_5(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         threshold = (
@@ -84,26 +84,26 @@ class TestFreshIpNotLocked:
     """A new IP with no failures is not locked."""
 
     def test_fresh_ip_not_locked(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert guard.is_locked("192.168.1.1") is False
 
     def test_unknown_ip_failure_count_is_zero(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert guard.get_failure_count("10.0.0.1") == 0
 
     def test_one_failure_not_locked(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         guard.record_failure("1.2.3.4")
         assert guard.is_locked("1.2.3.4") is False
 
     def test_four_failures_not_locked(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(4):
@@ -111,7 +111,7 @@ class TestFreshIpNotLocked:
         assert guard.is_locked("5.6.7.8") is False
 
     def test_failure_count_increments(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for i in range(3):
@@ -128,7 +128,7 @@ class TestLockoutAfterFiveFailures:
     """5 consecutive failures trigger a 429 lockout for the IP."""
 
     def test_five_failures_triggers_lockout(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -136,7 +136,7 @@ class TestLockoutAfterFiveFailures:
         assert guard.is_locked("10.10.10.10") is True
 
     def test_fifth_failure_is_the_lockout_boundary(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(4):
@@ -146,7 +146,7 @@ class TestLockoutAfterFiveFailures:
         assert guard.is_locked("11.11.11.11") is True
 
     def test_failure_count_at_lockout_is_five(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -154,7 +154,7 @@ class TestLockoutAfterFiveFailures:
         assert guard.get_failure_count("20.20.20.20") == 5
 
     def test_is_locked_returns_true_type(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -172,7 +172,7 @@ class TestLockoutPersistence:
     """Locked IP stays locked on subsequent attempts (11th, 20th, etc.)."""
 
     def test_sixth_attempt_still_locked(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -182,7 +182,7 @@ class TestLockoutPersistence:
 
     def test_eleventh_attempt_still_locked(self):
         """Explicitly tests the requirement: 11th attempt → still locked."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(11):
@@ -190,7 +190,7 @@ class TestLockoutPersistence:
         assert guard.is_locked("60.60.60.60") is True
 
     def test_locked_ip_stays_locked_for_many_attempts(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -201,7 +201,7 @@ class TestLockoutPersistence:
 
     def test_failure_count_above_threshold(self):
         """Counter keeps incrementing beyond the lockout threshold."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(11):
@@ -219,7 +219,7 @@ class TestResetOnSuccess:
     """A successful auth resets the failure counter and unlocks the IP."""
 
     def test_success_resets_counter_to_zero(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(3):
@@ -229,7 +229,7 @@ class TestResetOnSuccess:
 
     def test_success_unlocks_locked_ip(self):
         """After being locked, a success must lift the lockout."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -240,7 +240,7 @@ class TestResetOnSuccess:
 
     def test_success_on_fresh_ip_is_noop(self):
         """record_success on an IP with no failures must not raise or break state."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         guard.record_success("102.102.102.102")  # should not raise
@@ -249,7 +249,7 @@ class TestResetOnSuccess:
 
     def test_failure_after_success_starts_fresh(self):
         """After a reset, a new sequence of failures starts from zero."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -262,7 +262,7 @@ class TestResetOnSuccess:
 
     def test_five_failures_after_reset_locks_again(self):
         """After reset, 5 fresh failures lock the IP again."""
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -282,7 +282,7 @@ class TestIpIsolation:
     """Each IP address has its own independent failure counter."""
 
     def test_one_ip_locked_does_not_affect_another(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -291,7 +291,7 @@ class TestIpIsolation:
         assert guard.is_locked("201.201.201.201") is False
 
     def test_different_ips_have_independent_failure_counts(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(3):
@@ -302,7 +302,7 @@ class TestIpIsolation:
         assert guard.get_failure_count("211.211.211.211") == 2
 
     def test_success_on_one_ip_does_not_reset_another(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -314,7 +314,7 @@ class TestIpIsolation:
         assert guard.is_locked("221.221.221.221") is True
 
     def test_many_ips_tracked_independently(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         ips = [f"10.0.0.{i}" for i in range(10)]
@@ -334,7 +334,7 @@ class TestCustomThreshold:
     """BruteForceGuard can be configured with a custom lockout threshold."""
 
     def test_custom_threshold_of_3(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=3)
         for _ in range(2):
@@ -344,7 +344,7 @@ class TestCustomThreshold:
         assert guard.is_locked("1.1.1.1") is True
 
     def test_custom_threshold_of_10(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=10)
         for _ in range(9):
@@ -354,7 +354,7 @@ class TestCustomThreshold:
         assert guard.is_locked("2.2.2.2") is True
 
     def test_threshold_of_1_locks_on_first_failure(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_threshold=1)
         guard.record_failure("3.3.3.3")
@@ -370,7 +370,7 @@ class TestLockoutExpiry:
     """Locked IPs are automatically unlocked after the lockout TTL expires."""
 
     def test_lockout_expires_after_ttl(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_ttl_seconds=1)
         for _ in range(5):
@@ -380,7 +380,7 @@ class TestLockoutExpiry:
         assert guard.is_locked("77.77.77.77") is False
 
     def test_not_locked_before_ttl_expires(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_ttl_seconds=60)
         for _ in range(5):
@@ -389,7 +389,7 @@ class TestLockoutExpiry:
         assert guard.is_locked("88.88.88.88") is True
 
     def test_failure_count_resets_after_ttl(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard(lockout_ttl_seconds=1)
         for _ in range(5):
@@ -410,13 +410,13 @@ class TestHttpIntegration:
     """BruteForceGuard raises HTTPException(429) for locked IPs."""
 
     def test_check_or_raise_exists(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         assert callable(getattr(guard, "check_or_raise", None))
 
     def test_check_or_raise_does_not_raise_when_unlocked(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         guard.check_or_raise("1.2.3.4")  # must not raise
@@ -424,7 +424,7 @@ class TestHttpIntegration:
     def test_check_or_raise_raises_429_when_locked(self):
         from fastapi import HTTPException
 
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -436,7 +436,7 @@ class TestHttpIntegration:
     def test_check_or_raise_429_has_detail(self):
         from fastapi import HTTPException
 
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -447,7 +447,7 @@ class TestHttpIntegration:
         assert len(str(exc_info.value.detail)) > 0
 
     def test_check_or_raise_does_not_raise_after_reset(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -468,7 +468,7 @@ class TestBruteForceMiddleware:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from ponddb.brute_force import BruteForceMiddleware
+        from ponddb.auth.brute_force import BruteForceMiddleware
 
         app = FastAPI()
         app.add_middleware(BruteForceMiddleware, guard=guard)
@@ -486,12 +486,12 @@ class TestBruteForceMiddleware:
         return TestClient(app, raise_server_exceptions=False)
 
     def test_middleware_class_exists(self):
-        from ponddb.brute_force import BruteForceMiddleware
+        from ponddb.auth.brute_force import BruteForceMiddleware
 
         assert BruteForceMiddleware is not None
 
     def test_first_request_passes(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         client = self._make_app(guard)
@@ -499,7 +499,7 @@ class TestBruteForceMiddleware:
         assert resp.status_code != 500
 
     def test_locked_ip_gets_429_from_middleware(self):
-        from ponddb.brute_force import BruteForceGuard
+        from ponddb.auth.brute_force import BruteForceGuard
 
         guard = BruteForceGuard()
         for _ in range(5):
@@ -508,7 +508,7 @@ class TestBruteForceMiddleware:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from ponddb.brute_force import BruteForceMiddleware
+        from ponddb.auth.brute_force import BruteForceMiddleware
 
         app = FastAPI()
         app.add_middleware(BruteForceMiddleware, guard=guard)
@@ -525,7 +525,7 @@ class TestBruteForceMiddleware:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from ponddb.brute_force import BruteForceGuard, BruteForceMiddleware
+        from ponddb.auth.brute_force import BruteForceGuard, BruteForceMiddleware
 
         guard = BruteForceGuard()
         app = FastAPI()

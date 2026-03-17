@@ -22,7 +22,6 @@ Tests FAIL until implementation is complete.
 """
 
 import importlib
-import os
 import time
 from typing import Any
 
@@ -62,14 +61,14 @@ def client(env_setup) -> TestClient:
 
 def _admin_headers() -> dict[str, str]:
     """Return Authorization headers with a valid admin JWT."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token(ADMIN_TENANT, role="admin")
     return {"Authorization": f"Bearer {token}"}
 
 
 def _regular_headers() -> dict[str, str]:
     """Return Authorization headers with a regular (non-admin) JWT."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token(REGULAR_TENANT)
     return {"Authorization": f"Bearer {token}"}
 
@@ -716,19 +715,19 @@ class TestAdminJwtTokenClaims:
 
     def test_create_access_token_accepts_role_admin(self) -> None:
         """create_access_token must accept a role kwarg without raising."""
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
         token = create_access_token("test-admin", role="admin")
         assert token is not None
         assert isinstance(token, str)
 
     def test_admin_token_contains_role_admin_claim(self) -> None:
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
         token = create_access_token("test-admin", role="admin")
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         assert claims.get("role") == "admin"
 
     def test_regular_token_has_no_admin_role(self) -> None:
-        from ponddb.jwt_auth import create_access_token
+        from ponddb.auth.jwt_auth import create_access_token
         token = create_access_token("test-regular")
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         assert claims.get("role") != "admin"

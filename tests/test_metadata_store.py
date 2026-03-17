@@ -12,7 +12,6 @@ Defines expected behavior for MetadataStore:
 Tests FAIL until ponddb/metadata_store.py is implemented.
 """
 
-import asyncio
 from datetime import datetime, timezone
 
 import pytest
@@ -26,7 +25,7 @@ import pytest_asyncio
 @pytest_asyncio.fixture
 async def store(tmp_path):
     """Fresh in-memory (tmp_path) MetadataStore for each test."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "test.db")
     s = MetadataStore(db_path=db_path)
@@ -46,7 +45,7 @@ def _now() -> datetime:
 
 @pytest.mark.asyncio
 async def test_initialize_creates_sessions_table(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "init.db")
     store = MetadataStore(db_path=db_path)
@@ -60,7 +59,7 @@ async def test_initialize_creates_sessions_table(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_initialize_creates_catalog_mounts_table(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "init2.db")
     store = MetadataStore(db_path=db_path)
@@ -74,7 +73,7 @@ async def test_initialize_creates_catalog_mounts_table(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_initialize_is_idempotent(tmp_path) -> None:
     """Calling initialize() twice must not raise."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "idem.db")
     store = MetadataStore(db_path=db_path)
@@ -414,7 +413,7 @@ async def test_delete_mounts_does_not_affect_other_sessions(store) -> None:
 @pytest.mark.asyncio
 async def test_data_persists_across_store_instances(tmp_path) -> None:
     """Opening a second MetadataStore on same file must see previously saved data."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "persist.db")
     now = _now()
@@ -435,7 +434,7 @@ async def test_data_persists_across_store_instances(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_mount_persists_across_store_instances(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "persist2.db")
     now = _now()

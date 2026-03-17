@@ -9,7 +9,6 @@ Defines expected behavior for M3 auth layer:
   - POND_API_KEY env var configures the accepted key
 """
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 

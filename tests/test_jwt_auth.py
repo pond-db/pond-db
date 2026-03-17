@@ -10,9 +10,7 @@ Covers:
 - Edge cases: expired, malformed, wrong-secret tokens
 """
 
-import os
 import time
-from datetime import datetime, timezone, timedelta
 
 import pytest
 from fastapi.testclient import TestClient

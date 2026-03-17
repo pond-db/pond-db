@@ -283,7 +283,7 @@ def test_get_api_key_function_exists() -> None:
     """jwt_auth must expose _get_api_key() for file-based API key loading."""
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
     assert hasattr(jwt_module, "_get_api_key"), (
@@ -303,7 +303,7 @@ def test_get_api_key_reads_from_file(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -323,7 +323,7 @@ def test_get_api_key_file_preferred_over_env(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -338,7 +338,7 @@ def test_get_api_key_falls_back_to_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -358,7 +358,7 @@ def test_get_api_key_strips_trailing_newline(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -377,7 +377,7 @@ def test_get_api_key_missing_file_raises_500(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -396,7 +396,7 @@ def test_get_session_secret_function_exists() -> None:
     """jwt_auth must expose _get_session_secret() for file-based session secret loading."""
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
     assert hasattr(jwt_module, "_get_session_secret"), (
@@ -417,7 +417,7 @@ def test_get_session_secret_reads_from_file(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -437,7 +437,7 @@ def test_get_session_secret_file_preferred_over_env(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -452,7 +452,7 @@ def test_get_session_secret_falls_back_to_env(monkeypatch: pytest.MonkeyPatch) -
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -472,7 +472,7 @@ def test_get_session_secret_strips_trailing_newline(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -493,7 +493,7 @@ def test_get_session_secret_missing_file_raises_500(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -514,7 +514,7 @@ def test_require_auth_uses_get_api_key_for_validation(
     """require_auth must validate X-API-Key via _get_api_key() so file-based keys work."""
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -531,7 +531,7 @@ def test_verify_session_cookie_uses_get_session_secret(
     """_verify_session_cookie must use _get_session_secret() for HMAC verification."""
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -561,7 +561,7 @@ def test_jwt_secret_readable_from_simulated_run_secrets_path(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -583,7 +583,7 @@ def test_api_key_readable_from_simulated_run_secrets_path(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 
@@ -605,7 +605,7 @@ def test_session_secret_readable_from_simulated_run_secrets_path(
 
     import importlib
 
-    import ponddb.jwt_auth as jwt_module
+    import ponddb.auth.jwt_auth as jwt_module
 
     importlib.reload(jwt_module)
 

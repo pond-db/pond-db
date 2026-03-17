@@ -13,7 +13,6 @@ To prevent this, all memory-limit tests run their assertions inside a
 subprocess.run() wrapper so the abort() is fully isolated from pytest.
 """
 
-import json
 import resource
 import subprocess
 import sys
@@ -23,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from ponddb.session_manager import QueryResult
+from ponddb.engine.session_manager import QueryResult
 
 # Path used by subprocess helpers to find the ponddb package.
 _SRC = str(Path(__file__).parent.parent / "src")
@@ -37,7 +36,7 @@ _SRC = str(Path(__file__).parent.parent / "src")
 def _get_runner():
     """Import subprocess_runner lazily so collection always succeeds."""
     import importlib
-    return importlib.import_module("ponddb.subprocess_runner")
+    return importlib.import_module("ponddb.engine.subprocess_runner")
 
 
 def _run(sql: str, **kwargs) -> QueryResult:
@@ -60,7 +59,7 @@ def _mem_subprocess(sql: str, memory_limit_bytes: int, timeout: int = 20) -> str
     script = textwrap.dedent(f"""
         import sys
         sys.path.insert(0, {_SRC!r})
-        from ponddb.subprocess_runner import (
+        from ponddb.engine.subprocess_runner import (
             run_query_isolated,
             SubprocessMemoryError,
             SubprocessKilledError,
@@ -354,7 +353,7 @@ class TestSessionManagerSubprocessIntegration:
         monkeypatch.setattr(mod, "run_query_isolated", spy)
 
         import importlib
-        import ponddb.session_manager as sm_mod
+        import ponddb.engine.session_manager as sm_mod
         importlib.reload(sm_mod)
 
         mgr = sm_mod.SessionManager()
@@ -375,7 +374,7 @@ class TestSessionManagerSubprocessIntegration:
 
         monkeypatch.setattr(mod, "run_query_isolated", spy)
 
-        import ponddb.session_manager as sm_mod
+        import ponddb.engine.session_manager as sm_mod
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         result = mgr.execute_query(sid, "SELECT 1 AS n")
@@ -394,7 +393,7 @@ class TestSessionManagerSubprocessIntegration:
 
         monkeypatch.setattr(mod, "run_query_isolated", spy)
 
-        import ponddb.session_manager as sm_mod
+        import ponddb.engine.session_manager as sm_mod
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         result = mgr.execute_query(sid, "SELECT 42 AS v")
@@ -406,7 +405,7 @@ class TestSessionManagerSubprocessIntegration:
     def test_subprocess_isolation_returns_correct_result(self, monkeypatch):
         monkeypatch.setenv("POND_SUBPROCESS_ISOLATION", "true")
 
-        import ponddb.session_manager as sm_mod
+        import ponddb.engine.session_manager as sm_mod
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         result = mgr.execute_query(sid, "SELECT 7 * 6 AS answer")
@@ -419,7 +418,7 @@ class TestSessionManagerSubprocessIntegration:
     def test_subprocess_query_error_propagates_via_execute_query(self, monkeypatch):
         monkeypatch.setenv("POND_SUBPROCESS_ISOLATION", "true")
 
-        import ponddb.session_manager as sm_mod
+        import ponddb.engine.session_manager as sm_mod
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         with pytest.raises(Exception):

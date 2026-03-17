@@ -13,7 +13,6 @@ Tests FAIL until implementation is complete.
 """
 
 import importlib
-import os
 import time
 from datetime import datetime, timezone
 
@@ -54,17 +53,17 @@ def client(env_setup) -> TestClient:
 @pytest.fixture
 def store(tmp_path):
     """Fresh MetadataStore for direct store tests."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
     s = MetadataStore(str(tmp_path / "tenant_test.db"))
     s.initialize_blocking()
     yield s
     import asyncio
-    asyncio.get_event_loop().run_until_complete(s.close())
+    asyncio.run(s.close())
 
 
 def _jwt_headers(tenant_id: str) -> dict:
     """Return Authorization headers with a valid JWT for tenant_id."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
     token = create_access_token(tenant_id)
     return {"Authorization": f"Bearer {token}"}
 
@@ -81,7 +80,7 @@ def _api_key_headers() -> dict:
 @pytest.mark.asyncio
 async def test_queries_table_has_tenant_id_column(tmp_path) -> None:
     """The 'queries' SQLite table must have a 'tenant_id' column."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -258,7 +257,7 @@ async def test_empty_tenant_sees_no_private_queries(store) -> None:
 @pytest.mark.asyncio
 async def test_query_history_table_has_tenant_id_column(tmp_path) -> None:
     """The 'query_history' SQLite table must have a 'tenant_id' column."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()

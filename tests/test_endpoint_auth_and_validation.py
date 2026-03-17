@@ -9,7 +9,6 @@ Expected behaviour (TDD — tests define the target state):
   - Valid requests with auth still work (happy path)
 """
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 

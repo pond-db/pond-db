@@ -1,3 +1,7 @@
+# Copyright (c) 2026 DatabaseCompany
+# Licensed under the Business Source License 1.1
+# See LICENSE file for details
+
 """PondDB CLI — serve, check, and version commands.
 
 Entry point: pond (registered in pyproject.toml as ponddb.cli:main)

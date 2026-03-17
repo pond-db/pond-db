@@ -14,13 +14,11 @@ Tests FAIL until:
   - ponddb/session_manager.py accepts a MetadataStore and persists transitions
 """
 
-import asyncio
-from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
 
-from ponddb.session_manager import SessionManager, SessionStatus
+from ponddb.engine.session_manager import SessionManager, SessionStatus
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +28,7 @@ from ponddb.session_manager import SessionManager, SessionStatus
 
 @pytest_asyncio.fixture
 async def store(tmp_path):
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     s = MetadataStore(db_path=str(tmp_path / "test.db"))
     await s.initialize()
@@ -159,7 +157,7 @@ async def test_destroy_does_not_affect_sibling_in_store(manager, store) -> None:
 @pytest.mark.asyncio
 async def test_load_from_store_restores_active_sessions(tmp_path) -> None:
     """A second SessionManager on the same store sees previously created sessions."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "restart.db")
 
@@ -184,7 +182,7 @@ async def test_load_from_store_restores_active_sessions(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_load_from_store_restores_suspended_sessions(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "restart2.db")
 
@@ -207,7 +205,7 @@ async def test_load_from_store_restores_suspended_sessions(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_load_from_store_does_not_restore_destroyed_sessions(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "restart3.db")
 
@@ -229,7 +227,7 @@ async def test_load_from_store_does_not_restore_destroyed_sessions(tmp_path) -> 
 
 @pytest.mark.asyncio
 async def test_load_from_store_restores_namespace(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "restart4.db")
 
@@ -251,7 +249,7 @@ async def test_load_from_store_restores_namespace(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_load_from_store_restores_multiple_sessions(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     db_path = str(tmp_path / "restart5.db")
 

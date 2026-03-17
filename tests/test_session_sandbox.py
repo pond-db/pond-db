@@ -60,7 +60,7 @@ def test_session_manager_disables_external_access(monkeypatch) -> None:
     The connection should reject file reads (read_csv, read_parquet, etc.)
     because enable_external_access=False was set at connection time.
     """
-    from ponddb.session_manager import QueryError, SessionManager
+    from ponddb.engine.session_manager import QueryError, SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -79,7 +79,7 @@ def test_session_manager_connection_has_memory_limit(monkeypatch) -> None:
     the default unlimited value.
     """
     monkeypatch.setenv("POND_SESSION_MEMORY_LIMIT", "256MB")
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -99,7 +99,7 @@ def test_session_manager_connection_has_memory_limit(monkeypatch) -> None:
 def test_session_manager_connection_has_thread_limit(monkeypatch) -> None:
     """DuckDB connection must have a threads limit configured."""
     monkeypatch.setenv("POND_SESSION_THREADS", "2")
-    from ponddb.session_manager import SessionManager
+    from ponddb.engine.session_manager import SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -116,7 +116,7 @@ def test_session_manager_configuration_is_locked(monkeypatch) -> None:
 
     Attempting SET memory_limit inside the session must fail with an error.
     """
-    from ponddb.session_manager import QueryError, SessionManager
+    from ponddb.engine.session_manager import QueryError, SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -129,7 +129,7 @@ def test_session_manager_configuration_is_locked(monkeypatch) -> None:
 
 def test_session_manager_external_access_not_overrideable(monkeypatch) -> None:
     """A session should not be able to re-enable external access via SET."""
-    from ponddb.session_manager import QueryError, SessionManager
+    from ponddb.engine.session_manager import QueryError, SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -142,7 +142,7 @@ def test_session_manager_external_access_not_overrideable(monkeypatch) -> None:
 
 def test_session_manager_attach_rejected_by_duckdb(monkeypatch) -> None:
     """ATTACH to external DB must fail because external access is disabled."""
-    from ponddb.session_manager import QueryError, SessionManager
+    from ponddb.engine.session_manager import QueryError, SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -155,7 +155,7 @@ def test_session_manager_attach_rejected_by_duckdb(monkeypatch) -> None:
 
 def test_session_manager_load_rejected_by_duckdb(monkeypatch) -> None:
     """LOAD must fail because external access is disabled."""
-    from ponddb.session_manager import QueryError, SessionManager
+    from ponddb.engine.session_manager import QueryError, SessionManager
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -300,7 +300,7 @@ def test_memory_over_limit_from_session_manager() -> None:
     """
     os.environ["POND_SESSION_MEMORY_LIMIT"] = "1B"
     try:
-        from ponddb.session_manager import QueryError, SessionManager
+        from ponddb.engine.session_manager import QueryError, SessionManager
 
         mgr = SessionManager()
         sid = mgr.create_session()
@@ -340,8 +340,8 @@ def test_session_manager_calls_sandbox_before_duckdb() -> None:
     from the sandbox (BlockedSqlError or an HTTPException-level 403), NOT
     as a DuckDB syntax error.
     """
-    from ponddb.session_manager import SessionManager
-    from ponddb.sql_sandbox import BlockedSqlError
+    from ponddb.engine.session_manager import SessionManager
+    from ponddb.security.sql_sandbox import BlockedSqlError
 
     mgr = SessionManager()
     sid = mgr.create_session()
@@ -357,7 +357,7 @@ def test_session_manager_calls_sandbox_before_duckdb() -> None:
 
 def test_sandbox_import_available() -> None:
     """sql_sandbox module must be importable from ponddb package."""
-    from ponddb import sql_sandbox
+    from ponddb.security import sql_sandbox
     assert hasattr(sql_sandbox, "check_sql")
     assert hasattr(sql_sandbox, "BlockedSqlError")
     assert hasattr(sql_sandbox, "BLOCKED_PATTERNS")

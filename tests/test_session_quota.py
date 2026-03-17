@@ -9,7 +9,7 @@ Verifies:
 
 import pytest
 
-from ponddb.session_manager import (
+from ponddb.engine.session_manager import (
     SessionManager,
     SessionStatus,
     WorkgroupQuotaExceeded,

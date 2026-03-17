@@ -17,7 +17,6 @@ import re
 import stat
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -305,7 +304,6 @@ def test_pre_commit_config_exists() -> None:
 
 def test_pre_commit_config_is_valid_yaml() -> None:
     """pre-commit config must be parseable YAML."""
-    import importlib
     yaml = pytest.importorskip("yaml", reason="pyyaml not installed")
     assert PRE_COMMIT_CONFIG.exists(), ".pre-commit-config.yaml missing"
     content = PRE_COMMIT_CONFIG.read_text()

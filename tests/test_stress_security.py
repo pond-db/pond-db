@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 from tests.stress_helpers import (
     api_headers,
     create_session,
-    execute_and_poll,
     jwt_headers,
     make_client,
 )

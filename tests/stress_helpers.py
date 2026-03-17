@@ -51,7 +51,7 @@ def jwt_headers(client: TestClient, tenant_id: str = "default") -> dict:
 
 def admin_jwt_headers(client: TestClient) -> dict:
     """Return admin JWT headers."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
 
     token = create_access_token("default", role="admin")
     return {"Authorization": f"Bearer {token}"}

@@ -122,7 +122,7 @@ class FakeRedis:
 
 
 def _make_app(redis_client, limit: int = 100, window_seconds: int = 60) -> FastAPI:
-    from ponddb.rate_limit import RateLimitMiddleware
+    from ponddb.security.rate_limit import RateLimitMiddleware
 
     app = FastAPI()
     app.add_middleware(
@@ -140,7 +140,7 @@ def _make_app(redis_client, limit: int = 100, window_seconds: int = 60) -> FastA
 
 
 def _make_limiter(redis, limit: int = 100, window_seconds: int = 60):
-    from ponddb.rate_limit import RateLimiter
+    from ponddb.security.rate_limit import RateLimiter
 
     return RateLimiter(redis, limit=limit, window_seconds=window_seconds)
 
@@ -484,23 +484,23 @@ class TestModuleStructure:
     """rate_limit.py exposes the expected public API."""
 
     def test_rate_limiter_class_exists(self):
-        from ponddb.rate_limit import RateLimiter
+        from ponddb.security.rate_limit import RateLimiter
 
         assert RateLimiter is not None
 
     def test_rate_limit_middleware_class_exists(self):
-        from ponddb.rate_limit import RateLimitMiddleware
+        from ponddb.security.rate_limit import RateLimitMiddleware
 
         assert RateLimitMiddleware is not None
 
     def test_rate_limiter_instantiation(self):
-        from ponddb.rate_limit import RateLimiter
+        from ponddb.security.rate_limit import RateLimiter
 
         limiter = RateLimiter(FakeRedis(), limit=100, window_seconds=60)
         assert limiter is not None
 
     def test_rate_limiter_has_check_method(self):
-        from ponddb.rate_limit import RateLimiter
+        from ponddb.security.rate_limit import RateLimiter
 
         limiter = RateLimiter(FakeRedis())
         assert callable(getattr(limiter, "check", None))
@@ -508,19 +508,19 @@ class TestModuleStructure:
     def test_rate_limit_middleware_is_starlette_middleware(self):
         from starlette.middleware.base import BaseHTTPMiddleware
 
-        from ponddb.rate_limit import RateLimitMiddleware
+        from ponddb.security.rate_limit import RateLimitMiddleware
 
         assert issubclass(RateLimitMiddleware, BaseHTTPMiddleware)
 
     def test_rate_limiter_default_limit_is_100(self):
-        from ponddb.rate_limit import RateLimiter
+        from ponddb.security.rate_limit import RateLimiter
 
         limiter = RateLimiter(FakeRedis())
         limit = getattr(limiter, "_limit", None) or getattr(limiter, "limit", None)
         assert limit == 100
 
     def test_rate_limiter_default_window_is_60(self):
-        from ponddb.rate_limit import RateLimiter
+        from ponddb.security.rate_limit import RateLimiter
 
         limiter = RateLimiter(FakeRedis())
         window = getattr(limiter, "_window_seconds", None) or getattr(

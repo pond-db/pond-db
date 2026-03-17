@@ -1,4 +1,4 @@
-"""End-to-end integration tests for PondDB/DuckCloud.
+"""End-to-end integration tests for PondDB.
 
 7 scenarios that exercise the full API surface through real HTTP calls:
 
@@ -14,9 +14,7 @@ All tests use FastAPI TestClient with a fresh app instance (in-memory SQLite).
 """
 
 import importlib
-import io
 import os
-import time
 
 import pytest
 from fastapi.testclient import TestClient

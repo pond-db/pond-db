@@ -51,7 +51,7 @@ def session_id(client) -> str:
 @pytest.mark.asyncio
 async def test_query_history_table_created_on_initialize(tmp_path) -> None:
     """query_history table must exist after initialize()."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -66,7 +66,7 @@ async def test_query_history_table_created_on_initialize(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_log_query_history_method_exists(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -78,7 +78,7 @@ async def test_log_query_history_method_exists(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_get_query_history_method_exists(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -91,7 +91,7 @@ async def test_get_query_history_method_exists(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_log_query_history_success_entry(tmp_path) -> None:
     """log_query_history() persists a success record with all required fields."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -122,7 +122,7 @@ async def test_log_query_history_success_entry(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_log_query_history_error_entry(tmp_path) -> None:
     """Error entries store error_message and zero rows_returned."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -149,7 +149,7 @@ async def test_log_query_history_error_entry(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_log_query_history_error_message_defaults_none(tmp_path) -> None:
     """error_message defaults to None when not provided."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -171,7 +171,7 @@ async def test_log_query_history_error_message_defaults_none(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_filters_by_namespace(tmp_path) -> None:
     """get_query_history(namespace) returns only that namespace's entries."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -199,7 +199,7 @@ async def test_get_query_history_filters_by_namespace(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_filter_status_success(tmp_path) -> None:
     """status_filter='success' returns only success entries."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -228,7 +228,7 @@ async def test_get_query_history_filter_status_success(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_filter_date_range(tmp_path) -> None:
     """start/end timestamp filters narrow the result set."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -256,7 +256,7 @@ async def test_get_query_history_filter_date_range(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_start_filter_only(tmp_path) -> None:
     """start filter alone excludes entries before it."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -285,7 +285,7 @@ async def test_get_query_history_start_filter_only(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_end_filter_only(tmp_path) -> None:
     """end filter alone excludes entries after it."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -314,7 +314,7 @@ async def test_get_query_history_end_filter_only(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_pagination_limit(tmp_path) -> None:
     """limit parameter caps the number of results."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -334,7 +334,7 @@ async def test_get_query_history_pagination_limit(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_pagination_offset(tmp_path) -> None:
     """offset parameter skips the first N entries (no overlap between pages)."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -358,7 +358,7 @@ async def test_get_query_history_pagination_offset(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_default_limit_is_50(tmp_path) -> None:
     """Default limit is 50 when not specified."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -377,7 +377,7 @@ async def test_get_query_history_default_limit_is_50(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_get_query_history_returns_list_of_dicts(tmp_path) -> None:
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
@@ -390,7 +390,7 @@ async def test_get_query_history_returns_list_of_dicts(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_get_query_history_multiple_entries_ordered(tmp_path) -> None:
     """Results should be ordered by executed_at descending (newest first)."""
-    from ponddb.metadata_store import MetadataStore
+    from ponddb.store.metadata_store import MetadataStore
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()

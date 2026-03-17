@@ -15,7 +15,6 @@ All tests here are expected to FAIL until the implementation is written.
 
 import importlib
 import os
-from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,7 +45,7 @@ class TestCreateSessionWithWorkgroup:
 
     @pytest.fixture
     def manager(self):
-        from ponddb.session_manager import SessionManager
+        from ponddb.engine.session_manager import SessionManager
 
         mgr = SessionManager()
         yield mgr
@@ -93,7 +92,7 @@ class TestDefaultWorkgroupBackwardsCompat:
 
     @pytest.fixture
     def manager(self):
-        from ponddb.session_manager import SessionManager
+        from ponddb.engine.session_manager import SessionManager
 
         mgr = SessionManager()
         yield mgr
@@ -142,7 +141,7 @@ class TestListSessionsWorkgroupFilter:
 
     @pytest.fixture
     def manager(self):
-        from ponddb.session_manager import SessionManager
+        from ponddb.engine.session_manager import SessionManager
 
         mgr = SessionManager()
         yield mgr
@@ -194,18 +193,18 @@ class TestListSessionsWorkgroupFilter:
 
 
 class TestWorkgroupAccessError:
-    """WorkgroupAccessError must be importable from ponddb.session_manager."""
+    """WorkgroupAccessError must be importable from ponddb.engine.session_manager."""
 
     def test_workgroup_access_error_importable(self) -> None:
-        from ponddb.session_manager import WorkgroupAccessError  # noqa: F401
+        from ponddb.engine.session_manager import WorkgroupAccessError  # noqa: F401
 
     def test_workgroup_access_error_is_exception(self) -> None:
-        from ponddb.session_manager import WorkgroupAccessError
+        from ponddb.engine.session_manager import WorkgroupAccessError
 
         assert issubclass(WorkgroupAccessError, Exception)
 
     def test_workgroup_access_error_can_be_raised(self) -> None:
-        from ponddb.session_manager import WorkgroupAccessError
+        from ponddb.engine.session_manager import WorkgroupAccessError
 
         with pytest.raises(WorkgroupAccessError):
             raise WorkgroupAccessError("access denied")
@@ -222,7 +221,7 @@ class TestCheckWorkgroupAccess:
 
     @pytest.fixture
     def manager(self):
-        from ponddb.session_manager import SessionManager
+        from ponddb.engine.session_manager import SessionManager
 
         mgr = SessionManager()
         yield mgr
@@ -243,7 +242,7 @@ class TestCheckWorkgroupAccess:
         manager.check_workgroup_access(sid, WORKGROUP_A)
 
     def test_different_workgroup_raises_workgroup_access_error(self, manager) -> None:
-        from ponddb.session_manager import WorkgroupAccessError
+        from ponddb.engine.session_manager import WorkgroupAccessError
 
         sid = manager.create_session(workgroup_id=WORKGROUP_A)
         with pytest.raises(WorkgroupAccessError):
@@ -269,14 +268,14 @@ class TestCheckWorkgroupAccess:
 
     def test_default_session_from_non_default_caller_raises(self, manager) -> None:
         """Session in 'default' workgroup should raise if caller asserts a different workgroup."""
-        from ponddb.session_manager import WorkgroupAccessError
+        from ponddb.engine.session_manager import WorkgroupAccessError
 
         sid = manager.create_session()  # workgroup_id = "default"
         with pytest.raises(WorkgroupAccessError):
             manager.check_workgroup_access(sid, WORKGROUP_A)
 
     def test_workgroup_b_session_from_workgroup_a_caller_raises(self, manager) -> None:
-        from ponddb.session_manager import WorkgroupAccessError
+        from ponddb.engine.session_manager import WorkgroupAccessError
 
         sid = manager.create_session(workgroup_id=WORKGROUP_B)
         with pytest.raises(WorkgroupAccessError):
@@ -284,7 +283,7 @@ class TestCheckWorkgroupAccess:
 
     def test_error_message_identifies_workgroups(self, manager) -> None:
         """WorkgroupAccessError message must name the mismatched workgroups."""
-        from ponddb.session_manager import WorkgroupAccessError
+        from ponddb.engine.session_manager import WorkgroupAccessError
 
         sid = manager.create_session(workgroup_id=WORKGROUP_A)
         with pytest.raises(WorkgroupAccessError) as exc_info:
@@ -317,7 +316,7 @@ def client(env_setup) -> TestClient:
 
 
 def _admin_token() -> str:
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
 
     return create_access_token(TENANT_A, role="admin")
 
@@ -344,7 +343,7 @@ def _workgroup_token(tenant_id: str, workgroup_id: str) -> str:
 
 def _no_workgroup_token(tenant_id: str) -> str:
     """Create a JWT that has NO workgroup_id claim."""
-    from ponddb.jwt_auth import create_access_token
+    from ponddb.auth.jwt_auth import create_access_token
 
     return create_access_token(tenant_id)
 

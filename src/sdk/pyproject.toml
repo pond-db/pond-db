@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "duckcloud"
 version = "0.1.0"
 description = "Python SDK for the DuckCloud query platform"
-license = "MIT"
+license = "BSL-1.1"
 requires-python = ">=3.12"
 authors = [{ name = "DatabaseCompany" }]
 

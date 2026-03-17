@@ -17,7 +17,7 @@ import time
 
 import pytest
 
-from ponddb.session_manager import SessionManager, SessionStatus
+from ponddb.engine.session_manager import SessionManager, SessionStatus
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +181,7 @@ def test_suspend_count_unchanged(manager) -> None:
 
 def test_in_memory_table_lost_after_suspend_resume(manager, session_id: str) -> None:
     """Per design: in-memory tables are LOST on suspend."""
-    from ponddb.session_manager import QueryError
+    from ponddb.engine.session_manager import QueryError
 
     manager.execute_query(session_id, "CREATE TABLE mem_tbl (x INTEGER)")
     manager.execute_query(session_id, "INSERT INTO mem_tbl VALUES (42)")
@@ -426,7 +426,6 @@ async def test_watchdog_default_idle_timeout_is_300s() -> None:
 @pytest.mark.asyncio
 async def test_watchdog_idle_timeout_from_env(monkeypatch) -> None:
     """idle_timeout can be set via POND_IDLE_TIMEOUT env var."""
-    import os
 
     monkeypatch.setenv("POND_IDLE_TIMEOUT", "42")
     mgr = SessionManager()

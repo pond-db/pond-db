@@ -14,8 +14,6 @@ import csv
 import importlib
 import io
 import os
-import struct
-import tempfile
 
 import pytest
 from fastapi.testclient import TestClient

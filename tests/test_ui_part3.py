@@ -68,7 +68,7 @@ class TestLandingPage:
     def test_request_invite_mailto(self, client: TestClient) -> None:
         body = client.get("/").text
         assert "mailto:" in body
-        assert "2014houtianlu@gmail.com" in body
+        assert "PondDB%20Invite%20Request" in body
 
     def test_github_link(self, client: TestClient) -> None:
         body = client.get("/").text
@@ -133,9 +133,9 @@ class TestLandingFooter:
         body = client.get("/").text
         assert "DatabaseCompany" in body
 
-    def test_footer_has_mit(self, client: TestClient) -> None:
+    def test_footer_has_license(self, client: TestClient) -> None:
         body = client.get("/").text
-        assert "MIT" in body
+        assert "License" in body
 
 
 # ===========================================================================

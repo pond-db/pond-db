@@ -21,7 +21,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def _import_check():
     """Fail fast with a clear ImportError if the module isn't created yet."""
-    from ponddb import sql_sandbox  # noqa: F401
+    from ponddb.security import sql_sandbox  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ _DISTINCT_BLOCKED_PATTERNS = sorted({label for label, _ in BLOCKED_SQL_CASES})
 @pytest.mark.parametrize("label,sql", BLOCKED_SQL_CASES)
 def test_blocked_pattern_raises(label: str, sql: str) -> None:
     """Every blocked SQL statement must raise BlockedSqlError."""
-    from ponddb.sql_sandbox import BlockedSqlError, check_sql
+    from ponddb.security.sql_sandbox import BlockedSqlError, check_sql
 
     with pytest.raises(BlockedSqlError):
         check_sql(sql)
@@ -71,7 +71,7 @@ def test_blocked_pattern_raises(label: str, sql: str) -> None:
 
 def test_blocked_sql_error_has_pattern_attribute() -> None:
     """BlockedSqlError must expose the matched pattern name."""
-    from ponddb.sql_sandbox import BlockedSqlError, check_sql
+    from ponddb.security.sql_sandbox import BlockedSqlError, check_sql
 
     with pytest.raises(BlockedSqlError) as exc_info:
         check_sql("COPY t TO '/tmp/out.csv'")
@@ -83,7 +83,7 @@ def test_blocked_sql_error_has_pattern_attribute() -> None:
 
 def test_blocked_sql_error_message_mentions_pattern() -> None:
     """Exception message must mention the blocked pattern."""
-    from ponddb.sql_sandbox import BlockedSqlError, check_sql
+    from ponddb.security.sql_sandbox import BlockedSqlError, check_sql
 
     with pytest.raises(BlockedSqlError) as exc_info:
         check_sql("INSTALL httpfs")
@@ -104,7 +104,7 @@ def test_blocked_sql_error_message_mentions_pattern() -> None:
 ])
 def test_blocked_case_insensitive(sql: str) -> None:
     """Blocked-pattern check is case-insensitive."""
-    from ponddb.sql_sandbox import BlockedSqlError, check_sql
+    from ponddb.security.sql_sandbox import BlockedSqlError, check_sql
 
     with pytest.raises(BlockedSqlError):
         check_sql(sql)
@@ -123,7 +123,7 @@ def test_blocked_case_insensitive(sql: str) -> None:
 ])
 def test_blocked_with_leading_whitespace(sql: str) -> None:
     """Blocked patterns are still caught when SQL has leading whitespace."""
-    from ponddb.sql_sandbox import BlockedSqlError, check_sql
+    from ponddb.security.sql_sandbox import BlockedSqlError, check_sql
 
     with pytest.raises(BlockedSqlError):
         check_sql(sql)
@@ -155,7 +155,7 @@ ALLOWED_SQL_CASES = [
 @pytest.mark.parametrize("sql", ALLOWED_SQL_CASES)
 def test_allowed_sql_does_not_raise(sql: str) -> None:
     """Legitimate SQL must not raise BlockedSqlError."""
-    from ponddb.sql_sandbox import check_sql
+    from ponddb.security.sql_sandbox import check_sql
 
     # Should return None without raising
     result = check_sql(sql)
@@ -169,7 +169,7 @@ def test_allowed_sql_does_not_raise(sql: str) -> None:
 
 def test_empty_string_does_not_raise() -> None:
     """Empty SQL does not match any blocked pattern (separate validation handles it)."""
-    from ponddb.sql_sandbox import check_sql
+    from ponddb.security.sql_sandbox import check_sql
 
     result = check_sql("")
     assert result is None
@@ -177,7 +177,7 @@ def test_empty_string_does_not_raise() -> None:
 
 def test_none_like_whitespace_does_not_raise() -> None:
     """Pure whitespace SQL does not match any blocked pattern."""
-    from ponddb.sql_sandbox import check_sql
+    from ponddb.security.sql_sandbox import check_sql
 
     result = check_sql("   \n\t  ")
     assert result is None
@@ -191,7 +191,7 @@ def test_blocked_pattern_embedded_in_string_literal_does_not_raise() -> None:
     to handle this with a more sophisticated parser or skip it.
     Marking as xfail so it doesn't block CI until addressed.
     """
-    from ponddb.sql_sandbox import check_sql
+    from ponddb.security.sql_sandbox import check_sql
 
     # A SELECT that merely mentions the word 'copy' inside a string value
     sql = "SELECT 'the word copy is safe here' AS note"
@@ -205,7 +205,7 @@ def test_blocked_pattern_embedded_in_string_literal_does_not_raise() -> None:
 
 def test_fourteen_distinct_blocked_patterns_are_defined() -> None:
     """The sandbox must define exactly 14 distinct blocked patterns."""
-    from ponddb.sql_sandbox import BLOCKED_PATTERNS
+    from ponddb.security.sql_sandbox import BLOCKED_PATTERNS
 
     names = {p if isinstance(p, str) else p.pattern for p in BLOCKED_PATTERNS}
     assert len(BLOCKED_PATTERNS) >= 14, (

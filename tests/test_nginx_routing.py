@@ -290,7 +290,6 @@ def test_fastapi_health_endpoint_importable() -> None:
 
 def test_fastapi_has_admin_routes() -> None:
     """FastAPI /admin routes must exist (nginx protects them, FastAPI serves them internally)."""
-    from fastapi.testclient import TestClient
     import os
     os.environ.setdefault("POND_JWT_SECRET", "test-secret-nginx")
     os.environ.setdefault("POND_API_KEY", "test-key-nginx")

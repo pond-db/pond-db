@@ -11,13 +11,12 @@ import hashlib
 import hmac
 import importlib
 import json
-import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
-from ponddb.session_manager import SessionManager, SessionStatus
+from ponddb.engine.session_manager import SessionManager, SessionStatus
 
 VALID_KEY = "test-session-bugs-key"
 JWT_SECRET = "test-session-bugs-jwt"
