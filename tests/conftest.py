@@ -15,8 +15,12 @@ def _cleanup_global_manager_sessions() -> None:
     After 2,000+ tests the committed virtual address space exceeds the kernel's
     CommitLimit, causing os.fork() in subprocess_runner tests to fail with ENOMEM.
 
-    This fixture cleans up stale sessions after every test and forces a GC cycle
-    to help Python release the underlying DuckDB connection objects.
+    This fixture clears session references and forces a GC cycle to release the
+    underlying DuckDB connection objects.  We intentionally do NOT call
+    ``manager.destroy_session()`` because DuckDB's ``conn.close()`` can trigger
+    a fatal SIGABRT in CI when many sessions are torn down rapidly.  Dropping
+    references and running ``gc.collect()`` achieves the same memory reclamation
+    without the crash risk.
     """
     yield  # test runs here
 
@@ -25,11 +29,9 @@ def _cleanup_global_manager_sessions() -> None:
 
         manager = getattr(_app_module, "_manager", None)
         if manager is not None:
-            for session_info in list(manager.list_sessions()):
-                try:
-                    manager.destroy_session(session_info["session_id"])
-                except Exception:
-                    pass
+            # Clear all session references without calling conn.close().
+            # Python/DuckDB will release resources when the objects are GC'd.
+            manager._sessions.clear()
     except Exception:
         pass
 
