@@ -1,0 +1,11 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="640" fill="#0f172a"/>
+  <g transform="translate(440, 200)">
+    <path d="M80 10 C80 10 40 70 40 100 C40 126 53 140 80 140 C107 140 120 126 120 100 C120 70 80 10 80 10Z" fill="#3b82f6"/>
+    <rect x="56" y="75" width="48" height="5" rx="2.5" fill="white" opacity="0.9"/>
+    <rect x="56" y="87" width="36" height="5" rx="2.5" fill="white" opacity="0.7"/>
+    <rect x="56" y="99" width="42" height="5" rx="2.5" fill="white" opacity="0.5"/>
+  </g>
+  <text x="640" y="420" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#f9fafb" letter-spacing="-1">PondDB</text>
+  <text x="640" y="480" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" fill="#94a3b8">Share DuckDB with your team — or let your AI agents query it.</text>
+</svg>

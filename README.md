@@ -1,5 +1,10 @@
-<h1 align="center">PondDB</h1>
-<h3 align="center">Share DuckDB with your team — or let your AI agents query it.</h3>
+<p align="center">
+  <img src="static/ponddb-logo-wordmark.svg" alt="PondDB" height="50">
+</p>
+
+<p align="center">
+  <strong>Share DuckDB with your team — or let your AI agents query it.</strong>
+</p>
 
 <p align="center">
   <a href="https://github.com/pond-db/pond-db/actions/workflows/ci.yml"><img src="https://github.com/pond-db/pond-db/actions/workflows/ci.yml/badge.svg" alt="CI"></a>

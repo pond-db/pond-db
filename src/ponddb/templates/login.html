@@ -9,7 +9,7 @@
 <body>
   {# --- Nav bar (same as landing) --- #}
   <nav class="landing-nav">
-    <div><strong style="font-size:1.1rem;color:#111827;"><a href="/" style="color:inherit;text-decoration:none;">PondDB</a></strong></div>
+    <div><a href="/" style="text-decoration:none;display:flex;align-items:center;"><img src="/static/ponddb-logo.svg" alt="PondDB" height="28" style="vertical-align: middle;"><span style="font-size:18px;font-weight:600;margin-left:6px;color:#111827;">PondDB</span></a></div>
     <div style="display:flex;gap:24px;align-items:center;">
       <a href="https://github.com/pond-db/pond-db">Docs</a>
       <a href="/login" class="btn btn-primary" style="padding:8px 20px;">Login</a>
@@ -17,6 +17,7 @@
   </nav>
 
   {# --- Login card --- #}
+  <img src="/static/ponddb-logo.svg" alt="PondDB" height="40" style="display:block;margin:0 auto 16px;">
   <div class="login-card">
     {% if invite_state and namespace_name %}
     <div class="invite-banner">
