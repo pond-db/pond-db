@@ -75,7 +75,7 @@ class TestLandingLinks:
 
     def test_github_docs_link_present(self, client: TestClient) -> None:
         body = client.get("/").text
-        assert "github.com/DatabaseCompany/db-engine" in body
+        assert "github.com/pond-db/pond-db" in body
 
     def test_request_invite_mailto(self, client: TestClient) -> None:
         body = client.get("/").text

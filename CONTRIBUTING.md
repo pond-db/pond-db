@@ -5,8 +5,8 @@ Thank you for your interest in contributing to PondDB!
 ## Development Setup
 
 ```bash
-git clone https://github.com/DatabaseCompany/db-engine.git
-cd db-engine
+git clone https://github.com/pond-db/pond-db.git
+cd pond-db
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"

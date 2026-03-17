@@ -9,7 +9,7 @@ description = "Lightweight self-hosted compute platform wrapping DuckDB with ser
 readme = "README.md"
 license = "BSL-1.1"
 requires-python = ">=3.12"
-authors = [{ name = "DatabaseCompany" }]
+authors = [{ name = "Tianlu" }]
 
 dependencies = [
     "fastapi>=0.115,<1",

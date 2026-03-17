@@ -230,7 +230,7 @@ def test_readme_has_ci_badge(readme_text: str) -> None:
     )
     assert has_badge, (
         "README.md must include a GitHub Actions CI badge near the top. "
-        "Add: ![CI](https://github.com/DatabaseCompany/db-engine/actions/workflows/ci.yml/badge.svg)"
+        "Add: ![CI](https://github.com/pond-db/pond-db/actions/workflows/ci.yml/badge.svg)"
     )
 
 

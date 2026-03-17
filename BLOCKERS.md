@@ -21,7 +21,7 @@ wget https://repo1.maven.org/maven2/com/madgit/bfg/1.14.0/bfg-1.14.0.jar -O bfg.
 echo '[REDACTED]==>contact@databasecompany.com' > replacements.txt
 
 # 3. Make a fresh bare clone of the repo (BFG needs a bare clone)
-git clone --mirror git@github.com:DatabaseCompany/db-engine.git db-engine-mirror.git
+git clone --mirror git@github.com:pond-db/pond-db.git pond-db-mirror.git
 
 # 4. Run BFG to replace the email in history
 java -jar bfg.jar --replace-text replacements.txt db-engine-mirror.git

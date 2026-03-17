@@ -72,7 +72,7 @@ class TestLandingPage:
 
     def test_github_link(self, client: TestClient) -> None:
         body = client.get("/").text
-        assert "github.com/DatabaseCompany/db-engine" in body
+        assert "github.com/pond-db/pond-db" in body
 
     def test_no_auth_required(self, client: TestClient) -> None:
         resp = client.get("/")
@@ -131,7 +131,7 @@ class TestLandingCodeExample:
 class TestLandingFooter:
     def test_has_footer(self, client: TestClient) -> None:
         body = client.get("/").text
-        assert "DatabaseCompany" in body
+        assert "Tianlu" in body
 
     def test_footer_has_license(self, client: TestClient) -> None:
         body = client.get("/").text
