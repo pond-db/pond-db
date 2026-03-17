@@ -319,3 +319,248 @@ def test_query_result_row_length_matches_column_count(
     result = manager.execute_query(session_id, "SELECT 1 AS a, 2 AS b, 3 AS c")
     for row in result.rows:
         assert len(row) == len(result.columns)
+
+
+# ---------------------------------------------------------------------------
+# list_sessions — filtering
+# ---------------------------------------------------------------------------
+
+
+def test_list_sessions_filter_by_namespace(manager) -> None:
+    manager.create_session(namespace="ns_a")
+    manager.create_session(namespace="ns_b")
+    ns_a = manager.list_sessions(namespace="ns_a")
+    assert len(ns_a) == 1
+    assert ns_a[0]["namespace"] == "ns_a"
+
+
+def test_list_sessions_filter_by_workgroup(manager) -> None:
+    manager.create_session(workgroup_id="wg1")
+    manager.create_session(workgroup_id="wg2")
+    wg1 = manager.list_sessions(workgroup_id="wg1")
+    assert len(wg1) == 1
+    assert wg1[0]["workgroup_id"] == "wg1"
+
+
+def test_list_sessions_filter_no_match_returns_empty(manager) -> None:
+    manager.create_session(namespace="ns_a")
+    result = manager.list_sessions(namespace="ns_nonexistent")
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# suspend_session / resume_session
+# ---------------------------------------------------------------------------
+
+
+def test_suspend_session_changes_status(manager, session_id: str) -> None:
+    from ponddb.session_manager import SessionStatus
+
+    manager.suspend_session(session_id)
+    info = manager.get_session(session_id)
+    assert info["status"] == SessionStatus.SUSPENDED
+
+
+def test_suspend_session_twice_raises(manager, session_id: str) -> None:
+    manager.suspend_session(session_id)
+    with pytest.raises(ValueError):
+        manager.suspend_session(session_id)
+
+
+def test_suspend_unknown_session_raises(manager) -> None:
+    with pytest.raises(KeyError):
+        manager.suspend_session("no-such-session")
+
+
+def test_resume_session_changes_status_to_active(manager, session_id: str) -> None:
+    from ponddb.session_manager import SessionStatus
+
+    manager.suspend_session(session_id)
+    manager.resume_session(session_id)
+    info = manager.get_session(session_id)
+    assert info["status"] == SessionStatus.ACTIVE
+
+
+def test_resume_active_session_raises(manager, session_id: str) -> None:
+    with pytest.raises(ValueError):
+        manager.resume_session(session_id)
+
+
+def test_resume_unknown_session_raises(manager) -> None:
+    with pytest.raises(KeyError):
+        manager.resume_session("no-such-session")
+
+
+def test_suspend_then_destroy(manager, session_id: str) -> None:
+    manager.suspend_session(session_id)
+    manager.destroy_session(session_id)
+    assert manager.session_count == 0
+
+
+# ---------------------------------------------------------------------------
+# execute_query — transparent resume of suspended session
+# ---------------------------------------------------------------------------
+
+
+def test_execute_query_resumes_suspended_session(manager, session_id: str) -> None:
+    from ponddb.session_manager import SessionStatus
+
+    manager.suspend_session(session_id)
+    # Query should transparently resume the session
+    result = manager.execute_query(session_id, "SELECT 1 AS n")
+    assert result.rows == [[1]]
+    info = manager.get_session(session_id)
+    assert info["status"] == SessionStatus.ACTIVE
+
+
+# ---------------------------------------------------------------------------
+# check_workgroup_access
+# ---------------------------------------------------------------------------
+
+
+def test_check_workgroup_access_passes_matching(manager) -> None:
+    sid = manager.create_session(workgroup_id="wg_a")
+    # Should not raise
+    manager.check_workgroup_access(sid, "wg_a")
+
+
+def test_check_workgroup_access_raises_on_mismatch(manager) -> None:
+    from ponddb.session_manager import WorkgroupAccessError
+
+    sid = manager.create_session(workgroup_id="wg_a")
+    with pytest.raises(WorkgroupAccessError):
+        manager.check_workgroup_access(sid, "wg_b")
+
+
+def test_check_workgroup_access_none_skips_check(manager) -> None:
+    sid = manager.create_session(workgroup_id="wg_a")
+    # None means skip the check — should not raise
+    manager.check_workgroup_access(sid, None)
+
+
+def test_check_workgroup_access_unknown_session_raises(manager) -> None:
+    with pytest.raises(KeyError):
+        manager.check_workgroup_access("ghost", "wg_a")
+
+
+# ---------------------------------------------------------------------------
+# WorkgroupQuota enforcement
+# ---------------------------------------------------------------------------
+
+
+def test_workgroup_quota_exceeded_raises(manager) -> None:
+    from ponddb.session_manager import WorkgroupQuotaExceeded
+
+    manager.create_session(workgroup_id="wg_limited", max_concurrent_sessions=1)
+    with pytest.raises(WorkgroupQuotaExceeded):
+        manager.create_session(workgroup_id="wg_limited", max_concurrent_sessions=1)
+
+
+def test_workgroup_quota_resumes_suspended_session(manager) -> None:
+    from ponddb.session_manager import SessionStatus
+
+    # Create 2 sessions without limit to build up state
+    sid_active = manager.create_session(workgroup_id="wg_x")
+    sid_suspended = manager.create_session(workgroup_id="wg_x")
+    # Suspend one — now 1 active + 1 suspended in wg_x
+    manager.suspend_session(sid_suspended)
+    # With limit=1 and 1 active already at quota, should resume the suspended session
+    sid_returned = manager.create_session(workgroup_id="wg_x", max_concurrent_sessions=1)
+    assert sid_returned == sid_suspended
+    info = manager.get_session(sid_suspended)
+    assert info["status"] == SessionStatus.ACTIVE
+    manager.destroy_session(sid_active)
+    manager.destroy_session(sid_suspended)
+
+
+def test_workgroup_quota_default_workgroup_no_enforcement(manager) -> None:
+    """default workgroup should never be quota-enforced."""
+    for _ in range(5):
+        manager.create_session(workgroup_id="default", max_concurrent_sessions=1)
+    assert manager.session_count == 5
+
+
+def test_workgroup_quota_no_limit_when_none(manager) -> None:
+    """max_concurrent_sessions=None means no limit."""
+    for _ in range(5):
+        manager.create_session(workgroup_id="wg_unlimited", max_concurrent_sessions=None)
+    assert manager.session_count == 5
+
+
+# ---------------------------------------------------------------------------
+# run_watchdog_once
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_watchdog_suspends_idle_sessions() -> None:
+    from ponddb.session_manager import SessionManager, SessionStatus
+
+    mgr = SessionManager(idle_timeout=0)  # 0s → immediately idle
+    sid = mgr.create_session()
+    suspended = await mgr.run_watchdog_once()
+    assert sid in suspended
+    info = mgr.get_session(sid)
+    assert info["status"] == SessionStatus.SUSPENDED
+    mgr.destroy_session(sid)
+
+
+@pytest.mark.asyncio
+async def test_watchdog_skips_recently_active_sessions() -> None:
+    from ponddb.session_manager import SessionManager, SessionStatus
+
+    mgr = SessionManager(idle_timeout=9999)  # very long timeout
+    sid = mgr.create_session()
+    suspended = await mgr.run_watchdog_once()
+    assert sid not in suspended
+    info = mgr.get_session(sid)
+    assert info["status"] == SessionStatus.ACTIVE
+    mgr.destroy_session(sid)
+
+
+@pytest.mark.asyncio
+async def test_watchdog_returns_list() -> None:
+    from ponddb.session_manager import SessionManager
+
+    mgr = SessionManager(idle_timeout=9999)
+    result = await mgr.run_watchdog_once()
+    assert isinstance(result, list)
+
+
+# ---------------------------------------------------------------------------
+# run_reaper_once
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reaper_destroys_stale_suspended_sessions() -> None:
+    from ponddb.session_manager import SessionManager
+
+    mgr = SessionManager(idle_timeout=0)
+    sid = mgr.create_session()
+    mgr.suspend_session(sid)
+    destroyed = await mgr.run_reaper_once(max_suspend_age=0)
+    assert sid in destroyed
+    assert mgr.session_count == 0
+
+
+@pytest.mark.asyncio
+async def test_reaper_skips_recently_suspended_sessions() -> None:
+    from ponddb.session_manager import SessionManager
+
+    mgr = SessionManager()
+    sid = mgr.create_session()
+    mgr.suspend_session(sid)
+    destroyed = await mgr.run_reaper_once(max_suspend_age=9999)
+    assert sid not in destroyed
+    assert mgr.session_count == 1
+    mgr.destroy_session(sid)
+
+
+@pytest.mark.asyncio
+async def test_reaper_returns_list() -> None:
+    from ponddb.session_manager import SessionManager
+
+    mgr = SessionManager()
+    result = await mgr.run_reaper_once()
+    assert isinstance(result, list)
