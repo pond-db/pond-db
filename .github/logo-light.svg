@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="50" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <!-- Pond icon: three stacked discs (like a database) -->
+  <ellipse cx="30" cy="24" rx="22" ry="10" fill="url(#g1)" opacity="0.9"/>
+  <rect x="8" y="24" width="44" height="20" fill="url(#g1)" opacity="0.7"/>
+  <ellipse cx="30" cy="44" rx="22" ry="10" fill="url(#g1)" opacity="0.8"/>
+  <rect x="8" y="44" width="44" height="16" fill="url(#g1)" opacity="0.6"/>
+  <ellipse cx="30" cy="60" rx="22" ry="10" fill="url(#g1)" opacity="0.9"/>
+  <!-- Ripple arcs (the "pond" effect) -->
+  <path d="M20 36 Q30 30 40 36" stroke="white" stroke-width="1.5" fill="none" opacity="0.6"/>
+  <path d="M16 48 Q30 42 44 48" stroke="white" stroke-width="1.5" fill="none" opacity="0.5"/>
+  <!-- Text -->
+  <text x="66" y="52" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="42" font-weight="700" fill="#111827">Pond<tspan fill="url(#g1)">DB</tspan></text>
+</svg>

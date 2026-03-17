@@ -1,280 +1,325 @@
-# PondDB
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/pond-db/pond-db/main/.github/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/pond-db/pond-db/main/.github/logo-light.svg">
+    <img alt="PondDB" src="https://raw.githubusercontent.com/pond-db/pond-db/main/.github/logo-light.svg" height="80">
+  </picture>
+</p>
 
-[![CI](https://github.com/DatabaseCompany/db-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/DatabaseCompany/db-engine/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+<p align="center">
+  <b>Serverless DuckDB platform with async HTTP query API, workgroup isolation, and OAuth — self-hosted.</b>
+</p>
 
-Self-hosted SQL analytics engine powered by DuckDB. Serverless session management,
-async query execution, multi-tenant isolation, and a full SaaS dashboard — all in a
-single Python package.
+<p align="center">
+  <a href="https://github.com/pond-db/pond-db/actions/workflows/ci.yml"><img src="https://github.com/pond-db/pond-db/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/tests-2%2C552%20passing-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/coverage-92%25-brightgreen" alt="Coverage">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSL%201.1-blue" alt="License"></a>
+  <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python 3.12+">
+</p>
+
+[![CI](https://github.com/pond-db/pond-db/actions/workflows/ci.yml/badge.svg)](https://github.com/pond-db/pond-db/actions/workflows/ci.yml)
+
+<p align="center">
+  <a href="docs/api.md">API Reference</a> ·
+  <a href="ARCHITECTURE.md">Architecture</a> ·
+  <a href="docs/configuration.md">Configuration</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
+
+---
+
+## What is PondDB?
+
+PondDB turns DuckDB into a multi-tenant serverless platform. Submit SQL over HTTP, get results back — no connections to manage, no clusters to provision, no cold starts. Think Redshift Serverless, but open-source and self-hosted.
 
 ## Features
 
-- **DuckDB-backed sessions** — on-demand spin-up (<500ms), auto-suspend on idle, transparent resume
-- **Async PondAPI** — submit SQL, poll for results, rate-limited per tenant
-- **SQL sandbox** — 15 blocked patterns prevent file access, config changes, and extension loading
-- **JWT + API key auth** — token exchange, refresh, revocation, and API key fallback
-- **Multi-tenant isolation** — query store, history, and executions scoped per tenant
-- **OAuth** — Google and GitHub SSO with HMAC CSRF protection
-- **Invite system** — token-based invites with optional SMTP email delivery
-- **Query store** — save, name, slug, public/private visibility, pagination
-- **Share links** — execute saved queries via `/q/{slug}`, rate-limited per IP
-- **Dataset manager** — CSV/Parquet upload, auto-registered as DuckDB tables on session create/resume
-- **SQL editor** — CodeMirror 6, HTMX execution, schema sidebar with click-to-insert
-- **SaaS dashboard** — Custom CSS, sidebar nav, stat cards, status badges
-- **Admin console** — invites, namespaces, workgroup quotas, usage monitoring
-- **Python SDK** — `DuckCloudClient` with auto-refresh, retry, session management
-- **CLI** — `pond serve`, `pond version`, `pond check`
-- **2,550+ tests**, 92% coverage
+| Feature | Description |
+|---------|-------------|
+| **PondAPI** | Async HTTP query execution. POST SQL, poll for results. Sub-200ms submission. |
+| **Workgroup Isolation** | Per-team compute quotas, session limits, and data isolation. |
+| **Session Lifecycle** | Auto-suspend idle sessions, transparent resume, zero cold starts. |
+| **OAuth + Invite System** | Google & GitHub SSO. Invite-gated registration with role assignment. |
+| **SQL Editor** | Browser-based CodeMirror 6 editor with live schema sidebar. |
+| **SQL Sandbox** | 15 blocked patterns prevent file access, config changes, and extension loading. |
+| **Dataset Manager** | Upload CSV/Parquet → auto-registered as DuckDB tables across all sessions. |
+| **Query Store** | Save, name, share. Public slugs at `/q/{slug}` with per-IP rate limiting. |
+| **Python SDK** | `pip install ponddb` — authenticate, query, save, share in 5 lines. |
+| **CLI** | `pond serve`, `pond version`, `pond check` — everything from the terminal. |
+| **Self-Hosted** | Single `docker compose up`. Your hardware, your data, no vendor lock-in. |
+
+## How PondDB compares
+
+|  | DuckDB | Redshift Serverless | PondDB |
+|--|--------|---------------------|--------|
+| **Type** | Embedded engine | Cloud service | Self-hosted platform |
+| **Multi-tenant** | No | Yes | Yes |
+| **HTTP API** | No | Yes (Data API) | Yes (PondAPI) |
+| **Auth** | N/A | IAM | OAuth + JWT + API keys |
+| **Cold start** | N/A | ~1 s | < 500 ms |
+| **Self-hosted** | Yes (embedded) | No | Yes (Docker) |
+| **Price** | Free | Pay per query | Free (OSS) |
+
+> **DuckDB is the engine. PondDB is the platform.**
+> PondDB wraps DuckDB in the infrastructure teams actually need — auth, isolation, HTTP APIs, a UI — so you can ship analytics without building all of that yourself.
 
 ## Quickstart
 
-### Docker (recommended)
+### 1. Clone and configure
 
 ```bash
+git clone https://github.com/pond-db/pond-db.git
+cd pond-db
 cp .env.example .env
-# Edit .env — set POND_API_KEY and POND_JWT_SECRET
-docker compose up
+# Edit .env — set POND_API_KEY and POND_JWT_SECRET (at minimum)
 ```
 
-### pip
+### 2. Start the server
+
+```bash
+docker compose up -d
+```
+
+Or with pip (development):
 
 ```bash
 pip install ponddb
-export POND_API_KEY=changeme
-export POND_JWT_SECRET=your-secret-here
-pond serve
-# Or: uvicorn ponddb.app:app --host 0.0.0.0 --port 8432
+uvicorn ponddb.app:app --host 0.0.0.0 --port 8432
 ```
 
-### Verify
+### 3. Verify
 
 ```bash
 curl http://localhost:8432/health
-# {"status":"ok","version":"0.1.0","sessions":0}
+# → {"status": "ok", "version": "0.1.0", "sessions": 0}
 ```
 
-## Configuration
-
-Copy `.env.example` to `.env` and configure:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `POND_API_KEY` | *(required)* | Master API key for `/auth/token` |
-| `POND_JWT_SECRET` | *(required)* | JWT HS256 signing secret |
-| `POND_HOST` | `0.0.0.0` | Server bind host |
-| `POND_PORT` | `8432` | Server bind port |
-| `POND_IDLE_TIMEOUT` | `300` | Seconds of idle before auto-suspend |
-| `POND_MAX_SESSION_AGE` | `86400` | Maximum session lifetime in seconds |
-| `POND_DATA_ROOT` | `./data` | Root directory for dataset uploads |
-| `POND_SQLITE_PATH` | `./ponddb.db` | Path to the SQLite metadata store |
-| `POND_MAX_RESULT_MB` | `100` | Maximum query result size in MB |
-| `POND_SESSION_MEMORY_LIMIT` | `2GB` | Per-session DuckDB memory cap |
-| `POND_LOG_LEVEL` | `INFO` | Logging level (DEBUG/INFO/WARNING/ERROR) |
-
-See [`.env.example`](.env.example) for OAuth, SMTP, and rate limit variables.
-
-Run `pond check` to validate your environment.
-
-## API Reference
-
-### Core
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | No | Server status, version, session count |
-| POST | `/session` | No | Create a DuckDB session |
-| DELETE | `/session/{id}` | No | Destroy a session |
-| GET | `/sessions` | No | List active sessions |
-| POST | `/query` | JWT | Execute SQL synchronously |
-| POST | `/pondapi/execute` | JWT | Submit SQL for async execution |
-| GET | `/pondapi/execute/{id}/result` | JWT | Poll async execution result |
-| GET | `/schema?session_id=` | JWT | Table and column introspection |
-| GET | `/history` | JWT | Query execution history |
-| POST | `/catalog/mount` | JWT | Mount a local file into a session |
-| GET | `/metrics` | No | Prometheus-compatible metrics endpoint |
-| GET | `/editor` | No | Web-based SQL editor (HTML) |
-
-### Auth
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/auth/token` | No | Exchange API key for JWT |
-| POST | `/auth/refresh` | No | Refresh an access token |
-| POST | `/auth/revoke` | JWT | Revoke a token |
-
-### Data
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/datasets` | API Key | List uploaded datasets |
-| POST | `/datasets` | API Key | Upload CSV/Parquet |
-| DELETE | `/datasets/{name}` | API Key | Delete a dataset |
-| POST | `/queries` | JWT | Save a named query |
-| GET | `/queries` | JWT | List saved queries |
-| GET | `/q/{slug}` | Optional | Execute a shared query |
-
-### Admin (requires admin JWT)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/namespaces` | Create namespace |
-| POST | `/workgroups` | Create workgroup with quota |
-| POST | `/invites` | Create invite token |
-| POST | `/invites/{token}/accept` | Accept invite (no auth) |
-
-## Python SDK
+### 4. Query from Python
 
 ```python
 from ponddb import PondDB
 
-# Connect with an API key
-client = PondDB(base_url="http://localhost:8432", api_key="your-api-key")
+client = PondDB("http://localhost:8432", api_key="your-api-key")
 
-# Use as a context manager — session is created and destroyed automatically
 with client as session:
     result = session.query("SELECT 42 AS answer")
-    print(result)  # {"columns": ["answer"], "rows": [[42]], ...}
+    print(result.rows)  # [[42]]
 ```
 
-Or use the lower-level SDK client:
-
-```python
-from sdk.duckcloud import DuckCloudClient
-
-client = DuckCloudClient(
-    base_url="http://localhost:8432",
-    api_key="your-api-key",
-)
-client.authenticate()
-client.create_session()
-result = client.query("SELECT 42 AS answer")
-client.destroy_session()
-```
-
-## CLI
+### 5. Or use curl
 
 ```bash
-pond serve              # Start the server
-pond serve --port 9000  # Custom port
-pond serve --reload     # Dev mode with auto-reload
-pond version            # Print version
-pond check              # Validate environment variables
+# Get a JWT
+TOKEN=$(curl -s -X POST http://localhost:8432/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your-api-key"}' | jq -r .access_token)
+
+# Create a session
+SID=$(curl -s -X POST http://localhost:8432/session | jq -r .session_id)
+
+# Run a query
+curl -s -X POST http://localhost:8432/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"session_id\": \"$SID\", \"sql\": \"SELECT 42 AS answer\"}"
+# → {"columns": ["answer"], "rows": [[42]], "rowcount": 1, "elapsed_ms": 1.2}
 ```
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────────┐
-│                    Clients                              │
-│  (HTTP / Python SDK / CLI / SQL Editor)                │
-└─────────────────────┬──────────────────────────────────┘
-                      │
-                      ▼
-┌────────────────────────────────────────────────────────┐
-│              FastAPI + Uvicorn                          │
-│  14 routers: query, auth, session, pondapi, datasets,  │
-│  queries, share, schema, invites, namespaces, oauth,   │
-│  admin, htmx, health                                   │
-└──────┬───────────────────────┬─────────────────────────┘
-       │                       │
-       ▼                       ▼
-┌──────────────────┐   ┌─────────────────────────┐
-│  Session Manager │   │    JWT Auth + Sandbox   │
-│  (DuckDB pool,   │   │  (python-jose, 15      │
-│   idle watchdog) │   │   blocked patterns)     │
-└────────┬─────────┘   └─────────────────────────┘
-         │
-         ▼
-┌──────────────────┐   ┌─────────────────────────┐
-│  DuckDB Engine   │   │   SQLite Metadata       │
-│  (one conn/sess, │   │  (queries, history,     │
-│   sandboxed)     │   │   invites, datasets)    │
-└──────────────────┘   └─────────────────────────┘
+```mermaid
+graph TB
+    subgraph Clients
+        SDK[Python SDK]
+        CLI[CLI]
+        Browser[SQL Editor]
+        HTTP[HTTP / curl]
+    end
+
+    subgraph PondDB
+        API[FastAPI + Uvicorn]
+        Auth[JWT + OAuth + API Key Auth]
+        Sandbox[SQL Sandbox — 15 blocked patterns]
+        SM[Session Manager]
+        WD[Idle Watchdog + Reaper]
+        DM[Dataset Manager]
+    end
+
+    subgraph Storage
+        DuckDB[(DuckDB — one connection per session)]
+        SQLite[(SQLite — metadata, queries, history)]
+    end
+
+    SDK --> API
+    CLI --> API
+    Browser --> API
+    HTTP --> API
+    API --> Auth
+    API --> Sandbox
+    API --> SM
+    SM --> DuckDB
+    SM --> WD
+    DM --> DuckDB
+    API --> SQLite
 ```
 
 ### Session lifecycle
 
 ```
-COLD ──► ACTIVE ──► SUSPENDED ──► DESTROYED
-           │                          ▲
-           └──────────────────────────┘
-              DELETE /session/{id}
+COLD → ACTIVE → SUSPENDED → DESTROYED
 ```
 
-- **COLD → ACTIVE**: `POST /session` creates a DuckDB connection (<500 ms)
-- **ACTIVE → SUSPENDED**: idle watchdog fires after `POND_IDLE_TIMEOUT` seconds
-- **SUSPENDED → ACTIVE**: next query triggers transparent resume (<300 ms)
-- **ANY → DESTROYED**: `DELETE /session/{id}` or max age exceeded
+```
+POST /session         query arrives           idle timeout         max age / DELETE
+     │                     │                      │                     │
+     ▼                     ▼                      ▼                     ▼
+COLD/NEW ──► ACTIVE ◄──────── SUSPENDED ──────────► DESTROYED
+                │         transparent resume              ▲
+                └─────────────────────────────────────────┘
+```
 
-> **Session Lifecycle:** PondDB automatically suspends idle sessions after 5 minutes
-> and resumes them transparently when the next query arrives. Uploaded datasets are
-> always available after resume. Temporary tables created with `CREATE TEMP TABLE`
-> are lost on suspend — use uploaded datasets for persistent data.
+- **COLD → ACTIVE**: `POST /session` spins up a DuckDB connection (< 500 ms)
+- **ACTIVE → SUSPENDED**: Watchdog suspends after `POND_IDLE_TIMEOUT` seconds (default 300)
+- **SUSPENDED → ACTIVE**: Next query triggers transparent resume — datasets re-registered automatically
+- **ANY → DESTROYED**: `DELETE /session/{id}`, max age exceeded, or reaper cleanup
 
-### Workgroup quotas
+## API Reference
 
-When `max_concurrent_sessions` is set on a workgroup, PondDB enforces it at session
-creation time. If the limit is reached and a suspended session exists, PondDB will
-resume it instead of rejecting the request — smart scheduling with zero wasted resources.
+### Core endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/health` | — | Server status, version, session count |
+| `POST` | `/session` | — | Create a DuckDB session |
+| `DELETE` | `/session/{id}` | — | Destroy a session |
+| `GET` | `/sessions` | — | List all sessions |
+| `POST` | `/query` | JWT | Execute SQL synchronously |
+| `GET` | `/schema` | JWT | Table and column introspection |
+| `GET` | `/history` | JWT | Query execution history |
+| `GET` | `/metrics` | — | Prometheus-compatible metrics |
+
+### PondAPI (async execution)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/pondapi/execute` | JWT | Submit SQL for async execution |
+| `GET` | `/pondapi/execute/{id}/result` | JWT | Poll execution result |
+
+### Auth
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/auth/token` | Exchange API key for JWT access + refresh tokens |
+| `POST` | `/auth/refresh` | Refresh an expired access token |
+| `POST` | `/auth/revoke` | Revoke a token |
+
+### Data
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/datasets` | API Key | Upload CSV or Parquet file |
+| `GET` | `/datasets` | API Key | List uploaded datasets |
+| `DELETE` | `/datasets/{name}` | API Key | Delete a dataset |
+| `POST` | `/catalog/mount` | JWT | Mount a local file path as a DuckDB table |
+| `POST` | `/queries` | JWT | Save a named query |
+| `GET` | `/queries` | JWT | List saved queries |
+| `GET` | `/q/{slug}` | — | Execute a shared query (public link) |
+| `GET` | `/editor` | — | Browser-based SQL editor |
+
+### Admin
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/namespaces` | Create a namespace |
+| `POST` | `/workgroups` | Create a workgroup with compute quota |
+| `POST` | `/invites` | Generate an invite token |
+| `POST` | `/invites/{token}/accept` | Accept an invite |
+
+Full reference: [`docs/api.md`](docs/api.md)
+
+## Configuration
+
+Copy [`.env.example`](.env.example) and set at minimum:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `POND_API_KEY` | ✅ | — | Master API key for authentication |
+| `POND_JWT_SECRET` | ✅ | — | HS256 signing secret (≥ 16 chars) |
+| `POND_WEBSITE_SESSION_SECRET` | ✅ | — | Cookie signing secret for the dashboard |
+| `POND_HOST` | | `0.0.0.0` | Server bind address |
+| `POND_PORT` | | `8432` | Server listen port |
+| `POND_IDLE_TIMEOUT` | | `300` | Seconds before an idle session is suspended |
+| `POND_MAX_SESSION_AGE` | | `86400` | Max session lifetime in seconds |
+| `POND_DATA_ROOT` | | `./data` | Root directory for uploaded datasets |
+| `POND_MAX_RESULT_MB` | | `100` | Maximum query result size in MB |
+| `POND_SESSION_MEMORY_LIMIT` | | `2GB` | DuckDB memory limit per session |
+| `POND_LOG_LEVEL` | | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `POND_SQLITE_PATH` | | `./ponddb.db` | Path to the SQLite metadata database |
+
+Run `pond check` to validate your environment. See [Configuration docs](docs/configuration.md) for the full variable reference.
 
 ## Development
 
 ```bash
-git clone https://github.com/DatabaseCompany/db-engine.git
-cd db-engine
+git clone https://github.com/pond-db/pond-db.git
+cd pond-db
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Run tests
-pytest
+pytest                              # 2,552 tests
+pytest tests/test_browser.py -v     # Playwright browser tests
+ruff check src/ tests/              # Lint
 
-# Run stress tests
-pytest tests/test_stress_*.py -v
+# Generate demo data and run the full demo
+python scripts/demo_data.py
+python scripts/demo.py --api-key=your-key
+```
 
-# Lint
-ruff check src/ tests/
+## Project structure
 
-# Demo
-python scripts/demo_data.py          # Generate sample CSVs
-python scripts/demo.py --api-key=changeme  # Run full demo (requires running server)
+```
+pond-db/
+├── src/ponddb/           # Application code (33 modules)
+│   ├── app.py            # FastAPI app, routers, lifespan
+│   ├── session_manager.py# DuckDB session pool + watchdog
+│   ├── jwt_auth.py       # JWT, API key, OAuth, cookie auth
+│   ├── sql_sandbox.py    # 15 blocked SQL patterns
+│   ├── pondapi.py        # Async query execution engine
+│   ├── templates/        # Jinja2 HTML templates
+│   └── static/           # CSS, JS assets
+├── tests/                # 2,552 tests (unit, integration, browser)
+├── scripts/              # Demo scripts, secret rotation
+├── docs/                 # API reference, configuration, security
+├── .github/workflows/    # CI + release pipelines
+├── docker-compose.yml
+├── Dockerfile
+├── pyproject.toml
+└── .env.example
 ```
 
 ## Secret Management
 
-PondDB uses `POND_JWT_SECRET` to sign JWT tokens and `POND_API_KEY` for API key auth.
-Keep both out of version control.
+PondDB uses `detect-secrets` for pre-commit secret scanning. A `.secrets.baseline` tracks known non-secrets.
 
-### Rotating the JWT secret (zero-downtime)
-
-Use `scripts/rotate_jwt_secret.sh` for zero-downtime rotation. After running:
-
-```
-POND_JWT_SECRET=<new-64-char-hex-secret>   # used to sign new tokens
-POND_JWT_SECRET_V1=<old-secret>            # accepted during rollover
-```
-
-| Variable | Description |
-|---|---|
-| `POND_JWT_SECRET` | Active signing secret (required) |
-| `POND_JWT_SECRET_V1` | Previous secret — accepted during rotation rollover |
-| `POND_ENV_FILE` | Override path for the `.env` file used by `rotate_jwt_secret.sh` |
-| `POND_AUDIT_LOG` | Override path for the rotation audit log |
-
-### Secret scanning
-
-This repo uses [detect-secrets](https://github.com/Yelp/detect-secrets) as a pre-commit
-hook. Install with:
+**Rotating the JWT secret** (zero-downtime):
 
 ```bash
-pip install pre-commit detect-secrets
-pre-commit install
+scripts/rotate_jwt_secret.sh
 ```
 
-## Contributing
+The script generates a new `POND_JWT_SECRET`, promotes the current value to `POND_JWT_SECRET_V1`, and writes `POND_JWT_SECRET_V2` for the new key. Both `V1` and `V2` are accepted during the rotation window. Update `.env` with the generated values and restart the server.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and PR guidelines.
+```
+POND_JWT_SECRET_V1=<old-secret>   # accepted for existing tokens
+POND_JWT_SECRET_V2=<new-secret>   # used for new tokens
+```
+
+See [docs/security.md](docs/security.md) for the full rotation runbook.
 
 ## License
 
-[MIT](LICENSE) — DatabaseCompany
+[Business Source License 1.1](LICENSE) — pond-db
+
+Free for non-production use. Converts to **Apache 2.0** on 2029-03-16. See [LICENSE](LICENSE) for full terms.

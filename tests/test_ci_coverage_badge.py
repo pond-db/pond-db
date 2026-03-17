@@ -241,14 +241,18 @@ def test_readme_ci_badge_links_to_actions(readme_text: str) -> None:
     image in a link lets contributors jump directly to the failing run.
     Expected format: [![CI](<badge-url>)](<actions-url>)
     """
-    # Look for markdown link wrapping an image that contains 'badge'
+    # Look for markdown link wrapping an image, or HTML <a><img> badge
     badge_link_pattern = re.compile(
         r'\[!\[.*?\]\(.*?badge.*?\)\]\(.*?actions.*?\)',
         re.IGNORECASE,
     )
-    assert badge_link_pattern.search(readme_text), (
+    html_badge_pattern = re.compile(
+        r'<a\s+href="[^"]*actions[^"]*"[^>]*>.*?<img\s+src="[^"]*badge[^"]*"',
+        re.IGNORECASE | re.DOTALL,
+    )
+    assert badge_link_pattern.search(readme_text) or html_badge_pattern.search(readme_text), (
         "README CI badge must be a clickable link to the Actions page. "
-        "Use: [![CI](<badge-url>)](<actions-run-url>)"
+        "Use: [![CI](<badge-url>)](<actions-run-url>) or <a href=actions><img src=badge></a>"
     )
 
 
