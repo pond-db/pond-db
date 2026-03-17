@@ -1,4 +1,4 @@
-"""Tests for DuckCloud SDK JWT token auto-refresh behavior.
+"""Tests for PondDB SDK JWT token auto-refresh behavior.
 
 Tests that the client transparently refreshes its access token
 when it expires or receives a 401, without interrupting the caller.
@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from duckcloud import DuckCloudClient
-from duckcloud.exceptions import AuthenticationError
+from ponddb.client import PondClient
+from ponddb.exceptions import AuthenticationError
 
 
 @pytest.fixture
@@ -26,8 +26,8 @@ def api_key() -> str:
 
 
 @pytest.fixture
-def client(server_url: str, api_key: str) -> DuckCloudClient:
-    return DuckCloudClient(base_url=server_url, api_key=api_key)
+def client(server_url: str, api_key: str) -> PondClient:
+    return PondClient(base_url=server_url, api_key=api_key)
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def query_result() -> dict[str, Any]:
 class TestTokenRefresh:
     def _set_token(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         age_seconds: float = 0.0,
     ) -> None:
@@ -73,7 +73,7 @@ class TestTokenRefresh:
 
     async def test_token_refresh_on_401(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         refreshed_token_response: dict[str, Any],
         query_result: dict[str, Any],
@@ -116,7 +116,7 @@ class TestTokenRefresh:
 
     async def test_token_refresh_uses_refresh_endpoint(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         refreshed_token_response: dict[str, Any],
         query_result: dict[str, Any],
@@ -156,7 +156,7 @@ class TestTokenRefresh:
 
     async def test_proactive_refresh_before_expiry(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         refreshed_token_response: dict[str, Any],
         query_result: dict[str, Any],
@@ -190,7 +190,7 @@ class TestTokenRefresh:
 
     async def test_raises_auth_error_if_refresh_fails(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         """If refresh token is also expired, client raises AuthenticationError."""
@@ -220,7 +220,7 @@ class TestTokenRefresh:
 
     async def test_no_refresh_on_non_auth_errors(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         """400/500 errors should NOT trigger token refresh."""
@@ -251,7 +251,7 @@ class TestTokenRefresh:
 
     async def test_refresh_token_updated_after_refresh(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         refreshed_token_response: dict[str, Any],
         query_result: dict[str, Any],

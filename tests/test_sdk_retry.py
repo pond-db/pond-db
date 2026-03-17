@@ -1,4 +1,4 @@
-"""Tests for DuckCloud SDK retry logic with exponential backoff.
+"""Tests for PondDB SDK retry logic with exponential backoff.
 
 Tests that the client retries on transient errors (5xx, network errors)
 with exponential backoff, and gives up after max_retries attempts.
@@ -6,13 +6,13 @@ with exponential backoff, and gives up after max_retries attempts.
 
 import time
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
-from duckcloud import DuckCloudClient
-from duckcloud.exceptions import DuckCloudError
+from ponddb.client import PondClient
+from ponddb.exceptions import PondDBError
 
 
 @pytest.fixture
@@ -26,8 +26,8 @@ def api_key() -> str:
 
 
 @pytest.fixture
-def client(server_url: str, api_key: str) -> DuckCloudClient:
-    return DuckCloudClient(base_url=server_url, api_key=api_key, max_retries=3)
+def client(server_url: str, api_key: str) -> PondClient:
+    return PondClient(base_url=server_url, api_key=api_key, max_retries=3)
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def query_result() -> dict[str, Any]:
     }
 
 
-def _set_token(client: DuckCloudClient, auth_response: dict[str, Any]) -> None:
+def _set_token(client: PondClient, auth_response: dict[str, Any]) -> None:
     client.access_token = auth_response["access_token"]
     client.refresh_token = auth_response["refresh_token"]
     client.expires_in = auth_response["expires_in"]
@@ -60,7 +60,7 @@ def _set_token(client: DuckCloudClient, auth_response: dict[str, Any]) -> None:
 class TestRetryLogic:
     async def test_retries_on_500(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -94,7 +94,7 @@ class TestRetryLogic:
 
     async def test_retries_on_503(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -127,7 +127,7 @@ class TestRetryLogic:
 
     async def test_retries_on_network_error(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -154,7 +154,7 @@ class TestRetryLogic:
 
     async def test_gives_up_after_max_retries(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         """Client should raise after exhausting max_retries attempts."""
@@ -175,7 +175,7 @@ class TestRetryLogic:
 
         with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
             with patch("asyncio.sleep", new_callable=AsyncMock):
-                with pytest.raises(DuckCloudError):
+                with pytest.raises(PondDBError):
                     await client.query("SELECT 1")
 
         # Should have tried max_retries + 1 times total (1 initial + N retries)
@@ -183,7 +183,7 @@ class TestRetryLogic:
 
     async def test_no_retry_on_400(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         """Client should NOT retry on 400 Bad Request (client error)."""
@@ -210,7 +210,7 @@ class TestRetryLogic:
 
     async def test_no_retry_on_404(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         """Client should NOT retry on 404 Not Found."""
@@ -237,7 +237,7 @@ class TestRetryLogic:
 
     async def test_exponential_backoff_delays(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -285,7 +285,7 @@ class TestRetryLogic:
         auth_response: dict[str, Any],
     ) -> None:
         """Client with max_retries=0 should not retry at all."""
-        client = DuckCloudClient(base_url=base_url, api_key=api_key, max_retries=0)
+        client = PondClient(base_url=base_url, api_key=api_key, max_retries=0)
         _set_token(client, auth_response)
         call_count = 0
 
@@ -302,20 +302,20 @@ class TestRetryLogic:
             return resp
 
         with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
-            with pytest.raises(DuckCloudError):
+            with pytest.raises(PondDBError):
                 await client.query("SELECT 1")
 
         assert call_count == 1
 
     async def test_retry_with_jitter(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
         """Retry delays should include some jitter (not strictly 1, 2, 4 seconds)."""
         _set_token(client, auth_response)
-        client_with_single_retry = DuckCloudClient(
+        client_with_single_retry = PondClient(
             base_url=client.base_url, api_key=client.api_key, max_retries=1
         )
         _set_token(client_with_single_retry, auth_response)

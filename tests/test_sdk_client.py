@@ -1,10 +1,5 @@
-"""Integration tests for the DuckCloud Python SDK client.
+"""Integration tests for the PondDB Python SDK client."""
 
-Tests import from duckcloud (src/sdk/duckcloud/) which does not yet exist.
-All tests should FAIL with ModuleNotFoundError until the SDK is implemented.
-"""
-
-import asyncio
 import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from duckcloud import DuckCloudClient
-from duckcloud.exceptions import (
+from ponddb.client import PondClient
+from ponddb.exceptions import (
     AuthenticationError,
-    DuckCloudError,
+    PondDBError,
     QueryError,
     RateLimitError,
 )
@@ -37,8 +32,8 @@ def api_key() -> str:
 
 
 @pytest.fixture
-def client(server_url: str, api_key: str) -> DuckCloudClient:
-    return DuckCloudClient(base_url=server_url, api_key=api_key)
+def client(server_url: str, api_key: str) -> PondClient:
+    return PondClient(base_url=server_url, api_key=api_key)
 
 
 @pytest.fixture
@@ -68,39 +63,39 @@ def query_result() -> dict[str, Any]:
 
 class TestClientInitialization:
     def test_basic_init(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key)
+        client = PondClient(base_url=base_url, api_key=api_key)
         assert client.base_url == base_url
         assert client.api_key == api_key
 
     def test_default_tenant_id(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key)
+        client = PondClient(base_url=base_url, api_key=api_key)
         assert client.tenant_id == "default"
 
     def test_custom_tenant_id(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key, tenant_id="acme")
+        client = PondClient(base_url=base_url, api_key=api_key, tenant_id="acme")
         assert client.tenant_id == "acme"
 
     def test_default_max_retries(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key)
+        client = PondClient(base_url=base_url, api_key=api_key)
         assert client.max_retries == 3
 
     def test_custom_max_retries(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key, max_retries=5)
+        client = PondClient(base_url=base_url, api_key=api_key, max_retries=5)
         assert client.max_retries == 5
 
-    def test_not_authenticated_initially(self, client: DuckCloudClient) -> None:
+    def test_not_authenticated_initially(self, client: PondClient) -> None:
         assert client.access_token is None
 
     def test_trailing_slash_stripped_from_base_url(self, api_key: str) -> None:
-        client = DuckCloudClient(base_url="http://localhost:8432/", api_key=api_key)
+        client = PondClient(base_url="http://localhost:8432/", api_key=api_key)
         assert client.base_url == "http://localhost:8432"
 
     def test_timeout_default(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key)
+        client = PondClient(base_url=base_url, api_key=api_key)
         assert client.timeout > 0
 
     def test_custom_timeout(self, base_url: str, api_key: str) -> None:
-        client = DuckCloudClient(base_url=base_url, api_key=api_key, timeout=60.0)
+        client = PondClient(base_url=base_url, api_key=api_key, timeout=60.0)
         assert client.timeout == 60.0
 
 
@@ -112,7 +107,7 @@ class TestClientInitialization:
 class TestAuthenticate:
     async def test_authenticate_happy_path(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         mock_response = MagicMock()
@@ -128,7 +123,7 @@ class TestAuthenticate:
 
     async def test_authenticate_sends_api_key(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         mock_response = MagicMock()
@@ -145,7 +140,7 @@ class TestAuthenticate:
 
     async def test_authenticate_uses_auth_token_endpoint(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         mock_response = MagicMock()
@@ -161,7 +156,7 @@ class TestAuthenticate:
 
     async def test_authenticate_raises_on_invalid_key(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
     ) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 401
@@ -176,7 +171,7 @@ class TestAuthenticate:
 
     async def test_authenticate_stores_expires_in(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         mock_response = MagicMock()
@@ -194,7 +189,7 @@ class TestAuthenticate:
         api_key: str,
         auth_response: dict[str, Any],
     ) -> None:
-        client = DuckCloudClient(
+        client = PondClient(
             base_url="http://localhost:8432", api_key=api_key, tenant_id="acme"
         )
         mock_response = MagicMock()
@@ -216,7 +211,7 @@ class TestAuthenticate:
 
 class TestQuery:
     async def _setup_auth(
-        self, client: DuckCloudClient, auth_response: dict[str, Any]
+        self, client: PondClient, auth_response: dict[str, Any]
     ) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
@@ -225,7 +220,7 @@ class TestQuery:
 
     async def test_query_happy_path(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -245,7 +240,7 @@ class TestQuery:
 
     async def test_query_sends_bearer_token(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -264,7 +259,7 @@ class TestQuery:
 
     async def test_query_requires_session(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -285,7 +280,7 @@ class TestQuery:
 
     async def test_query_raises_on_empty_sql(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -294,7 +289,7 @@ class TestQuery:
 
     async def test_query_raises_on_bad_sql(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -312,7 +307,7 @@ class TestQuery:
 
     async def test_query_auto_authenticates_if_not_logged_in(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -346,7 +341,7 @@ class TestQuery:
 
     async def test_query_returns_elapsed_ms(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
         query_result: dict[str, Any],
     ) -> None:
@@ -371,7 +366,7 @@ class TestQuery:
 
 class TestSaveQuery:
     async def _setup_auth(
-        self, client: DuckCloudClient, auth_response: dict[str, Any]
+        self, client: PondClient, auth_response: dict[str, Any]
     ) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
@@ -380,7 +375,7 @@ class TestSaveQuery:
 
     async def test_save_query_returns_slug(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -406,7 +401,7 @@ class TestSaveQuery:
 
     async def test_save_query_sends_correct_fields(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -439,7 +434,7 @@ class TestSaveQuery:
 
     async def test_save_query_default_visibility_is_private(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -460,7 +455,7 @@ class TestSaveQuery:
 
     async def test_save_query_public_visibility(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -481,7 +476,7 @@ class TestSaveQuery:
 
     async def test_save_query_raises_on_duplicate(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -494,12 +489,12 @@ class TestSaveQuery:
         )
 
         with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(DuckCloudError):
+            with pytest.raises(PondDBError):
                 await client.save_query(title="My Query", sql="SELECT 1")
 
     async def test_save_query_uses_api_key_header(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -526,7 +521,7 @@ class TestSaveQuery:
 
 class TestListQueries:
     async def _setup_auth(
-        self, client: DuckCloudClient, auth_response: dict[str, Any]
+        self, client: PondClient, auth_response: dict[str, Any]
     ) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
@@ -535,7 +530,7 @@ class TestListQueries:
 
     async def test_list_queries_returns_list(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -559,7 +554,7 @@ class TestListQueries:
 
     async def test_list_queries_empty(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -576,7 +571,7 @@ class TestListQueries:
 
     async def test_list_queries_default_pagination(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -595,7 +590,7 @@ class TestListQueries:
 
     async def test_list_queries_custom_limit(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -614,7 +609,7 @@ class TestListQueries:
 
     async def test_list_queries_returns_dicts_with_expected_fields(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -644,7 +639,7 @@ class TestListQueries:
 
 class TestGetHistory:
     async def _setup_auth(
-        self, client: DuckCloudClient, auth_response: dict[str, Any]
+        self, client: PondClient, auth_response: dict[str, Any]
     ) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
@@ -653,7 +648,7 @@ class TestGetHistory:
 
     async def test_get_history_returns_list(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -676,7 +671,7 @@ class TestGetHistory:
 
     async def test_get_history_empty(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -693,7 +688,7 @@ class TestGetHistory:
 
     async def test_get_history_filter_by_status(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -711,7 +706,7 @@ class TestGetHistory:
 
     async def test_get_history_pagination(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -730,7 +725,7 @@ class TestGetHistory:
 
     async def test_get_history_sends_bearer_token(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -749,7 +744,7 @@ class TestGetHistory:
 
     async def test_get_history_records_have_expected_fields(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -779,7 +774,7 @@ class TestGetHistory:
 
 class TestShareQuery:
     async def _setup_auth(
-        self, client: DuckCloudClient, auth_response: dict[str, Any]
+        self, client: PondClient, auth_response: dict[str, Any]
     ) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
@@ -788,7 +783,7 @@ class TestShareQuery:
 
     async def test_share_query_returns_results(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -814,7 +809,7 @@ class TestShareQuery:
 
     async def test_share_query_hits_correct_endpoint(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -833,7 +828,7 @@ class TestShareQuery:
 
     async def test_share_query_not_found(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -846,12 +841,12 @@ class TestShareQuery:
         )
 
         with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(DuckCloudError):
+            with pytest.raises(PondDBError):
                 await client.share_query("nonexistent")
 
     async def test_share_query_rate_limited(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
@@ -870,7 +865,7 @@ class TestShareQuery:
 
     async def test_share_query_sends_api_key_for_private(
         self,
-        client: DuckCloudClient,
+        client: PondClient,
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)

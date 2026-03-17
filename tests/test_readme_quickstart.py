@@ -375,6 +375,8 @@ def test_readme_has_license_section(readme: str) -> None:
     assert re.search(r"##.*[Ll]icense", readme), "README must have a ## License section"
 
 
-def test_readme_shows_mit_license(readme: str) -> None:
-    """README must state the MIT license."""
-    assert "MIT" in readme, "README must state the MIT license"
+def test_readme_shows_license(readme: str) -> None:
+    """README must state the project license (BSL 1.1 or Apache 2.0)."""
+    assert "BSL" in readme or "Business Source License" in readme or "Apache" in readme, (
+        "README must state the project license"
+    )
