@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-<h3 align="center">Share DuckDB with your team. Self-hosted. Free forever.</h3>
+<h3 align="center">Share DuckDB with your team — or let your AI agents query it.</h3>
 
 <p align="center">
   <a href="https://github.com/pond-db/pond-db/actions/workflows/ci.yml"><img src="https://github.com/pond-db/pond-db/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -21,26 +21,28 @@
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="#why-ponddb">Why PondDB</a> ·
+  <a href="#for-ai-agents">For AI Agents</a> ·
   <a href="docs/api.md">API Reference</a> ·
-  <a href="ARCHITECTURE.md">Architecture</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
 
 PondDB turns DuckDB into a multi-user analytics platform you run on your own hardware.
-Upload data, share queries, manage team access — all from a browser. No cloud account needed.
+Upload data, share queries, manage team access — all from a browser or HTTP API. No cloud account needed.
+
+> *"Like MotherDuck, but self-hosted. Like giving your AI agent a SQL brain."*
 
 ## Why PondDB?
 
-DuckDB is incredible for solo analytics, but it's single-player. When your team needs to:
+DuckDB is incredible for solo analytics, but it's single-player — one file, one process, one person. When your team or your AI agents need to:
 
-- **Share a dataset** without emailing CSV files
-- **Let teammates run SQL** without installing anything
+- **Query shared datasets** without emailing CSV files
+- **Run SQL from a browser, script, or AI agent** via HTTP
 - **Control who can access what data**
-- **Query from an app** via HTTP API
+- **Auto-manage compute** (suspend idle, resume on demand)
 
-...you need a server layer. MotherDuck does this in the cloud. **PondDB does it on your machine.**
+...you need a server layer. MotherDuck does this in the cloud (and costs money). **PondDB does it on your machine, for free.**
 
 ## How it compares
 
@@ -48,13 +50,15 @@ DuckDB is incredible for solo analytics, but it's single-player. When your team 
 |--|--------|-----------|-----------|
 | Multi-user | ❌ Single file | ✅ Cloud | ✅ Self-hosted |
 | Browser SQL editor | ❌ | ✅ | ✅ |
-| Share queries | ❌ | ✅ | ✅ Share links |
 | HTTP query API | ❌ | ❌ | ✅ PondAPI |
+| AI agent friendly | ❌ | ❌ | ✅ MCP + HTTP |
+| Share queries | ❌ | ✅ | ✅ Share links |
 | Upload CSV/Parquet | CLI only | ✅ | ✅ |
 | Team access control | ❌ | ✅ | ✅ OAuth + workgroups |
-| Data stays on your machine | ✅ | ❌ Cloud | ✅ |
-| Self-hosted | ✅ (embedded) | ❌ | ✅ Docker |
-| Free | ✅ | Free tier | ✅ Always |
+| Session auto-management | ❌ | ✅ | ✅ Suspend/resume |
+| Data stays on your machine | ✅ | ❌ | ✅ |
+| Self-hosted | Embedded | ❌ | ✅ Docker |
+| Price | Free | Free tier → paid | **Free forever** |
 
 ## Quickstart
 
@@ -64,7 +68,7 @@ cp .env.example .env    # set POND_API_KEY and POND_JWT_SECRET
 docker compose up -d
 ```
 
-Open `http://localhost:8432` → sign in → upload a CSV → run SQL. That's it.
+Open `http://localhost:8432` → sign in → upload a CSV → run SQL. Done.
 
 Verify it's running:
 
@@ -90,32 +94,71 @@ client = PondClient("http://localhost:8432", api_key="pk_...")
 with client as session:
     result = session.query("SELECT region, SUM(revenue) FROM sales GROUP BY 1")
     print(result.rows)
+    # [{"region": "West", "revenue": 84210}, ...]
 ```
 
 Or use curl:
 
 ```bash
-# Get a token
-TOKEN=$(curl -s -X POST http://localhost:8432/auth/token \
-  -H "Content-Type: application/json" \
-  -d '{"api_key": "your-key"}' | jq -r .access_token)
-
-# Submit async query
+# Submit query (returns instantly)
 curl -X POST http://localhost:8432/pondapi/execute \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"sql": "SELECT 42 as answer"}'
+# {"execution_id": "abc-123", "status": "running"}
 
-# Poll for result
-curl http://localhost:8432/pondapi/execute/{id}/result \
+# Get results
+curl http://localhost:8432/pondapi/execute/abc-123/result \
   -H "Authorization: Bearer $TOKEN"
+# {"status": "complete", "rows": [{"answer": 42}], "elapsed_ms": 12}
 ```
+
+## For AI Agents
+
+PondDB gives AI agents structured data access. Instead of hallucinating numbers, agents query real data via HTTP.
+
+### Why agents need PondDB
+
+| Without PondDB | With PondDB |
+|----------------|-------------|
+| Agent guesses numbers from training data | Agent queries live data with SQL |
+| "Revenue was approximately $2M" | `SELECT SUM(revenue) FROM sales` → $2,847,103 |
+| No access control | Scoped API keys per agent |
+| No audit trail | Full query history with timestamps |
+
+### How agents connect
+
+Any agent that can make HTTP calls can use PondDB:
+
+```bash
+# Agent submits a query
+curl -X POST http://localhost:8432/pondapi/execute \
+  -H "Authorization: Bearer pk_agent_key" \
+  -d '{"sql": "SELECT COUNT(*) as users FROM signups WHERE date > CURRENT_DATE - 7"}'
+
+# Agent polls for result
+curl http://localhost:8432/pondapi/execute/{id}/result \
+  -H "Authorization: Bearer pk_agent_key"
+# {"status": "complete", "rows": [{"users": 342}]}
+```
+
+PondAPI is async by design — submit SQL, get an execution ID, poll for results. Perfect for agents that need to interleave reasoning with data retrieval.
+
+### Agent-friendly features
+
+- **Async HTTP API** — non-blocking query execution via PondAPI
+- **Scoped API keys** — give each agent its own key with limited permissions
+- **SQL sandbox** — 15 blocked patterns prevent agents from accessing files or changing config
+- **Session auto-management** — sessions suspend when idle, resume transparently
+- **Query history** — full audit trail of every query an agent runs
 
 ## Features
 
 🔍 **Browser SQL Editor** — CodeMirror 6 with syntax highlighting, schema browser, and auto-complete
 
 📊 **PondAPI** — Async HTTP query API. POST SQL, poll for results. Build apps on top of PondDB.
+
+🤖 **AI Agent Ready** — HTTP API + SQL sandbox = safe, structured data access for any AI agent
 
 👥 **Workgroups** — Isolated compute environments per team. Separate quotas, data, and access.
 
@@ -141,12 +184,14 @@ curl http://localhost:8432/pondapi/execute/{id}/result \
 
 **🏠 Homelab** — Self-host alongside Nextcloud and Gitea. Your data never leaves your network.
 
+**🤖 AI agent backend** — Give your LLM agent a PondDB API key. It queries real data instead of hallucinating numbers.
+
 ## Architecture
 
 ```
-Browser / SDK / curl
-         │
-         ▼
+Browser / SDK / curl / AI Agent
+              │
+              ▼
 ┌─────────────────────────────────────────────────┐
 │              FastAPI + Uvicorn                   │
 │  Routers: query, auth, session, pondapi,        │
