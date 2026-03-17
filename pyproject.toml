@@ -7,7 +7,7 @@ name = "ponddb"
 version = "1.0.0"
 description = "Lightweight self-hosted compute platform wrapping DuckDB with serverless session management"
 readme = "README.md"
-license = "BSL-1.1"
+license = {text = "BSL-1.1"}
 requires-python = ">=3.12"
 authors = [{ name = "Tianlu" }]
 
