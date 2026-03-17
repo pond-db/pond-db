@@ -125,6 +125,9 @@ _logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def _lifespan(application: FastAPI) -> AsyncIterator[None]:
     """Start background tasks on startup, clean up on shutdown."""
+    # Restore sessions from SQLite so they survive container restarts
+    await _manager.load_from_store()
+    _logger.info("Restored %d sessions from store", _manager.session_count)
     poll = float(os.environ.get("POND_WATCHDOG_INTERVAL", "30"))
     task = asyncio.create_task(_manager.start_watchdog(poll_interval=poll))
     _logger.info("Session watchdog started (poll=%.0fs)", poll)
@@ -290,11 +293,11 @@ async def revoke_token(req: RevokeRequest, request: Request) -> dict[str, Any]:
 
 _templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
-_manager = SessionManager()
-
 _sqlite_path = os.environ.get("POND_SQLITE_PATH", ":memory:")
 _store = MetadataStore(_sqlite_path)
 _store.initialize_blocking()
+
+_manager = SessionManager(store=_store)
 app.include_router(make_query_router(_store))
 app.include_router(make_share_router(_store))
 

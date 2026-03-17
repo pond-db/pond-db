@@ -186,8 +186,14 @@
     sessionInput.addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSchema(sessionInput.value.trim()); });
     refreshBtn.addEventListener("click", () => fetchSchema(sessionInput.value.trim()));
 
-    // Auto-create session on load
-    if (!sessionInput.value.trim()) {
+    // Read session_id from URL query param (e.g. /editor?session_id=xxx)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSessionId = urlParams.get("session_id");
+    if (urlSessionId) {
+      sessionInput.value = urlSessionId;
+      fetchSchema(urlSessionId);
+    } else if (!sessionInput.value.trim()) {
+      // Auto-create session only if no session_id was provided
       try {
         const resp = await fetch("/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (resp.ok) { const data = await resp.json(); sessionInput.value = data.session_id; fetchSchema(data.session_id); }
