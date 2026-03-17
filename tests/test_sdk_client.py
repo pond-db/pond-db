@@ -131,11 +131,17 @@ class TestAuthenticate:
         mock_response.json.return_value = auth_response
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.authenticate()
 
         call_kwargs = mock_post.call_args
-        body = call_kwargs.kwargs.get("json") or call_kwargs.args[1] if len(call_kwargs.args) > 1 else {}
+        body = (
+            call_kwargs.kwargs.get("json") or call_kwargs.args[1]
+            if len(call_kwargs.args) > 1
+            else {}
+        )
         assert body.get("api_key") == client.api_key
 
     async def test_authenticate_uses_auth_token_endpoint(
@@ -148,7 +154,9 @@ class TestAuthenticate:
         mock_response.json.return_value = auth_response
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.authenticate()
 
         url = mock_post.call_args.args[0]
@@ -189,15 +197,15 @@ class TestAuthenticate:
         api_key: str,
         auth_response: dict[str, Any],
     ) -> None:
-        client = PondClient(
-            base_url="http://localhost:8432", api_key=api_key, tenant_id="acme"
-        )
+        client = PondClient(base_url="http://localhost:8432", api_key=api_key, tenant_id="acme")
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = auth_response
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.authenticate()
 
         body = mock_post.call_args.kwargs.get("json", {})
@@ -210,9 +218,7 @@ class TestAuthenticate:
 
 
 class TestQuery:
-    async def _setup_auth(
-        self, client: PondClient, auth_response: dict[str, Any]
-    ) -> None:
+    async def _setup_auth(self, client: PondClient, auth_response: dict[str, Any]) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
         client.expires_in = auth_response["expires_in"]
@@ -251,7 +257,9 @@ class TestQuery:
         mock_response.json.return_value = query_result
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.query("SELECT 1")
 
         headers = mock_post.call_args.kwargs.get("headers", {})
@@ -271,7 +279,9 @@ class TestQuery:
         mock_response.json.return_value = query_result
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.query("SELECT 1")
 
         body = mock_post.call_args.kwargs.get("json", {})
@@ -365,9 +375,7 @@ class TestQuery:
 
 
 class TestSaveQuery:
-    async def _setup_auth(
-        self, client: PondClient, auth_response: dict[str, Any]
-    ) -> None:
+    async def _setup_auth(self, client: PondClient, auth_response: dict[str, Any]) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
         client.expires_in = auth_response["expires_in"]
@@ -420,7 +428,9 @@ class TestSaveQuery:
         mock_response.json.return_value = saved
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.save_query(
                 title="Revenue Report",
                 sql="SELECT sum(amount) FROM sales",
@@ -438,16 +448,24 @@ class TestSaveQuery:
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
-        saved = {"slug": "q", "title": "Q", "description": "", "sql": "SELECT 1",
-                 "created_by": "default", "created_at": "2026-03-15T00:00:00+00:00",
-                 "visibility": "private"}
+        saved = {
+            "slug": "q",
+            "title": "Q",
+            "description": "",
+            "sql": "SELECT 1",
+            "created_by": "default",
+            "created_at": "2026-03-15T00:00:00+00:00",
+            "visibility": "private",
+        }
 
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = saved
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.save_query(title="Q", sql="SELECT 1")
 
         body = mock_post.call_args.kwargs.get("json", {})
@@ -459,16 +477,24 @@ class TestSaveQuery:
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
-        saved = {"slug": "pub", "title": "Pub", "description": "", "sql": "SELECT 1",
-                 "created_by": "default", "created_at": "2026-03-15T00:00:00+00:00",
-                 "visibility": "public"}
+        saved = {
+            "slug": "pub",
+            "title": "Pub",
+            "description": "",
+            "sql": "SELECT 1",
+            "created_by": "default",
+            "created_at": "2026-03-15T00:00:00+00:00",
+            "visibility": "public",
+        }
 
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = saved
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.save_query(title="Pub", sql="SELECT 1", visibility="public")
 
         body = mock_post.call_args.kwargs.get("json", {})
@@ -498,16 +524,24 @@ class TestSaveQuery:
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
-        saved = {"slug": "q", "title": "Q", "description": "", "sql": "SELECT 1",
-                 "created_by": "default", "created_at": "2026-03-15T00:00:00+00:00",
-                 "visibility": "private"}
+        saved = {
+            "slug": "q",
+            "title": "Q",
+            "description": "",
+            "sql": "SELECT 1",
+            "created_by": "default",
+            "created_at": "2026-03-15T00:00:00+00:00",
+            "visibility": "private",
+        }
 
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = saved
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response) as mock_post:
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_post:
             await client.save_query(title="Q", sql="SELECT 1")
 
         headers = mock_post.call_args.kwargs.get("headers", {})
@@ -520,9 +554,7 @@ class TestSaveQuery:
 
 
 class TestListQueries:
-    async def _setup_auth(
-        self, client: PondClient, auth_response: dict[str, Any]
-    ) -> None:
+    async def _setup_auth(self, client: PondClient, auth_response: dict[str, Any]) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
         client.expires_in = auth_response["expires_in"]
@@ -535,10 +567,24 @@ class TestListQueries:
     ) -> None:
         await self._setup_auth(client, auth_response)
         queries = [
-            {"slug": "q1", "title": "Q1", "description": "", "sql": "SELECT 1",
-             "created_by": "default", "created_at": "2026-03-15T00:00:00+00:00", "visibility": "private"},
-            {"slug": "q2", "title": "Q2", "description": "", "sql": "SELECT 2",
-             "created_by": "default", "created_at": "2026-03-15T01:00:00+00:00", "visibility": "public"},
+            {
+                "slug": "q1",
+                "title": "Q1",
+                "description": "",
+                "sql": "SELECT 1",
+                "created_by": "default",
+                "created_at": "2026-03-15T00:00:00+00:00",
+                "visibility": "private",
+            },
+            {
+                "slug": "q2",
+                "title": "Q2",
+                "description": "",
+                "sql": "SELECT 2",
+                "created_by": "default",
+                "created_at": "2026-03-15T01:00:00+00:00",
+                "visibility": "public",
+            },
         ]
 
         mock_response = MagicMock()
@@ -581,7 +627,9 @@ class TestListQueries:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.list_queries()
 
         params = mock_get.call_args.kwargs.get("params", {})
@@ -600,7 +648,9 @@ class TestListQueries:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.list_queries(limit=5, offset=10)
 
         params = mock_get.call_args.kwargs.get("params", {})
@@ -614,8 +664,15 @@ class TestListQueries:
     ) -> None:
         await self._setup_auth(client, auth_response)
         queries = [
-            {"slug": "q1", "title": "Q1", "description": "", "sql": "SELECT 1",
-             "created_by": "default", "created_at": "2026-03-15T00:00:00+00:00", "visibility": "private"},
+            {
+                "slug": "q1",
+                "title": "Q1",
+                "description": "",
+                "sql": "SELECT 1",
+                "created_by": "default",
+                "created_at": "2026-03-15T00:00:00+00:00",
+                "visibility": "private",
+            },
         ]
 
         mock_response = MagicMock()
@@ -638,9 +695,7 @@ class TestListQueries:
 
 
 class TestGetHistory:
-    async def _setup_auth(
-        self, client: PondClient, auth_response: dict[str, Any]
-    ) -> None:
+    async def _setup_auth(self, client: PondClient, auth_response: dict[str, Any]) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
         client.expires_in = auth_response["expires_in"]
@@ -653,9 +708,15 @@ class TestGetHistory:
     ) -> None:
         await self._setup_auth(client, auth_response)
         history = [
-            {"namespace": "default", "sql": "SELECT 1", "duration_ms": 5.0,
-             "rows_returned": 1, "status": "success", "error_message": None,
-             "executed_at": "2026-03-15T00:00:00+00:00"},
+            {
+                "namespace": "default",
+                "sql": "SELECT 1",
+                "duration_ms": 5.0,
+                "rows_returned": 1,
+                "status": "success",
+                "error_message": None,
+                "executed_at": "2026-03-15T00:00:00+00:00",
+            },
         ]
 
         mock_response = MagicMock()
@@ -698,7 +759,9 @@ class TestGetHistory:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.get_history(status="error")
 
         params = mock_get.call_args.kwargs.get("params", {})
@@ -716,7 +779,9 @@ class TestGetHistory:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.get_history(limit=10, offset=20)
 
         params = mock_get.call_args.kwargs.get("params", {})
@@ -735,7 +800,9 @@ class TestGetHistory:
         mock_response.json.return_value = []
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.get_history()
 
         headers = mock_get.call_args.kwargs.get("headers", {})
@@ -749,9 +816,15 @@ class TestGetHistory:
     ) -> None:
         await self._setup_auth(client, auth_response)
         history = [
-            {"namespace": "default", "sql": "SELECT 1", "duration_ms": 5.0,
-             "rows_returned": 1, "status": "success", "error_message": None,
-             "executed_at": "2026-03-15T00:00:00+00:00"},
+            {
+                "namespace": "default",
+                "sql": "SELECT 1",
+                "duration_ms": 5.0,
+                "rows_returned": 1,
+                "status": "success",
+                "error_message": None,
+                "executed_at": "2026-03-15T00:00:00+00:00",
+            },
         ]
 
         mock_response = MagicMock()
@@ -773,9 +846,7 @@ class TestGetHistory:
 
 
 class TestShareQuery:
-    async def _setup_auth(
-        self, client: PondClient, auth_response: dict[str, Any]
-    ) -> None:
+    async def _setup_auth(self, client: PondClient, auth_response: dict[str, Any]) -> None:
         client.access_token = auth_response["access_token"]
         client.refresh_token = auth_response["refresh_token"]
         client.expires_in = auth_response["expires_in"]
@@ -813,14 +884,22 @@ class TestShareQuery:
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
-        share_result = {"columns": [], "rows": [], "rowcount": 0, "elapsed_ms": 1.0, "slug": "test-slug"}
+        share_result = {
+            "columns": [],
+            "rows": [],
+            "rowcount": 0,
+            "elapsed_ms": 1.0,
+            "slug": "test-slug",
+        }
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = share_result
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.share_query("test-slug")
 
         url = mock_get.call_args.args[0]
@@ -869,14 +948,22 @@ class TestShareQuery:
         auth_response: dict[str, Any],
     ) -> None:
         await self._setup_auth(client, auth_response)
-        share_result = {"columns": [], "rows": [], "rowcount": 0, "elapsed_ms": 1.0, "slug": "private-slug"}
+        share_result = {
+            "columns": [],
+            "rows": [],
+            "rowcount": 0,
+            "elapsed_ms": 1.0,
+            "slug": "private-slug",
+        }
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = share_result
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client._http, "get", new_callable=AsyncMock, return_value=mock_response) as mock_get:
+        with patch.object(
+            client._http, "get", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_get:
             await client.share_query("private-slug")
 
         headers = mock_get.call_args.kwargs.get("headers", {})

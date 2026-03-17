@@ -26,8 +26,10 @@ def set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(set_api_key) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -163,7 +165,9 @@ def test_get_public_query_share_link_returns_200(client: TestClient) -> None:
 
 
 def test_get_public_query_share_link_returns_results(client: TestClient) -> None:
-    body = _create_query(client, title="Public Share Two", sql="SELECT 42 AS answer", visibility="public")
+    body = _create_query(
+        client, title="Public Share Two", sql="SELECT 42 AS answer", visibility="public"
+    )
     slug = body["slug"]
     resp = client.get(f"/q/{slug}")
     assert resp.status_code == 200
@@ -175,7 +179,9 @@ def test_get_public_query_share_link_returns_results(client: TestClient) -> None
 
 
 def test_get_public_query_result_values_correct(client: TestClient) -> None:
-    body = _create_query(client, title="Public Result Val", sql="SELECT 7 AS n", visibility="public")
+    body = _create_query(
+        client, title="Public Result Val", sql="SELECT 7 AS n", visibility="public"
+    )
     slug = body["slug"]
     resp = client.get(f"/q/{slug}")
     data = resp.json()
@@ -243,7 +249,9 @@ def test_get_private_query_with_valid_api_key_returns_200(client: TestClient) ->
 
 
 def test_get_private_query_with_valid_api_key_returns_results(client: TestClient) -> None:
-    body = _create_query(client, title="Private Share Four", sql="SELECT 55 AS val", visibility="private")
+    body = _create_query(
+        client, title="Private Share Four", sql="SELECT 55 AS val", visibility="private"
+    )
     slug = body["slug"]
     resp = client.get(f"/q/{slug}", headers=_auth())
     data = resp.json()
@@ -292,7 +300,9 @@ def test_get_share_link_unknown_slug_has_detail(client: TestClient) -> None:
 
 
 def test_share_link_response_includes_rowcount(client: TestClient) -> None:
-    body = _create_query(client, title="Rowcount Check", sql="SELECT 1 UNION ALL SELECT 2", visibility="public")
+    body = _create_query(
+        client, title="Rowcount Check", sql="SELECT 1 UNION ALL SELECT 2", visibility="public"
+    )
     slug = body["slug"]
     resp = client.get(f"/q/{slug}")
     data = resp.json()
@@ -343,7 +353,7 @@ def test_rate_limit_allows_10_requests(client: TestClient) -> None:
     # First 10 requests should all succeed
     for i in range(10):
         resp = client.get(f"/q/{slug}", headers={"X-Forwarded-For": "10.0.0.1"})
-        assert resp.status_code == 200, f"Request {i+1} should succeed, got {resp.status_code}"
+        assert resp.status_code == 200, f"Request {i + 1} should succeed, got {resp.status_code}"
 
 
 def test_rate_limit_blocks_11th_request(client: TestClient) -> None:
@@ -382,12 +392,14 @@ def test_rate_limit_different_ips_have_separate_buckets(client: TestClient) -> N
 
 def test_rate_limit_does_not_apply_to_private_queries_with_auth(client: TestClient) -> None:
     """Authenticated access to private queries is NOT rate-limited."""
-    body = _create_query(client, title="Rate Limit Private Auth", sql="SELECT 5", visibility="private")
+    body = _create_query(
+        client, title="Rate Limit Private Auth", sql="SELECT 5", visibility="private"
+    )
     slug = body["slug"]
     # Make 12 authenticated requests — none should be rate-limited
     for i in range(12):
         resp = client.get(f"/q/{slug}", headers={**_auth(), "X-Forwarded-For": "10.2.0.1"})
-        assert resp.status_code == 200, f"Authenticated request {i+1} should not be rate-limited"
+        assert resp.status_code == 200, f"Authenticated request {i + 1} should not be rate-limited"
 
 
 def test_rate_limit_returns_retry_after_header(client: TestClient) -> None:
@@ -421,7 +433,9 @@ def test_visibility_persisted_on_save(client: TestClient) -> None:
         )
         slug = resp.json()["slug"]
         get_resp = client.get(f"/queries/{slug}", headers=_auth())
-        assert get_resp.json()["visibility"] == vis, f"Expected {vis}, got {get_resp.json()['visibility']}"
+        assert get_resp.json()["visibility"] == vis, (
+            f"Expected {vis}, got {get_resp.json()['visibility']}"
+        )
 
 
 def test_visibility_included_in_list_response(client: TestClient) -> None:

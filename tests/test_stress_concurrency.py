@@ -37,14 +37,10 @@ def auth(client: TestClient) -> dict:
 class TestBurstPondAPIExecutions:
     """10 rapid sequential PondAPI executions all complete successfully."""
 
-    def test_burst_pondapi_executions(
-        self, client: TestClient, sid: str, auth: dict
-    ) -> None:
+    def test_burst_pondapi_executions(self, client: TestClient, sid: str, auth: dict) -> None:
         results = []
         for i in range(10):
-            result = execute_and_poll(
-                client, sid, f"SELECT {i} AS val", auth, timeout=30
-            )
+            result = execute_and_poll(client, sid, f"SELECT {i} AS val", auth, timeout=30)
             results.append(result)
 
         assert len(results) == 10
@@ -82,9 +78,7 @@ class TestRapidSessionLifecycle:
 class TestLargeResultSet:
     """Large query returns all rows without truncation."""
 
-    def test_large_result_set(
-        self, client: TestClient, sid: str, auth: dict
-    ) -> None:
+    def test_large_result_set(self, client: TestClient, sid: str, auth: dict) -> None:
         result = execute_and_poll(
             client,
             sid,
@@ -159,9 +153,7 @@ class TestBurstDatasetUploads:
 class TestBurstSchemaRequests:
     """10 rapid GET /schema calls all return 200."""
 
-    def test_burst_schema_requests(
-        self, client: TestClient, sid: str, auth: dict
-    ) -> None:
+    def test_burst_schema_requests(self, client: TestClient, sid: str, auth: dict) -> None:
         codes = []
         for _ in range(10):
             resp = client.get(f"/schema?session_id={sid}", headers=auth)
@@ -179,17 +171,13 @@ class TestSessionOpsUnderLoad:
 
         # Suspend all via HTMX endpoint
         for sid in sids:
-            resp = client.post(
-                f"/htmx/session/{sid}/suspend", headers=auth
-            )
+            resp = client.post(f"/htmx/session/{sid}/suspend", headers=auth)
             assert resp.status_code == 200
             assert "suspended" in resp.text.lower()
 
         # Resume all
         for sid in sids:
-            resp = client.post(
-                f"/htmx/session/{sid}/resume", headers=auth
-            )
+            resp = client.post(f"/htmx/session/{sid}/resume", headers=auth)
             assert resp.status_code == 200
             assert "active" in resp.text.lower()
 

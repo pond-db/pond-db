@@ -26,8 +26,10 @@ def _set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 def client(_set_api_key):
     from fastapi.testclient import TestClient
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -70,9 +72,7 @@ async def test_log_query_history_method_exists(tmp_path) -> None:
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
-    assert hasattr(store, "log_query_history"), (
-        "MetadataStore must have log_query_history() method"
-    )
+    assert hasattr(store, "log_query_history"), "MetadataStore must have log_query_history() method"
     await store.close()
 
 
@@ -82,9 +82,7 @@ async def test_get_query_history_method_exists(tmp_path) -> None:
 
     store = MetadataStore(str(tmp_path / "t.db"))
     store.initialize_blocking()
-    assert hasattr(store, "get_query_history"), (
-        "MetadataStore must have get_query_history() method"
-    )
+    assert hasattr(store, "get_query_history"), "MetadataStore must have get_query_history() method"
     await store.close()
 
 
@@ -178,12 +176,20 @@ async def test_get_query_history_filters_by_namespace(tmp_path) -> None:
 
     now = datetime.now(timezone.utc)
     await store.log_query_history(
-        namespace="alice", sql="SELECT 'alice'", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=now,
+        namespace="alice",
+        sql="SELECT 'alice'",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=now,
     )
     await store.log_query_history(
-        namespace="bob", sql="SELECT 'bob'", duration_ms=2.0,
-        rows_returned=1, status="success", executed_at=now,
+        namespace="bob",
+        sql="SELECT 'bob'",
+        duration_ms=2.0,
+        rows_returned=1,
+        status="success",
+        executed_at=now,
     )
 
     alice_rows = await store.get_query_history(namespace="alice")
@@ -206,13 +212,21 @@ async def test_get_query_history_filter_status_success(tmp_path) -> None:
 
     now = datetime.now(timezone.utc)
     await store.log_query_history(
-        namespace="user1", sql="SELECT 1", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=now,
+        namespace="user1",
+        sql="SELECT 1",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=now,
     )
     await store.log_query_history(
-        namespace="user1", sql="BAD SQL", duration_ms=0.5,
-        rows_returned=0, status="error",
-        error_message="syntax error", executed_at=now,
+        namespace="user1",
+        sql="BAD SQL",
+        duration_ms=0.5,
+        rows_returned=0,
+        status="error",
+        error_message="syntax error",
+        executed_at=now,
     )
 
     successes = await store.get_query_history(namespace="user1", status_filter="success")
@@ -239,8 +253,12 @@ async def test_get_query_history_filter_date_range(tmp_path) -> None:
 
     for ts, label in [(t_early, "early"), (t_mid, "mid"), (t_late, "late")]:
         await store.log_query_history(
-            namespace="user1", sql=f"SELECT '{label}'", duration_ms=1.0,
-            rows_returned=1, status="success", executed_at=ts,
+            namespace="user1",
+            sql=f"SELECT '{label}'",
+            duration_ms=1.0,
+            rows_returned=1,
+            status="success",
+            executed_at=ts,
         )
 
     rows = await store.get_query_history(
@@ -265,12 +283,20 @@ async def test_get_query_history_start_filter_only(tmp_path) -> None:
     t_new = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
     await store.log_query_history(
-        namespace="u", sql="SELECT 'old'", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=t_old,
+        namespace="u",
+        sql="SELECT 'old'",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=t_old,
     )
     await store.log_query_history(
-        namespace="u", sql="SELECT 'new'", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=t_new,
+        namespace="u",
+        sql="SELECT 'new'",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=t_new,
     )
 
     rows = await store.get_query_history(
@@ -294,12 +320,20 @@ async def test_get_query_history_end_filter_only(tmp_path) -> None:
     t_new = datetime(2026, 3, 1, tzinfo=timezone.utc)
 
     await store.log_query_history(
-        namespace="u", sql="SELECT 'old'", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=t_old,
+        namespace="u",
+        sql="SELECT 'old'",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=t_old,
     )
     await store.log_query_history(
-        namespace="u", sql="SELECT 'new'", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=t_new,
+        namespace="u",
+        sql="SELECT 'new'",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=t_new,
     )
 
     rows = await store.get_query_history(
@@ -322,8 +356,12 @@ async def test_get_query_history_pagination_limit(tmp_path) -> None:
     now = datetime.now(timezone.utc)
     for i in range(10):
         await store.log_query_history(
-            namespace="u", sql=f"SELECT {i}", duration_ms=float(i),
-            rows_returned=1, status="success", executed_at=now,
+            namespace="u",
+            sql=f"SELECT {i}",
+            duration_ms=float(i),
+            rows_returned=1,
+            status="success",
+            executed_at=now,
         )
 
     rows = await store.get_query_history(namespace="u", limit=3)
@@ -342,8 +380,12 @@ async def test_get_query_history_pagination_offset(tmp_path) -> None:
     now = datetime.now(timezone.utc)
     for i in range(8):
         await store.log_query_history(
-            namespace="u", sql=f"SELECT {i}", duration_ms=float(i),
-            rows_returned=1, status="success", executed_at=now,
+            namespace="u",
+            sql=f"SELECT {i}",
+            duration_ms=float(i),
+            rows_returned=1,
+            status="success",
+            executed_at=now,
         )
 
     page1 = await store.get_query_history(namespace="u", limit=4, offset=0)
@@ -366,8 +408,12 @@ async def test_get_query_history_default_limit_is_50(tmp_path) -> None:
     now = datetime.now(timezone.utc)
     for i in range(60):
         await store.log_query_history(
-            namespace="u", sql=f"SELECT {i}", duration_ms=1.0,
-            rows_returned=1, status="success", executed_at=now,
+            namespace="u",
+            sql=f"SELECT {i}",
+            duration_ms=1.0,
+            rows_returned=1,
+            status="success",
+            executed_at=now,
         )
 
     rows = await store.get_query_history(namespace="u")
@@ -401,8 +447,12 @@ async def test_get_query_history_multiple_entries_ordered(tmp_path) -> None:
 
     for ts, label in [(t1, "first"), (t2, "second"), (t3, "third")]:
         await store.log_query_history(
-            namespace="u", sql=f"SELECT '{label}'", duration_ms=1.0,
-            rows_returned=1, status="success", executed_at=ts,
+            namespace="u",
+            sql=f"SELECT '{label}'",
+            duration_ms=1.0,
+            rows_returned=1,
+            status="success",
+            executed_at=ts,
         )
 
     rows = await store.get_query_history(namespace="u")
@@ -444,9 +494,7 @@ def test_history_endpoint_content_type_json(client, auth_headers) -> None:
     assert "application/json" in resp.headers.get("content-type", "")
 
 
-def test_history_records_successful_query_execution(
-    client, auth_headers, session_id
-) -> None:
+def test_history_records_successful_query_execution(client, auth_headers, session_id) -> None:
     """POST /query automatically records a success entry in history."""
     resp = client.post(
         "/query",
@@ -461,9 +509,7 @@ def test_history_records_successful_query_execution(
     assert matching[0]["status"] == "success"
 
 
-def test_history_records_failed_query_execution(
-    client, auth_headers, session_id
-) -> None:
+def test_history_records_failed_query_execution(client, auth_headers, session_id) -> None:
     """POST /query records an error entry when DuckDB raises."""
     resp = client.post(
         "/query",
@@ -504,9 +550,7 @@ def test_history_duration_ms_is_non_negative(client, auth_headers, session_id) -
     assert hist[0]["duration_ms"] >= 0
 
 
-def test_history_executed_at_is_parseable_iso8601(
-    client, auth_headers, session_id
-) -> None:
+def test_history_executed_at_is_parseable_iso8601(client, auth_headers, session_id) -> None:
     """executed_at field must be a parseable ISO 8601 timestamp string."""
     client.post(
         "/query",
@@ -519,9 +563,7 @@ def test_history_executed_at_is_parseable_iso8601(
     assert parsed is not None
 
 
-def test_history_rows_returned_matches_query_result(
-    client, auth_headers, session_id
-) -> None:
+def test_history_rows_returned_matches_query_result(client, auth_headers, session_id) -> None:
     """rows_returned in history matches the actual query rowcount."""
     client.post(
         "/query",
@@ -537,7 +579,9 @@ def test_history_rows_returned_matches_query_result(
 def test_history_filter_status_success(client, auth_headers, session_id) -> None:
     """GET /history?status=success returns only successful entries."""
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
-    client.post("/query", json={"session_id": session_id, "sql": "INVALID SQL !!"}, headers=auth_headers)
+    client.post(
+        "/query", json={"session_id": session_id, "sql": "INVALID SQL !!"}, headers=auth_headers
+    )
 
     resp = client.get("/history?status=success", headers=auth_headers)
     assert resp.status_code == 200
@@ -548,7 +592,9 @@ def test_history_filter_status_success(client, auth_headers, session_id) -> None
 def test_history_filter_status_error(client, auth_headers, session_id) -> None:
     """GET /history?status=error returns only failed entries."""
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
-    client.post("/query", json={"session_id": session_id, "sql": "INVALID SQL !!"}, headers=auth_headers)
+    client.post(
+        "/query", json={"session_id": session_id, "sql": "INVALID SQL !!"}, headers=auth_headers
+    )
 
     resp = client.get("/history?status=error", headers=auth_headers)
     assert resp.status_code == 200
@@ -562,9 +608,7 @@ def test_history_filter_invalid_status_returns_400(client, auth_headers) -> None
     assert resp.status_code == 400
 
 
-def test_history_filter_date_range_start_and_end(
-    client, auth_headers, session_id
-) -> None:
+def test_history_filter_date_range_start_and_end(client, auth_headers, session_id) -> None:
     """start and end query params filter by executed_at range."""
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
 
@@ -577,9 +621,7 @@ def test_history_filter_date_range_start_and_end(
     assert len(resp.json()) >= 1
 
 
-def test_history_filter_date_range_excludes_future(
-    client, auth_headers, session_id
-) -> None:
+def test_history_filter_date_range_excludes_future(client, auth_headers, session_id) -> None:
     """Queries run now are excluded from a past-only date range."""
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
 
@@ -645,7 +687,9 @@ def test_history_offset_zero_same_as_no_offset(client, auth_headers, session_id)
 def test_history_combined_filters(client, auth_headers, session_id) -> None:
     """status + date range filters can be combined."""
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
-    client.post("/query", json={"session_id": session_id, "sql": "INVALID !!"}, headers=auth_headers)
+    client.post(
+        "/query", json={"session_id": session_id, "sql": "INVALID !!"}, headers=auth_headers
+    )
 
     now = datetime.now(timezone.utc)
     start = (now - timedelta(minutes=5)).isoformat()

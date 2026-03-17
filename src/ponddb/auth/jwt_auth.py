@@ -17,7 +17,7 @@ from fastapi import HTTPException, Request
 from jose import JWTError
 from jose import jwt as jose_jwt
 
-DEFAULT_EXPIRY_SECONDS = 3600          # 1 hour
+DEFAULT_EXPIRY_SECONDS = 3600  # 1 hour
 DEFAULT_REFRESH_EXPIRY_SECONDS = 30 * 24 * 3600  # 30 days
 
 
@@ -33,8 +33,7 @@ def validate_secret_strength(secret: str) -> None:
     """Raise ValueError if *secret* is too short or obviously weak."""
     if len(secret) < _MIN_SECRET_LENGTH:
         raise ValueError(
-            f"JWT secret must be at least {_MIN_SECRET_LENGTH} characters long "
-            f"(got {len(secret)})"
+            f"JWT secret must be at least {_MIN_SECRET_LENGTH} characters long (got {len(secret)})"
         )
     if secret.lower() in _COMMON_WEAK_SECRETS:
         raise ValueError("JWT secret is too common/predictable")
@@ -359,14 +358,18 @@ async def require_auth(request: Request) -> dict[str, Any]:
 
     try:
         if authorization.startswith("Bearer "):
-            token = authorization[len("Bearer "):]
+            token = authorization[len("Bearer ") :]
             return verify_access_token(token)
 
         if api_key:
             expected = _get_api_key()
             if expected and api_key == expected:
                 # Return a minimal claims dict for API-key callers
-                return {"tenant_id": "default", "scopes": ["query", "read", "write"], "type": "access"}
+                return {
+                    "tenant_id": "default",
+                    "scopes": ["query", "read", "write"],
+                    "type": "access",
+                }
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         # Fall back to website session cookie
@@ -387,8 +390,10 @@ async def require_auth(request: Request) -> dict[str, Any]:
             from ponddb.security.audit_log import AuditLogMiddleware
 
             fwd = request.headers.get("X-Forwarded-For", "")
-            ip = fwd.split(",")[0].strip() if fwd else (
-                request.client.host if request.client else None
+            ip = (
+                fwd.split(",")[0].strip()
+                if fwd
+                else (request.client.host if request.client else None)
             )
             ua = request.headers.get("User-Agent")
             try:
@@ -421,7 +426,7 @@ async def require_admin(request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=403, detail="Admin role required")
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    token = authorization[len("Bearer "):]
+    token = authorization[len("Bearer ") :]
     claims = verify_access_token(token)
     if claims.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin role required")

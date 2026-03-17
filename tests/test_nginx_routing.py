@@ -88,9 +88,7 @@ class TestPublicServerBlockAccessControl:
         conf = _nginx_conf_text()
         block = _extract_server_block(conf, 80)
         # Find /admin location sub-block
-        admin_loc = re.search(
-            r"location\s+[~*\s]*/admin[^{]*\{([^}]+)\}", block, re.DOTALL
-        )
+        admin_loc = re.search(r"location\s+[~*\s]*/admin[^{]*\{([^}]+)\}", block, re.DOTALL)
         assert admin_loc is not None, (
             "Public server block must have a 'location /admin { ... }' block"
         )
@@ -109,9 +107,7 @@ class TestPublicServerBlockAccessControl:
     def test_public_block_metrics_returns_403(self) -> None:
         conf = _nginx_conf_text()
         block = _extract_server_block(conf, 80)
-        metrics_loc = re.search(
-            r"location\s+/metrics\s*\{([^}]+)\}", block, re.DOTALL
-        )
+        metrics_loc = re.search(r"location\s+/metrics\s*\{([^}]+)\}", block, re.DOTALL)
         assert metrics_loc is not None, (
             "Public server block must have a 'location /metrics { ... }' block"
         )
@@ -278,9 +274,11 @@ def test_fastapi_health_endpoint_importable() -> None:
     """FastAPI app must have a /health endpoint (nginx proxies it on port 80)."""
     from fastapi.testclient import TestClient
     import os
+
     os.environ.setdefault("POND_JWT_SECRET", "test-secret-nginx")
     os.environ.setdefault("POND_API_KEY", "test-key-nginx")
     from ponddb.app import app
+
     client = TestClient(app)
     resp = client.get("/health")
     assert resp.status_code == 200, (
@@ -291,6 +289,7 @@ def test_fastapi_health_endpoint_importable() -> None:
 def test_fastapi_has_admin_routes() -> None:
     """FastAPI /admin routes must exist (nginx protects them, FastAPI serves them internally)."""
     import os
+
     os.environ.setdefault("POND_JWT_SECRET", "test-secret-nginx")
     os.environ.setdefault("POND_API_KEY", "test-key-nginx")
     from ponddb.app import app

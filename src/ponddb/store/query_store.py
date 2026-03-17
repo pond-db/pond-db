@@ -61,9 +61,7 @@ class QueryStoreMixin:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as exc:
-            raise DuplicateQueryError(
-                f"Query with slug '{slug}' already exists"
-            ) from exc
+            raise DuplicateQueryError(f"Query with slug '{slug}' already exists") from exc
         return slug
 
     async def get_query_by_slug(
@@ -92,9 +90,7 @@ class QueryStoreMixin:
             and result["visibility"] == "private"
             and result["tenant_id"] != tenant_id
         ):
-            raise PermissionError(
-                f"Query {slug!r} is private and belongs to a different tenant"
-            )
+            raise PermissionError(f"Query {slug!r} is private and belongs to a different tenant")
         return result
 
     async def list_queries(

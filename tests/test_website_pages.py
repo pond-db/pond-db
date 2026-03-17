@@ -37,8 +37,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app, follow_redirects=False)
 
 
@@ -46,8 +48,10 @@ def client(_set_env) -> TestClient:
 def logged_in_client(_set_env) -> TestClient:
     """Client with a valid session cookie (logged in via POST /login)."""
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     c = TestClient(app, follow_redirects=False)
     resp = c.post("/login", data={"api_key": VALID_KEY})
     assert resp.status_code in (200, 302, 303), f"Login failed: {resp.status_code} {resp.text}"
@@ -172,7 +176,9 @@ class TestPostLogin:
         resp = client.post("/login", data={"api_key": "wrong-key"}, follow_redirects=False)
         # Either 200 with error message or 401/403 or redirect back to login
         if resp.status_code == 200:
-            assert any(kw in resp.text.lower() for kw in ["invalid", "error", "incorrect", "unauthorized"])
+            assert any(
+                kw in resp.text.lower() for kw in ["invalid", "error", "incorrect", "unauthorized"]
+            )
         elif resp.status_code in (302, 303):
             assert "/login" in resp.headers["location"]
         else:
@@ -213,7 +219,11 @@ class TestLogout:
         resp = logged_in_client.post("/logout")
         # Cookie should be deleted (max-age=0 or expires in past)
         set_cookie = resp.headers.get("set-cookie", "")
-        assert "max-age=0" in set_cookie.lower() or "expires" in set_cookie.lower() or resp.status_code in (302, 303)
+        assert (
+            "max-age=0" in set_cookie.lower()
+            or "expires" in set_cookie.lower()
+            or resp.status_code in (302, 303)
+        )
 
     def test_unauthenticated_logout_still_redirects(self, client: TestClient) -> None:
         resp = client.post("/logout")
@@ -246,7 +256,9 @@ class TestDashboard:
 
     def test_dashboard_has_new_session_button_or_link(self, logged_in_client: TestClient) -> None:
         body = logged_in_client.get("/dashboard").text.lower()
-        assert any(kw in body for kw in ["new session", "create session", "start session", "launch"])
+        assert any(
+            kw in body for kw in ["new session", "create session", "start session", "launch"]
+        )
 
     def test_dashboard_has_workgroups_section_or_link(self, logged_in_client: TestClient) -> None:
         body = logged_in_client.get("/dashboard").text.lower()
@@ -298,7 +310,12 @@ class TestWorkgroupPage:
         # First create a workgroup
         create_resp = logged_in_client.post(
             "/namespaces/default/workgroups",
-            json={"name": "test-wg", "max_sessions": 5, "max_query_duration_ms": 30000, "max_result_mb": 50},
+            json={
+                "name": "test-wg",
+                "max_sessions": 5,
+                "max_query_duration_ms": 30000,
+                "max_result_mb": 50,
+            },
             headers={"X-API-Key": VALID_KEY},
         )
         # Workgroup creation may return 200 or 201 or 409 (already exists) — skip check
@@ -351,6 +368,7 @@ class TestWorkgroupPage:
     def test_workgroup_uuid_path_works(self, logged_in_client: TestClient) -> None:
         """Workgroup page should also accept UUID-style IDs."""
         import uuid
+
         fake_id = str(uuid.uuid4())
         resp = logged_in_client.get(f"/workgroup/{fake_id}")
         # Should return 404 (not found) not 422 (validation error) — UUIDs are valid path params

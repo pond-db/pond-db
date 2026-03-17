@@ -73,8 +73,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(env_setup) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app, follow_redirects=False)
 
 
@@ -82,8 +84,10 @@ def client(env_setup) -> TestClient:
 def admin_client(env_setup) -> TestClient:
     """TestClient with admin session cookie pre-set."""
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     c = TestClient(app, follow_redirects=False)
     c.cookies.set(COOKIE_NAME, _admin_cookie())
     return c
@@ -93,8 +97,10 @@ def admin_client(env_setup) -> TestClient:
 def member_client(env_setup) -> TestClient:
     """TestClient with non-admin member session cookie pre-set."""
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     c = TestClient(app, follow_redirects=False)
     c.cookies.set(COOKIE_NAME, _member_cookie())
     return c
@@ -102,6 +108,7 @@ def member_client(env_setup) -> TestClient:
 
 def _admin_jwt_headers() -> dict[str, str]:
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token(ADMIN_TENANT, role="admin")
     return {"Authorization": f"Bearer {token}"}
 
@@ -239,7 +246,9 @@ class TestAdminInvitesPage:
     def test_invites_page_lists_existing_invites(self, admin_client: TestClient) -> None:
         """Page should have a section listing existing invites (even if empty)."""
         body = admin_client.get("/admin/invites").text.lower()
-        assert any(kw in body for kw in ["pending", "invite", "token", "no invite", "revoke", "list"])
+        assert any(
+            kw in body for kw in ["pending", "invite", "token", "no invite", "revoke", "list"]
+        )
 
     def test_invites_page_shows_invite_status_column(self, admin_client: TestClient) -> None:
         body = admin_client.get("/admin/invites").text.lower()
@@ -433,7 +442,9 @@ class TestAdminNamespacesPage:
         body = admin_client.get("/admin/namespaces").text
         assert "test-wg" in body
 
-    def test_namespaces_page_has_create_namespace_form_or_link(self, admin_client: TestClient) -> None:
+    def test_namespaces_page_has_create_namespace_form_or_link(
+        self, admin_client: TestClient
+    ) -> None:
         body = admin_client.get("/admin/namespaces").text.lower()
         assert any(kw in body for kw in ["create", "new namespace", "add namespace", "<form"])
 

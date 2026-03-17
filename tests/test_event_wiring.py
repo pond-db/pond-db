@@ -291,9 +291,7 @@ class TestInviteCreatedEvent:
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False), admin_headers
 
-    def test_invite_created_event_logged(
-        self, invite_client: tuple, captured_events: list
-    ) -> None:
+    def test_invite_created_event_logged(self, invite_client: tuple, captured_events: list) -> None:
         """POST /invites 201 → invite_created event."""
         client, headers = invite_client
         resp = client.post(
@@ -304,9 +302,7 @@ class TestInviteCreatedEvent:
         assert resp.status_code == 201
 
         event_types = [e["event_type"] for e in captured_events]
-        assert "invite_created" in event_types, (
-            f"Expected invite_created event; got: {event_types}"
-        )
+        assert "invite_created" in event_types, f"Expected invite_created event; got: {event_types}"
 
     def test_invite_created_captures_tenant_id(
         self, invite_client: tuple, captured_events: list
@@ -335,9 +331,7 @@ class TestInviteCreatedEvent:
         events = [e for e in captured_events if e["event_type"] == "invite_created"]
         assert events
         detail = str(events[0].get("detail", ""))
-        assert "carol@example.com" in detail, (
-            f"Expected invitee email in detail; got: {detail!r}"
-        )
+        assert "carol@example.com" in detail, f"Expected invitee email in detail; got: {detail!r}"
 
 
 # ===========================================================================
@@ -416,13 +410,9 @@ class TestUserProvisionedEvent:
         events = [e for e in captured_events if e["event_type"] == "user_provisioned"]
         assert events
         detail = str(events[0].get("detail", ""))
-        assert "dave@example.com" in detail, (
-            f"Expected email in detail; got: {detail!r}"
-        )
+        assert "dave@example.com" in detail, f"Expected email in detail; got: {detail!r}"
 
-    def test_failed_accept_does_not_emit_user_provisioned(
-        self, captured_events: list
-    ) -> None:
+    def test_failed_accept_does_not_emit_user_provisioned(self, captured_events: list) -> None:
         """ValueError from accept_invite → 40x response, no user_provisioned event."""
         from ponddb.store.invite_store import InviteStore
         from ponddb.api.invite_routes import make_invite_router
@@ -437,9 +427,7 @@ class TestUserProvisionedEvent:
                 "status": "pending",
             }
         )
-        invite_store.accept_invite = AsyncMock(
-            side_effect=ValueError("email mismatch: forbidden")
-        )
+        invite_store.accept_invite = AsyncMock(side_effect=ValueError("email mismatch: forbidden"))
 
         router = make_invite_router(invite_store)
         app = FastAPI()
@@ -488,9 +476,7 @@ class TestWorkgroupCreatedEvent:
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False), ns_id, admin_headers
 
-    def test_workgroup_created_event_logged(
-        self, wg_client: tuple, captured_events: list
-    ) -> None:
+    def test_workgroup_created_event_logged(self, wg_client: tuple, captured_events: list) -> None:
         """POST /workgroups 201 → workgroup_created event."""
         client, ns_id, headers = wg_client
         resp = client.post(
@@ -532,9 +518,7 @@ class TestWorkgroupCreatedEvent:
         events = [e for e in captured_events if e["event_type"] == "workgroup_created"]
         assert events
         detail = str(events[0].get("detail", ""))
-        assert "team-gamma" in detail, (
-            f"Expected workgroup name in detail; got: {detail!r}"
-        )
+        assert "team-gamma" in detail, f"Expected workgroup name in detail; got: {detail!r}"
 
     def test_workgroup_created_not_emitted_on_bad_namespace(
         self, wg_client: tuple, captured_events: list

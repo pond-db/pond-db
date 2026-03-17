@@ -105,18 +105,14 @@ def _update_error(
     elapsed_ms: float,
 ) -> None:
     conn.execute(
-        "UPDATE pondapi_executions "
-        "SET status='error', error=?, elapsed_ms=? "
-        "WHERE execution_id=?",
+        "UPDATE pondapi_executions SET status='error', error=?, elapsed_ms=? WHERE execution_id=?",
         (error, elapsed_ms, execution_id),
     )
     conn.commit()
 
 
 def _fetch_row(conn: sqlite3.Connection, execution_id: str) -> Optional[sqlite3.Row]:
-    cur = conn.execute(
-        "SELECT * FROM pondapi_executions WHERE execution_id=?", (execution_id,)
-    )
+    cur = conn.execute("SELECT * FROM pondapi_executions WHERE execution_id=?", (execution_id,))
     return cur.fetchone()
 
 
@@ -183,7 +179,9 @@ def _run_query_sync(
         result = manager.execute_query(session_id, sql)
         elapsed_ms = (time.perf_counter() - t0) * 1000
         try:
-            _update_complete(conn, execution_id, result.columns, result.rows, result.rowcount, elapsed_ms)
+            _update_complete(
+                conn, execution_id, result.columns, result.rows, result.rowcount, elapsed_ms
+            )
         except Exception:  # noqa: BLE001
             pass
     except Exception as exc:
@@ -344,7 +342,9 @@ def make_pondapi_execute_router(
             if fut.done():
                 row = _fetch_row(db_conn, execution_id)
                 if row is None:
-                    raise HTTPException(status_code=404, detail=f"Execution not found: {execution_id}")
+                    raise HTTPException(
+                        status_code=404, detail=f"Execution not found: {execution_id}"
+                    )
 
         return _row_to_result(row)
 

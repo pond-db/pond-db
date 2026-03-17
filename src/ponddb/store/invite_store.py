@@ -53,9 +53,7 @@ class InviteStore:
 
     async def get_invite(self, token: str) -> Optional[dict]:
         """Return invite dict or None if not found."""
-        cursor = self._store._conn.execute(
-            "SELECT * FROM invite_tokens WHERE token = ?", (token,)
-        )
+        cursor = self._store._conn.execute("SELECT * FROM invite_tokens WHERE token = ?", (token,))
         row = cursor.fetchone()
         return dict(row) if row is not None else None
 

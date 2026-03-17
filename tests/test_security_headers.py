@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 # Helpers: build minimal test apps with the middleware in dev vs prod mode
 # ---------------------------------------------------------------------------
 
+
 def make_app(dev_mode: bool) -> FastAPI:
     from ponddb.security.security_headers import SecurityHeadersMiddleware
 
@@ -26,6 +27,7 @@ def make_app(dev_mode: bool) -> FastAPI:
     @app.get("/error")
     def error():
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail="bad request")
 
     @app.get("/server-error")
@@ -65,6 +67,7 @@ ALL_HEADERS = NON_HSTS_HEADERS + [HSTS_HEADER]
 # Production mode — all 7 headers on every response
 # ---------------------------------------------------------------------------
 
+
 class TestProdModeHeaders:
     def test_all_headers_present_on_200(self, prod_client):
         resp = prod_client.get("/ok")
@@ -101,6 +104,7 @@ class TestProdModeHeaders:
 # Development mode — 6 headers, NO HSTS
 # ---------------------------------------------------------------------------
 
+
 class TestDevModeHeaders:
     def test_non_hsts_headers_present_on_200(self, dev_client):
         resp = dev_client.get("/ok")
@@ -115,7 +119,9 @@ class TestDevModeHeaders:
     def test_hsts_absent_in_dev_on_400(self, dev_client):
         resp = dev_client.get("/error")
         assert resp.status_code == 400
-        assert HSTS_HEADER not in resp.headers, "HSTS must NOT be set in dev mode on error responses"
+        assert HSTS_HEADER not in resp.headers, (
+            "HSTS must NOT be set in dev mode on error responses"
+        )
 
     def test_hsts_absent_in_dev_on_404(self, dev_client):
         resp = dev_client.get("/nonexistent-path")
@@ -136,6 +142,7 @@ class TestDevModeHeaders:
 # ---------------------------------------------------------------------------
 # Header value correctness
 # ---------------------------------------------------------------------------
+
 
 class TestHeaderValues:
     def test_x_content_type_options_nosniff(self, prod_client):
@@ -185,6 +192,7 @@ class TestHeaderValues:
 # Default mode (no dev_mode arg) should behave as prod (HSTS present)
 # ---------------------------------------------------------------------------
 
+
 class TestDefaultMode:
     def test_default_is_prod_mode(self):
         from ponddb.security.security_headers import SecurityHeadersMiddleware
@@ -220,16 +228,19 @@ class TestDefaultMode:
 # Integration: middleware wired into the real ponddb app
 # ---------------------------------------------------------------------------
 
+
 class TestAppIntegration:
     """Verify security_headers.py is imported and wired into app.py."""
 
     def test_security_headers_importable_from_ponddb(self):
         from ponddb.security import security_headers  # noqa: F401
+
         assert hasattr(security_headers, "SecurityHeadersMiddleware")
 
     def test_app_has_security_headers_middleware(self):
         """The real app must include SecurityHeadersMiddleware in its middleware stack."""
         from ponddb.app import app
+
         middleware_types = [m.cls.__name__ for m in app.user_middleware if hasattr(m, "cls")]
         assert "SecurityHeadersMiddleware" in middleware_types, (
             f"SecurityHeadersMiddleware not found in app middleware: {middleware_types}"
@@ -238,6 +249,7 @@ class TestAppIntegration:
     def test_real_app_health_has_security_headers(self):
         """GET /health on the real app must have all non-HSTS headers."""
         from ponddb.app import app
+
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.get("/health")
         assert resp.status_code == 200

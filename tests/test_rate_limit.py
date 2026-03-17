@@ -324,7 +324,7 @@ class TestRateLimitMiddlewareBasic:
         client = TestClient(_make_app(FakeRedis(), limit=100))
         for i in range(99):
             resp = client.get("/ping", headers={"X-Forwarded-For": "10.0.0.1"})
-            assert resp.status_code == 200, f"Request {i+1} expected 200, got {resp.status_code}"
+            assert resp.status_code == 200, f"Request {i + 1} expected 200, got {resp.status_code}"
 
 
 class TestRateLimitMiddleware429:

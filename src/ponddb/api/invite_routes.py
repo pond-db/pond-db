@@ -35,6 +35,7 @@ def _validate_email_format(email: str) -> str:
 # Pydantic models
 # ---------------------------------------------------------------------------
 
+
 class CreateInviteRequest(BaseModel):
     email: str
     role: str = "member"
@@ -59,6 +60,7 @@ class AcceptInviteRequest(BaseModel):
 # SMTP delivery
 # ---------------------------------------------------------------------------
 
+
 def send_invite_email(email: str, token: str, **kwargs) -> None:
     """Send invite email via SMTP. No-op if SMTP_HOST is not configured."""
     smtp_host = os.environ.get("POND_SMTP_HOST", "")
@@ -72,7 +74,9 @@ def send_invite_email(email: str, token: str, **kwargs) -> None:
     base_url = os.environ.get("POND_BASE_URL", "http://localhost:8432")
 
     accept_link = f"{base_url}/invites/{token}/accept"
-    body = f"You have been invited to PondDB.\n\nAccept your invite:\n{accept_link}\n\nToken: {token}"
+    body = (
+        f"You have been invited to PondDB.\n\nAccept your invite:\n{accept_link}\n\nToken: {token}"
+    )
 
     msg = MIMEText(body)
     msg["Subject"] = f"Your PondDB Invite ({token})"
@@ -89,6 +93,7 @@ def send_invite_email(email: str, token: str, **kwargs) -> None:
 # ---------------------------------------------------------------------------
 # Router factory
 # ---------------------------------------------------------------------------
+
 
 def make_invite_router(invite_store: InviteStore) -> APIRouter:
     """Return router with all /invites endpoints."""

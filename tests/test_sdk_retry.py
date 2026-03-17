@@ -85,7 +85,9 @@ class TestRetryLogic:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 result = await client.query("SELECT 1")
 
@@ -119,7 +121,9 @@ class TestRetryLogic:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 result = await client.query("SELECT 1")
 
@@ -146,7 +150,9 @@ class TestRetryLogic:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 result = await client.query("SELECT 1")
 
@@ -173,7 +179,9 @@ class TestRetryLogic:
             )
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 with pytest.raises(PondDBError):
                     await client.query("SELECT 1")
@@ -202,7 +210,9 @@ class TestRetryLogic:
             )
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with pytest.raises(Exception):
                 await client.query("INVALID SQL HERE")
 
@@ -229,7 +239,9 @@ class TestRetryLogic:
             )
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with pytest.raises(Exception):
                 await client.query("SELECT 1")
 
@@ -267,7 +279,9 @@ class TestRetryLogic:
         async def mock_sleep(delay: float) -> None:
             sleep_calls.append(delay)
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with patch("asyncio.sleep", side_effect=mock_sleep):
                 await client.query("SELECT 1")
 
@@ -301,7 +315,9 @@ class TestRetryLogic:
             )
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with pytest.raises(PondDBError):
                 await client.query("SELECT 1")
 
@@ -343,7 +359,12 @@ class TestRetryLogic:
         async def mock_sleep(delay: float) -> None:
             sleep_calls.append(delay)
 
-        with patch.object(client_with_single_retry._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client_with_single_retry._http,
+            "post",
+            new_callable=AsyncMock,
+            side_effect=post_side_effect,
+        ):
             with patch("asyncio.sleep", side_effect=mock_sleep):
                 await client_with_single_retry.query("SELECT 1")
 

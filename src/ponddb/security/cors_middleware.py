@@ -26,8 +26,7 @@ class AllowlistCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: object) -> Response:
         origin = request.headers.get("origin", "")
         is_preflight = (
-            request.method == "OPTIONS"
-            and "access-control-request-method" in request.headers
+            request.method == "OPTIONS" and "access-control-request-method" in request.headers
         )
 
         if is_preflight:

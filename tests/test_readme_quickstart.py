@@ -126,20 +126,23 @@ def test_readme_api_table_has_description_column(readme: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("endpoint", [
-    "/health",
-    "/session",
-    "/sessions",
-    "/query",
-    "/catalog/mount",
-    "/metrics",
-    "/auth/token",
-    "/auth/refresh",
-    "/history",
-    "/schema",
-    "/editor",
-    "/datasets",
-])
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/health",
+        "/session",
+        "/sessions",
+        "/query",
+        "/catalog/mount",
+        "/metrics",
+        "/auth/token",
+        "/auth/refresh",
+        "/history",
+        "/schema",
+        "/editor",
+        "/datasets",
+    ],
+)
 def test_readme_api_table_has_endpoint(readme: str, endpoint: str) -> None:
     """Every API endpoint must appear in the API reference table."""
     assert endpoint in readme, f"README API table must document the {endpoint!r} endpoint"
@@ -158,9 +161,7 @@ def test_readme_api_table_has_http_method(readme: str, method: str) -> None:
 
 def test_readme_has_architecture_section(readme: str) -> None:
     """README must have an architecture section."""
-    assert re.search(r"##.*[Aa]rchitect", readme), (
-        "README must have an ## Architecture section"
-    )
+    assert re.search(r"##.*[Aa]rchitect", readme), "README must have an ## Architecture section"
 
 
 def test_readme_has_ascii_architecture_diagram(readme: str) -> None:
@@ -223,18 +224,21 @@ def test_readme_has_configuration_section(readme: str) -> None:
     assert re.search(r"##.*[Cc]onfig", readme), "README must have a ## Configuration section"
 
 
-@pytest.mark.parametrize("env_var", [
-    "POND_HOST",
-    "POND_PORT",
-    "POND_JWT_SECRET",
-    "POND_IDLE_TIMEOUT",
-    "POND_MAX_SESSION_AGE",
-    "POND_DATA_ROOT",
-    "POND_MAX_RESULT_MB",
-    "POND_SESSION_MEMORY_LIMIT",
-    "POND_LOG_LEVEL",
-    "POND_SQLITE_PATH",
-])
+@pytest.mark.parametrize(
+    "env_var",
+    [
+        "POND_HOST",
+        "POND_PORT",
+        "POND_JWT_SECRET",
+        "POND_IDLE_TIMEOUT",
+        "POND_MAX_SESSION_AGE",
+        "POND_DATA_ROOT",
+        "POND_MAX_RESULT_MB",
+        "POND_SESSION_MEMORY_LIMIT",
+        "POND_LOG_LEVEL",
+        "POND_SQLITE_PATH",
+    ],
+)
 def test_readme_documents_env_var(readme: str, env_var: str) -> None:
     """Every configuration env var must be documented in the README."""
     assert env_var in readme, f"README must document environment variable {env_var!r}"
@@ -301,6 +305,7 @@ def test_ponddb_package_is_importable() -> None:
 def test_ponddb_has_version() -> None:
     """ponddb package must expose __version__."""
     import ponddb
+
     assert hasattr(ponddb, "__version__"), "ponddb must expose __version__"
     assert isinstance(ponddb.__version__, str)
     assert ponddb.__version__, "ponddb.__version__ must not be empty"
@@ -309,6 +314,7 @@ def test_ponddb_has_version() -> None:
 def test_ponddb_exports_client_class() -> None:
     """ponddb package must export a client class (PondDB or PondClient)."""
     import ponddb
+
     # README says: from ponddb import PondDB
     assert hasattr(ponddb, "PondDB"), (
         "ponddb must export PondDB class for use in: from ponddb import PondDB"
@@ -318,6 +324,7 @@ def test_ponddb_exports_client_class() -> None:
 def test_ponddb_client_can_be_instantiated() -> None:
     """PondDB client class must be instantiable (basic import smoke test)."""
     from ponddb import PondDB  # type: ignore[attr-defined]
+
     client = PondDB()
     assert client is not None
 
@@ -336,9 +343,7 @@ def test_readme_has_development_section(readme: str) -> None:
 
 def test_readme_dev_setup_shows_clone(readme: str) -> None:
     """Development setup must show git clone step."""
-    assert "git clone" in readme, (
-        "README development setup must show: git clone <repo-url>"
-    )
+    assert "git clone" in readme, "README development setup must show: git clone <repo-url>"
 
 
 def test_readme_dev_setup_shows_venv(readme: str) -> None:
@@ -350,7 +355,7 @@ def test_readme_dev_setup_shows_venv(readme: str) -> None:
 
 def test_readme_dev_setup_shows_install(readme: str) -> None:
     """Development setup must show pip install of dev dependencies."""
-    assert re.search(r'pip install.*\[dev\]|pip install.*-e', readme), (
+    assert re.search(r"pip install.*\[dev\]|pip install.*-e", readme), (
         "README development setup must show pip install with dev extras"
     )
 

@@ -36,6 +36,7 @@ _SRC = str(Path(__file__).parent.parent / "src")
 def _get_runner():
     """Import subprocess_runner lazily so collection always succeeds."""
     import importlib
+
     return importlib.import_module("ponddb.engine.subprocess_runner")
 
 
@@ -354,6 +355,7 @@ class TestSessionManagerSubprocessIntegration:
 
         import importlib
         import ponddb.engine.session_manager as sm_mod
+
         importlib.reload(sm_mod)
 
         mgr = sm_mod.SessionManager()
@@ -375,6 +377,7 @@ class TestSessionManagerSubprocessIntegration:
         monkeypatch.setattr(mod, "run_query_isolated", spy)
 
         import ponddb.engine.session_manager as sm_mod
+
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         result = mgr.execute_query(sid, "SELECT 1 AS n")
@@ -394,6 +397,7 @@ class TestSessionManagerSubprocessIntegration:
         monkeypatch.setattr(mod, "run_query_isolated", spy)
 
         import ponddb.engine.session_manager as sm_mod
+
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         result = mgr.execute_query(sid, "SELECT 42 AS v")
@@ -406,6 +410,7 @@ class TestSessionManagerSubprocessIntegration:
         monkeypatch.setenv("POND_SUBPROCESS_ISOLATION", "true")
 
         import ponddb.engine.session_manager as sm_mod
+
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         result = mgr.execute_query(sid, "SELECT 7 * 6 AS answer")
@@ -419,6 +424,7 @@ class TestSessionManagerSubprocessIntegration:
         monkeypatch.setenv("POND_SUBPROCESS_ISOLATION", "true")
 
         import ponddb.engine.session_manager as sm_mod
+
         mgr = sm_mod.SessionManager()
         sid = mgr.create_session()
         with pytest.raises(Exception):
@@ -463,6 +469,7 @@ class TestProcessIsolation:
     def test_child_process_terminates_after_query(self):
         """No zombie processes accumulate after successful queries."""
         import multiprocessing
+
         before = len(multiprocessing.active_children())
         _run("SELECT 1 AS n")
         time.sleep(0.1)

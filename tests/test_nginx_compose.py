@@ -161,10 +161,16 @@ def test_compose_services_can_communicate(nginx_service: dict, ponddb_service: d
     They are on the same network either implicitly (docker-compose default network)
     or via an explicitly declared shared network.
     """
-    nginx_networks = set(nginx_service.get("networks", {}).keys() if isinstance(
-        nginx_service.get("networks"), dict) else nginx_service.get("networks", []))
-    ponddb_networks = set(ponddb_service.get("networks", {}).keys() if isinstance(
-        ponddb_service.get("networks"), dict) else ponddb_service.get("networks", []))
+    nginx_networks = set(
+        nginx_service.get("networks", {}).keys()
+        if isinstance(nginx_service.get("networks"), dict)
+        else nginx_service.get("networks", [])
+    )
+    ponddb_networks = set(
+        ponddb_service.get("networks", {}).keys()
+        if isinstance(ponddb_service.get("networks"), dict)
+        else ponddb_service.get("networks", [])
+    )
 
     if not nginx_networks and not ponddb_networks:
         # Both use the implicit default network — they can communicate

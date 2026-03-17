@@ -158,6 +158,7 @@ def client_with_audit(env_setup, mock_pool, monkeypatch):
 
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
     from ponddb.security.audit_log import AuditLogMiddleware
@@ -194,6 +195,7 @@ class TestLoginEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -216,6 +218,7 @@ class TestLoginEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -238,6 +241,7 @@ class TestLoginEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -266,6 +270,7 @@ class TestLoginEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -309,6 +314,7 @@ class TestSandboxBlockEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -342,6 +348,7 @@ class TestSandboxBlockEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -376,6 +383,7 @@ class TestSandboxBlockEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -414,6 +422,7 @@ class TestSandboxBlockEventLogged:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -453,6 +462,7 @@ class TestPostgresDownResiliency:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -476,6 +486,7 @@ class TestPostgresDownResiliency:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware
@@ -510,6 +521,7 @@ class TestPostgresDownResiliency:
 
         import importlib
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
         from ponddb.security.audit_log import AuditLogMiddleware

@@ -23,17 +23,13 @@ NGINX_DOCKERFILE = NGINX_DIR / "Dockerfile"
 
 @pytest.fixture(scope="module")
 def nginx_conf_text() -> str:
-    assert NGINX_CONF.exists(), (
-        f"nginx/nginx.conf not found — expected at {NGINX_CONF}"
-    )
+    assert NGINX_CONF.exists(), f"nginx/nginx.conf not found — expected at {NGINX_CONF}"
     return NGINX_CONF.read_text()
 
 
 @pytest.fixture(scope="module")
 def nginx_dockerfile_text() -> str:
-    assert NGINX_DOCKERFILE.exists(), (
-        f"nginx/Dockerfile not found — expected at {NGINX_DOCKERFILE}"
-    )
+    assert NGINX_DOCKERFILE.exists(), f"nginx/Dockerfile not found — expected at {NGINX_DOCKERFILE}"
     return NGINX_DOCKERFILE.read_text()
 
 
@@ -158,9 +154,9 @@ def test_nginx_conf_blocks_admin_path_from_public(nginx_conf_text: str) -> None:
     assert re.search(r"location\s+/admin", nginx_conf_text), (
         "nginx.conf must have a location block for /admin to block public access"
     )
-    assert re.search(r"return\s+403", nginx_conf_text) or re.search(r"deny\s+all", nginx_conf_text), (
-        "nginx.conf must return 403 (or deny all) for /admin/* in the public server block"
-    )
+    assert re.search(r"return\s+403", nginx_conf_text) or re.search(
+        r"deny\s+all", nginx_conf_text
+    ), "nginx.conf must return 403 (or deny all) for /admin/* in the public server block"
 
 
 def test_nginx_conf_blocks_metrics_path_from_public(nginx_conf_text: str) -> None:
@@ -173,12 +169,8 @@ def test_nginx_conf_blocks_metrics_path_from_public(nginx_conf_text: str) -> Non
 def test_nginx_conf_metrics_returns_403_on_public(nginx_conf_text: str) -> None:
     """Confirm 403 is returned for /metrics in public block."""
     # Find location /metrics block and confirm 403 return
-    metrics_match = re.search(
-        r"location\s+/metrics\s*\{([^}]+)\}", nginx_conf_text, re.DOTALL
-    )
-    assert metrics_match is not None, (
-        "nginx.conf must have a 'location /metrics { ... }' block"
-    )
+    metrics_match = re.search(r"location\s+/metrics\s*\{([^}]+)\}", nginx_conf_text, re.DOTALL)
+    assert metrics_match is not None, "nginx.conf must have a 'location /metrics { ... }' block"
     block_content = metrics_match.group(1)
     assert "403" in block_content or "deny" in block_content, (
         "The /metrics location block must return 403 or use 'deny all'"

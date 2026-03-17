@@ -54,8 +54,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(env_setup) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app, raise_server_exceptions=True)
 
 
@@ -64,8 +66,10 @@ def refresh_token_with_fp(env_setup) -> str:
     """Create a refresh token that includes the fp claim for DEVICE_IP + DEVICE_UA."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
     from ponddb.auth.jwt_auth import create_refresh_token
+
     return create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
 
 
@@ -74,8 +78,10 @@ def refresh_token_no_fp(env_setup) -> str:
     """Create a refresh token without fp claim (no ip/ua provided)."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
     from ponddb.auth.jwt_auth import create_refresh_token
+
     return create_refresh_token(TENANT_ID)
 
 
@@ -207,14 +213,17 @@ class TestCreateRefreshTokenFingerprint:
         monkeypatch.setenv("POND_FINGERPRINT_SALT", "salt-one-xxxxxxxxxxxxxxxxxx")
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token as crt
+
         token1 = crt(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims1 = jose_jwt.decode(token1, JWT_SECRET, algorithms=["HS256"])
 
         monkeypatch.setenv("POND_FINGERPRINT_SALT", "salt-two-xxxxxxxxxxxxxxxxxx")
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token as crt2
+
         token2 = crt2(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
         claims2 = jose_jwt.decode(token2, JWT_SECRET, algorithms=["HS256"])
 
@@ -307,6 +316,7 @@ class TestFingerprintIPDisabled:
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import compute_fingerprint, create_refresh_token
 
@@ -320,6 +330,7 @@ class TestFingerprintIPDisabled:
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
 
@@ -333,6 +344,7 @@ class TestFingerprintIPDisabled:
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from fastapi import HTTPException
         from ponddb.auth.jwt_auth import create_refresh_token, verify_refresh_token
@@ -356,6 +368,7 @@ class TestRefreshEndpointFingerprint:
         # For now, create the token directly via jwt_auth.
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token
 
@@ -406,6 +419,7 @@ class TestRefreshEndpointFingerprint:
         """POST /auth/refresh with a token that has no fp claim succeeds (backward compat)."""
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token
 
@@ -424,6 +438,7 @@ class TestRefreshEndpointFingerprint:
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token
 
@@ -432,8 +447,10 @@ class TestRefreshEndpointFingerprint:
 
         # Reload app so it picks up the env change
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
+
         new_client = TestClient(app, raise_server_exceptions=True)
 
         resp = new_client.post(
@@ -453,14 +470,17 @@ class TestRefreshEndpointFingerprint:
         monkeypatch.setenv("POND_FINGERPRINT_IP", "false")
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token
 
         token = create_refresh_token(TENANT_ID, ip=DEVICE_IP, user_agent=DEVICE_UA)
 
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
+
         new_client = TestClient(app, raise_server_exceptions=True)
 
         resp = new_client.post(
@@ -477,6 +497,7 @@ class TestRefreshEndpointFingerprint:
         """The /auth/refresh endpoint uses X-Forwarded-For header for IP extraction."""
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import create_refresh_token
 
@@ -538,6 +559,7 @@ class TestIssueTokenWithFingerprint:
 
         import importlib
         import ponddb.auth.jwt_auth as jwt_module
+
         importlib.reload(jwt_module)
         from ponddb.auth.jwt_auth import compute_fingerprint
 

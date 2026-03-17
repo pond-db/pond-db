@@ -36,8 +36,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -115,9 +117,7 @@ class TestTerminateSession:
         resp = client.delete(f"/htmx/session/{session_id}", headers=auth_headers)
         assert resp.text == ""
 
-    def test_unknown_session_returns_404(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_unknown_session_returns_404(self, client: TestClient, auth_headers: dict) -> None:
         resp = client.delete("/htmx/session/nonexistent-id", headers=auth_headers)
         assert resp.status_code == 404
 
@@ -140,15 +140,11 @@ class TestWorkgroupSessions:
         resp = client.get("/htmx/workgroup/default/sessions")
         assert resp.status_code == 401
 
-    def test_unknown_workgroup_returns_404(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_unknown_workgroup_returns_404(self, client: TestClient, auth_headers: dict) -> None:
         resp = client.get("/htmx/workgroup/nonexistent-wg/sessions", headers=auth_headers)
         assert resp.status_code == 404
 
-    def test_returns_html_fragment(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_returns_html_fragment(self, client: TestClient, auth_headers: dict) -> None:
         # Create workgroup first
         client.post(
             "/namespaces/default/workgroups",

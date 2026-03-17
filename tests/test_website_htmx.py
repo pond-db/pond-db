@@ -41,8 +41,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app, follow_redirects=False)
 
 
@@ -219,9 +221,7 @@ class TestHTMXExecuteSubmit:
         )
         assert resp.status_code in (400, 422)
 
-    def test_missing_session_id_returns_400(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_missing_session_id_returns_400(self, client: TestClient, auth_headers: dict) -> None:
         resp = client.post(
             "/pondapi/execute/htmx",
             data={"sql": "SELECT 1"},
@@ -261,9 +261,7 @@ class TestHTMXExecuteSubmit:
 
 class TestHTMXPollStatus:
     @pytest.fixture
-    def execution_id(
-        self, client: TestClient, session_id: str, auth_headers: dict
-    ) -> str:
+    def execution_id(self, client: TestClient, session_id: str, auth_headers: dict) -> str:
         resp = client.post(
             "/pondapi/execute/htmx",
             data={"session_id": session_id, "sql": "SELECT 42 AS answer"},
@@ -272,6 +270,7 @@ class TestHTMXPollStatus:
         assert resp.status_code in (200, 202)
         # Extract execution ID from body (embedded in a URL like /pondapi/execute/{id}/htmx)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match, f"No execution ID found in response: {resp.text[:300]}"
         return match.group(1)
@@ -280,6 +279,7 @@ class TestHTMXPollStatus:
         self, client: TestClient, auth_headers: dict
     ) -> None:
         import uuid
+
         fake_id = str(uuid.uuid4())
         resp = client.get(f"/pondapi/execute/{fake_id}/htmx", headers=auth_headers)
         if resp.status_code == 200:
@@ -328,9 +328,7 @@ class TestHTMXPollStatus:
         if "pending" in body or "running" in body:
             assert "hx-trigger" in body or "hx-get" in body
 
-    def test_poll_unauthenticated_returns_401(
-        self, client: TestClient, execution_id: str
-    ) -> None:
+    def test_poll_unauthenticated_returns_401(self, client: TestClient, execution_id: str) -> None:
         resp = client.get(f"/pondapi/execute/{execution_id}/htmx")
         assert resp.status_code in (401, 403, 302, 303)
 
@@ -344,6 +342,7 @@ class TestHTMXPollStatus:
         )
         assert resp.status_code in (200, 202)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match, "No execution ID in response"
         execution_id = match.group(1)
@@ -361,6 +360,7 @@ class TestHTMXPollStatus:
         )
         assert resp.status_code in (200, 202)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match
         execution_id = match.group(1)
@@ -379,6 +379,7 @@ class TestHTMXPollStatus:
         )
         assert resp.status_code in (200, 202)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match
         execution_id = match.group(1)
@@ -397,6 +398,7 @@ class TestHTMXPollStatus:
         )
         assert resp.status_code in (200, 202)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match
         execution_id = match.group(1)
@@ -415,6 +417,7 @@ class TestHTMXPollStatus:
         )
         assert resp.status_code in (200, 202)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match
         execution_id = match.group(1)
@@ -430,7 +433,11 @@ class TestHTMXPollStatus:
 
 class TestHTMXTenantIsolation:
     def test_cannot_poll_another_tenants_execution(
-        self, client: TestClient, session_id: str, auth_headers: dict, monkeypatch: pytest.MonkeyPatch
+        self,
+        client: TestClient,
+        session_id: str,
+        auth_headers: dict,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A different tenant must not be able to poll someone else's execution."""
         # Submit as tenant A
@@ -441,6 +448,7 @@ class TestHTMXTenantIsolation:
         )
         assert resp.status_code in (200, 202)
         import re
+
         match = re.search(r"/pondapi/execute/([a-f0-9-]+)/htmx", resp.text)
         assert match
         execution_id = match.group(1)
@@ -450,8 +458,10 @@ class TestHTMXTenantIsolation:
         monkeypatch.setenv("POND_API_KEY", other_key)
         # Reload to pick up new env
         import ponddb.app as app_module
+
         importlib.reload(app_module)
         from ponddb.app import app
+
         other_client = TestClient(app, follow_redirects=False)
 
         resp2 = other_client.get(

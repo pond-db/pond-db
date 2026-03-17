@@ -49,8 +49,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
 def client(env_setup) -> TestClient:
     """Fresh TestClient with reloaded app module."""
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -125,9 +127,7 @@ class TestTenantOnboarding:
         )
         assert resp3.status_code == 200
 
-    def test_jwt_enables_query_execution(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_jwt_enables_query_execution(self, client: TestClient, session_id: str) -> None:
         headers = _jwt_headers(client, TENANT_A)
         resp = client.post(
             "/query",
@@ -155,9 +155,7 @@ class TestTenantOnboarding:
 class TestQueryLifecycle:
     """Session → create table → query → verify history."""
 
-    def test_full_query_cycle(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_full_query_cycle(self, client: TestClient, session_id: str) -> None:
         headers = _jwt_headers(client)
 
         # Step 1: Create a table
@@ -211,9 +209,7 @@ class TestQueryLifecycle:
         assert any("INSERT" in s for s in sqls)
         assert any("CREATE" in s for s in sqls)
 
-    def test_query_error_logged_in_history(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_query_error_logged_in_history(self, client: TestClient, session_id: str) -> None:
         headers = _jwt_headers(client)
         # Invalid SQL
         resp = client.post(
@@ -344,9 +340,7 @@ class TestTenantIsolation:
         resp = client.get("/queries/alpha-secret", headers=headers_b)
         assert resp.status_code in (403, 404)
 
-    def test_public_queries_visible_cross_tenant(
-        self, client: TestClient
-    ) -> None:
+    def test_public_queries_visible_cross_tenant(self, client: TestClient) -> None:
         headers_a = _jwt_headers(client, TENANT_A)
         headers_b = _jwt_headers(client, TENANT_B)
 
@@ -366,9 +360,7 @@ class TestTenantIsolation:
         slugs = [q["slug"] for q in resp.json()]
         assert "alpha-public-data" in slugs
 
-    def test_query_history_isolated(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_query_history_isolated(self, client: TestClient, session_id: str) -> None:
         headers_a = _jwt_headers(client, TENANT_A)
         headers_b = _jwt_headers(client, TENANT_B)
 
@@ -398,9 +390,7 @@ class TestTenantIsolation:
 class TestCacheBehavior:
     """Verify cache HIT/MISS headers and write-invalidation."""
 
-    def test_cache_miss_then_hit(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_cache_miss_then_hit(self, client: TestClient, session_id: str) -> None:
         headers = _jwt_headers(client)
         payload = {"session_id": session_id, "sql": "SELECT 1 + 1 AS result"}
 
@@ -415,9 +405,7 @@ class TestCacheBehavior:
         assert resp2.headers.get("X-Cache") == "HIT"
         assert resp2.json()["rows"] == [[2]]
 
-    def test_write_invalidates_cache(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_write_invalidates_cache(self, client: TestClient, session_id: str) -> None:
         headers = _jwt_headers(client)
 
         # Create table and populate
@@ -490,18 +478,14 @@ class TestEditorEndpoint:
 class TestRateLimitingAndErrors:
     """Verify rate limiting, auth errors, and bad request handling."""
 
-    def test_unauthenticated_query_rejected(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_unauthenticated_query_rejected(self, client: TestClient, session_id: str) -> None:
         resp = client.post(
             "/query",
             json={"session_id": session_id, "sql": "SELECT 1"},
         )
         assert resp.status_code == 401
 
-    def test_empty_sql_rejected(
-        self, client: TestClient, session_id: str
-    ) -> None:
+    def test_empty_sql_rejected(self, client: TestClient, session_id: str) -> None:
         headers = _jwt_headers(client)
         resp = client.post(
             "/query",

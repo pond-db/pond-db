@@ -164,9 +164,7 @@ class MetadataStore(QueryStoreMixin):
 
     async def delete_session(self, session_id: str) -> None:
         """Remove a session row (no-op if not found)."""
-        self._conn.execute(
-            "DELETE FROM sessions WHERE session_id = ?", (session_id,)
-        )
+        self._conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
         self._conn.commit()
 
     # ------------------------------------------------------------------
@@ -193,17 +191,14 @@ class MetadataStore(QueryStoreMixin):
     async def list_mounts(self, session_id: str) -> list[dict]:
         """Return all mounts for a session."""
         cursor = self._conn.execute(
-            "SELECT session_id, path, alias, mount_type "
-            "FROM catalog_mounts WHERE session_id = ?",
+            "SELECT session_id, path, alias, mount_type FROM catalog_mounts WHERE session_id = ?",
             (session_id,),
         )
         return [dict(row) for row in cursor.fetchall()]
 
     async def delete_mounts(self, session_id: str) -> None:
         """Remove all mounts for a session (no-op if none found)."""
-        self._conn.execute(
-            "DELETE FROM catalog_mounts WHERE session_id = ?", (session_id,)
-        )
+        self._conn.execute("DELETE FROM catalog_mounts WHERE session_id = ?", (session_id,))
         self._conn.commit()
 
     # ------------------------------------------------------------------
@@ -227,9 +222,7 @@ class MetadataStore(QueryStoreMixin):
         )
         self._conn.commit()
 
-    async def get_compute_samples(
-        self, session_id: Optional[str] = None
-    ) -> list[dict]:
+    async def get_compute_samples(self, session_id: Optional[str] = None) -> list[dict]:
         """Return compute_log rows, optionally filtered by session_id."""
         if session_id is not None:
             cursor = self._conn.execute(
@@ -239,8 +232,7 @@ class MetadataStore(QueryStoreMixin):
             )
         else:
             cursor = self._conn.execute(
-                "SELECT session_id, query_hash, wall_ms, mem_delta_kb, timestamp "
-                "FROM compute_log"
+                "SELECT session_id, query_hash, wall_ms, mem_delta_kb, timestamp FROM compute_log"
             )
         return [dict(row) for row in cursor.fetchall()]
 
@@ -266,7 +258,16 @@ class MetadataStore(QueryStoreMixin):
                 (namespace, tenant_id, sql, duration_ms, rows_returned, status, error_message, executed_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (namespace, tenant_id, sql, duration_ms, rows_returned, status, error_message, _to_iso(executed_at)),
+            (
+                namespace,
+                tenant_id,
+                sql,
+                duration_ms,
+                rows_returned,
+                status,
+                error_message,
+                _to_iso(executed_at),
+            ),
         )
         self._conn.commit()
 

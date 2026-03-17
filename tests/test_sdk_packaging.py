@@ -135,31 +135,38 @@ class TestPondClientInterface:
 
     def test_client_has_authenticate_method(self) -> None:
         from ponddb import PondClient
+
         assert callable(getattr(PondClient, "authenticate", None))
 
     def test_client_has_query_method(self) -> None:
         from ponddb import PondClient
+
         assert callable(getattr(PondClient, "query", None))
 
     def test_client_has_save_query_method(self) -> None:
         from ponddb import PondClient
+
         assert callable(getattr(PondClient, "save_query", None))
 
     def test_client_has_list_queries_method(self) -> None:
         from ponddb import PondClient
+
         assert callable(getattr(PondClient, "list_queries", None))
 
     def test_client_has_get_history_method(self) -> None:
         from ponddb import PondClient
+
         assert callable(getattr(PondClient, "get_history", None))
 
     def test_client_has_share_query_method(self) -> None:
         from ponddb import PondClient
+
         assert callable(getattr(PondClient, "share_query", None))
 
     def test_client_is_async_context_manager(self) -> None:
         """PondClient should support async context manager protocol."""
         from ponddb import PondClient
+
         assert hasattr(PondClient, "__aenter__")
         assert hasattr(PondClient, "__aexit__")
 

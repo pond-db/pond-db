@@ -89,13 +89,30 @@ class UserStore:
         self._conn.execute(
             "INSERT INTO users (id, email, display_name, provider, provider_id, tenant_id, "
             "role, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (user_id, email_lower, display_name, provider, provider_id, tenant_id, role, avatar_url, now),
+            (
+                user_id,
+                email_lower,
+                display_name,
+                provider,
+                provider_id,
+                tenant_id,
+                role,
+                avatar_url,
+                now,
+            ),
         )
         self._conn.commit()
         return {
-            "id": user_id, "email": email_lower, "display_name": display_name,
-            "provider": provider, "provider_id": provider_id, "tenant_id": tenant_id,
-            "role": role, "avatar_url": avatar_url, "created_at": now, "last_login_at": None,
+            "id": user_id,
+            "email": email_lower,
+            "display_name": display_name,
+            "provider": provider,
+            "provider_id": provider_id,
+            "tenant_id": tenant_id,
+            "role": role,
+            "avatar_url": avatar_url,
+            "created_at": now,
+            "last_login_at": None,
         }
 
     async def get_user_by_id(self, user_id: str) -> Optional[dict[str, Any]]:
@@ -121,9 +138,7 @@ class UserStore:
 
     async def get_user_by_tenant_id(self, tenant_id: str) -> Optional[dict[str, Any]]:
         assert self._conn is not None
-        row = self._conn.execute(
-            "SELECT * FROM users WHERE tenant_id = ?", (tenant_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM users WHERE tenant_id = ?", (tenant_id,)).fetchone()
         return self._row(row) if row else None
 
     async def update_user(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
@@ -140,7 +155,7 @@ class UserStore:
                 [*updates.values(), user_id],
             )
             self._conn.commit()
-        return (await self.get_user_by_id(user_id))  # type: ignore[return-value]
+        return await self.get_user_by_id(user_id)  # type: ignore[return-value]
 
     async def upsert_user(
         self,
@@ -159,8 +174,12 @@ class UserStore:
                 upd["avatar_url"] = avatar_url
             return await self.update_user(existing["id"], **upd)
         return await self.create_user(
-            email=email, display_name=display_name, provider=provider,
-            provider_id=provider_id, tenant_id=tenant_id, avatar_url=avatar_url,
+            email=email,
+            display_name=display_name,
+            provider=provider,
+            provider_id=provider_id,
+            tenant_id=tenant_id,
+            avatar_url=avatar_url,
         )
 
     # ------------------------------------------------------------------
@@ -248,9 +267,15 @@ class UserStore:
         )
         self._conn.commit()
         return {
-            "id": key_id, "user_id": user_id, "tenant_id": tenant_id, "name": name,
-            "key_prefix": key_prefix, "revoked": False, "created_at": now,
-            "expires_at": expires_at, "plaintext_key": plaintext,
+            "id": key_id,
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "name": name,
+            "key_prefix": key_prefix,
+            "revoked": False,
+            "created_at": now,
+            "expires_at": expires_at,
+            "plaintext_key": plaintext,
         }
 
     async def list_api_keys(self, user_id: str) -> list[dict[str, Any]]:

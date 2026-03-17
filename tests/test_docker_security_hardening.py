@@ -38,18 +38,14 @@ def ponddb_service(compose: dict) -> dict:
 def test_ponddb_runs_as_non_root_user(ponddb_service: dict) -> None:
     """ponddb service must declare user: 1000:1000 to prevent root escalation."""
     user = ponddb_service.get("user")
-    assert user is not None, (
-        "ponddb service must declare 'user: 1000:1000' to run as non-root"
-    )
+    assert user is not None, "ponddb service must declare 'user: 1000:1000' to run as non-root"
 
 
 def test_ponddb_user_is_1000_1000(ponddb_service: dict) -> None:
     """ponddb service user must be '1000:1000' (uid:gid)."""
     user = ponddb_service.get("user", "")
     # Accept "1000:1000" as string or 1000:1000 as YAML integer ratio
-    assert str(user) == "1000:1000", (
-        f"user must be '1000:1000', got {user!r}"
-    )
+    assert str(user) == "1000:1000", f"user must be '1000:1000', got {user!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -86,9 +82,7 @@ def test_ponddb_tmpfs_includes_tmp(ponddb_service: dict) -> None:
     if isinstance(tmpfs, str):
         tmpfs = [tmpfs]
     tmpfs_str = " ".join(str(t) for t in tmpfs)
-    assert "/tmp" in tmpfs_str, (
-        f"tmpfs must include /tmp, got: {tmpfs}"
-    )
+    assert "/tmp" in tmpfs_str, f"tmpfs must include /tmp, got: {tmpfs}"
 
 
 # ---------------------------------------------------------------------------
@@ -163,8 +157,7 @@ def test_ponddb_mounts_jwt_secret(ponddb_service: dict) -> None:
     """ponddb service must mount jwt_secret for the JWT auth module."""
     service_secrets = ponddb_service.get("secrets", [])
     secret_names = [
-        (s if isinstance(s, str) else s.get("source", s.get("target", "")))
-        for s in service_secrets
+        (s if isinstance(s, str) else s.get("source", s.get("target", ""))) for s in service_secrets
     ]
     jwt_related = [n for n in secret_names if "jwt" in str(n).lower()]
     assert len(jwt_related) >= 1, (

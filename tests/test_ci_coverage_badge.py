@@ -110,8 +110,7 @@ def test_ci_pull_request_does_not_trigger_on_all_branches(ci: dict) -> None:
     pr_cfg = on.get("pull_request", {})
     branches = pr_cfg.get("branches", []) if isinstance(pr_cfg, dict) else []
     assert "**" not in branches, (
-        "CI pull_request trigger must not use wildcard '**'. "
-        "Replace with 'branches: [main]'."
+        "CI pull_request trigger must not use wildcard '**'. Replace with 'branches: [main]'."
     )
 
 
@@ -166,9 +165,7 @@ def test_ci_pytest_does_not_suppress_failures(ci_text: str) -> None:
     # Find lines with pytest commands
     for line in ci_text.splitlines():
         if "pytest" in line and ("|| true" in line or "|| exit 0" in line):
-            pytest.fail(
-                f"pytest command must not suppress failures with '|| true': {line!r}"
-            )
+            pytest.fail(f"pytest command must not suppress failures with '|| true': {line!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +240,7 @@ def test_readme_ci_badge_links_to_actions(readme_text: str) -> None:
     """
     # Look for markdown link wrapping an image, or HTML <a><img> badge
     badge_link_pattern = re.compile(
-        r'\[!\[.*?\]\(.*?badge.*?\)\]\(.*?actions.*?\)',
+        r"\[!\[.*?\]\(.*?badge.*?\)\]\(.*?actions.*?\)",
         re.IGNORECASE,
     )
     html_badge_pattern = re.compile(

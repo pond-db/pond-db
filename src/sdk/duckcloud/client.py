@@ -196,7 +196,7 @@ class DuckCloudClient:
     @staticmethod
     def _backoff(attempt: int) -> float:
         """Exponential backoff with jitter: 2^attempt * uniform(0.5, 1.0)."""
-        return (2 ** attempt) * (0.5 + 0.5 * random.random())
+        return (2**attempt) * (0.5 + 0.5 * random.random())
 
     # ------------------------------------------------------------------
     # Public API methods
@@ -259,9 +259,7 @@ class DuckCloudClient:
 
         return resp.json()["slug"]
 
-    async def list_queries(
-        self, limit: int = 20, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    async def list_queries(self, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
         """List saved queries for the authenticated namespace."""
         headers = self._bearer_headers() if self.access_token else {}
         params: dict[str, Any] = {"limit": limit, "offset": offset}

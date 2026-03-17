@@ -22,6 +22,7 @@ def _cleanup_global_manager_sessions() -> None:
 
     try:
         import ponddb.app as _app_module
+
         manager = getattr(_app_module, "_manager", None)
         if manager is not None:
             for session_info in list(manager.list_sessions()):
@@ -47,7 +48,9 @@ def _prepopulate_sandbox_test(request, monkeypatch) -> None:
         return
 
     # Don't pre-create sandbox_test when the test itself is creating it
-    if "CREATE TABLE sandbox_test" in str(request.node.callspec.params.get("sql", "") if hasattr(request.node, "callspec") else ""):
+    if "CREATE TABLE sandbox_test" in str(
+        request.node.callspec.params.get("sql", "") if hasattr(request.node, "callspec") else ""
+    ):
         return
 
     from ponddb.engine import session_manager as sm_module

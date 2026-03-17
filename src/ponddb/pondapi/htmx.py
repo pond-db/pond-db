@@ -50,10 +50,7 @@ def _complete_fragment(result: dict) -> str:
     columns = result.get("columns", [])
     rows = result.get("rows", [])
     thead = "".join(f"<th>{c}</th>" for c in columns)
-    tbody = "".join(
-        "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
-        for row in rows
-    )
+    tbody = "".join("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>" for row in rows)
     rowcount = result.get("rowcount", 0)
     elapsed = result.get("elapsed_ms", 0.0)
     return (
@@ -67,10 +64,7 @@ def _complete_fragment(result: dict) -> str:
 
 def _error_fragment(message: str) -> str:
     return (
-        f'<div id="pondapi-result">'
-        f"<p>Status: error</p>"
-        f'<p class="error">Error: {message}</p>'
-        f"</div>"
+        f'<div id="pondapi-result"><p>Status: error</p><p class="error">Error: {message}</p></div>'
     )
 
 
@@ -121,11 +115,7 @@ def make_pondapi_htmx_router(
 
         tenant_id: str = auth.get("tenant_id", "default")
         row_tenant = row["tenant_id"]
-        if (
-            row_tenant != tenant_id
-            and row_tenant != "default"
-            and tenant_id != "default"
-        ):
+        if row_tenant != tenant_id and row_tenant != "default" and tenant_id != "default":
             body = _error_fragment("Forbidden: access denied")
             return HTMLResponse(content=body, status_code=403)
 

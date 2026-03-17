@@ -52,6 +52,7 @@ def _check_security_headers() -> bool:
     """True when SecurityHeadersMiddleware module is present."""
     try:
         from ponddb.security.security_headers import SecurityHeadersMiddleware  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -61,6 +62,7 @@ def _check_brute_force() -> bool:
     """True when BruteForceGuard module is present."""
     try:
         from ponddb.auth.brute_force import BruteForceGuard  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -70,6 +72,7 @@ def _check_rate_limiting() -> bool:
     """True when RateLimiter module is present."""
     try:
         from ponddb.security.rate_limit import RateLimiter  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -79,6 +82,7 @@ def _check_audit_logging() -> bool:
     """True when AuditLogMiddleware module is present."""
     try:
         from ponddb.security.audit_log import AuditLogMiddleware  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -88,6 +92,7 @@ def _check_cors() -> bool:
     """True when AllowlistCORSMiddleware module is present."""
     try:
         from ponddb.security.cors_middleware import AllowlistCORSMiddleware  # noqa: F401
+
         return True
     except ImportError:
         return False

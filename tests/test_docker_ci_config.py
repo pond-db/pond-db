@@ -254,9 +254,7 @@ def test_dockerfile_has_healthcheck_instruction(dockerfile_text: str) -> None:
 def test_dockerfile_healthcheck_uses_health_endpoint(dockerfile_text: str) -> None:
     """Dockerfile HEALTHCHECK must probe /health."""
     # Only check if the HEALTHCHECK line references /health
-    healthcheck_match = re.search(
-        r"HEALTHCHECK.*\n?.*", dockerfile_text
-    )
+    healthcheck_match = re.search(r"HEALTHCHECK.*\n?.*", dockerfile_text)
     assert healthcheck_match and "/health" in healthcheck_match.group(), (
         "Dockerfile HEALTHCHECK must probe /health endpoint"
     )
@@ -275,7 +273,7 @@ def test_dockerfile_has_label_instruction(dockerfile_text: str) -> None:
     """
     assert re.search(r"^\s*LABEL\b", dockerfile_text, re.MULTILINE), (
         "Dockerfile must include at least one LABEL instruction with OCI image metadata "
-        "(e.g. LABEL org.opencontainers.image.title=\"PondDB\")"
+        '(e.g. LABEL org.opencontainers.image.title="PondDB")'
     )
 
 
@@ -313,9 +311,7 @@ def test_compose_has_container_name(ponddb_service: dict) -> None:
 def test_compose_container_name_value(ponddb_service: dict) -> None:
     """container_name must be 'ponddb' (matches the service name)."""
     name = ponddb_service.get("container_name", "")
-    assert name == "ponddb", (
-        f"container_name should be 'ponddb', got {name!r}"
-    )
+    assert name == "ponddb", f"container_name should be 'ponddb', got {name!r}"
 
 
 # ---------------------------------------------------------------------------

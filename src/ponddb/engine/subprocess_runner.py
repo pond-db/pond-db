@@ -167,27 +167,19 @@ def run_query_isolated(
 
     # --- Child died without putting anything in the queue ---
     if timed_out:
-        raise SubprocessCpuError(
-            f"Process exceeded wall timeout of {timeout_seconds}s"
-        )
+        raise SubprocessCpuError(f"Process exceeded wall timeout of {timeout_seconds}s")
 
     if exitcode == -signal.SIGXCPU:
-        raise SubprocessCpuError(
-            f"Process exceeded CPU time limit of {cpu_time_seconds}s"
-        )
+        raise SubprocessCpuError(f"Process exceeded CPU time limit of {cpu_time_seconds}s")
 
     if memory_limit_bytes is not None:
         raise SubprocessMemoryError(
-            f"Process exceeded memory limit of {memory_limit_bytes} bytes "
-            f"(exit code {exitcode})"
+            f"Process exceeded memory limit of {memory_limit_bytes} bytes (exit code {exitcode})"
         )
 
     if cpu_time_seconds is not None:
         raise SubprocessCpuError(
-            f"Process exceeded CPU time limit of {cpu_time_seconds}s "
-            f"(exit code {exitcode})"
+            f"Process exceeded CPU time limit of {cpu_time_seconds}s (exit code {exitcode})"
         )
 
-    raise SubprocessKilledError(
-        f"Process was killed unexpectedly (exit code {exitcode})"
-    )
+    raise SubprocessKilledError(f"Process was killed unexpectedly (exit code {exitcode})")

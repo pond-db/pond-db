@@ -199,9 +199,7 @@ def make_oauth_router(user_store=None) -> APIRouter:
         # Provision user record if a UserStore is wired in
         if user_store is not None:
             email = (user_info.get("email") or "").lower()
-            display_name = (
-                user_info.get("name") or user_info.get("login") or email
-            )
+            display_name = user_info.get("name") or user_info.get("login") or email
             avatar_url = user_info.get("picture") or user_info.get("avatar_url")
             try:
                 await user_store.upsert_user(

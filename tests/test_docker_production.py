@@ -127,8 +127,8 @@ def test_dockerfile_user_after_copy(dockerfile_lines: list[str]) -> None:
 
 def test_dockerfile_cmd_is_exec_form(dockerfile_text: str) -> None:
     """CMD must use exec form (JSON array) for proper signal handling."""
-    assert re.search(r'CMD\s*\[', dockerfile_text), (
-        "CMD must use exec form (e.g. CMD [\"uvicorn\", ...]) not shell form"
+    assert re.search(r"CMD\s*\[", dockerfile_text), (
+        'CMD must use exec form (e.g. CMD ["uvicorn", ...]) not shell form'
     )
 
 
@@ -176,7 +176,7 @@ def test_compose_pond_jwt_secret_env_documented(ponddb_service: dict) -> None:
     )
     # If using plain POND_JWT_SECRET env var (not _FILE), verify not hardcoded
     if has_jwt_secret and not has_jwt_secret_file:
-        for item in (env if isinstance(env, list) else []):
+        for item in env if isinstance(env, list) else []:
             if "POND_JWT_SECRET" in str(item):
                 assert "=" not in str(item) or str(item).endswith("=") or "$" in str(item), (
                     "POND_JWT_SECRET must not be hardcoded — use an env var reference or leave blank"
@@ -197,16 +197,12 @@ def test_dockerignore_excludes_egg_info(dockerignore_text: str) -> None:
 
 def test_dockerignore_excludes_pytest_cache(dockerignore_text: str) -> None:
     """pytest cache should not enter the build context."""
-    assert ".pytest_cache" in dockerignore_text, (
-        ".dockerignore must exclude .pytest_cache/"
-    )
+    assert ".pytest_cache" in dockerignore_text, ".dockerignore must exclude .pytest_cache/"
 
 
 def test_dockerignore_excludes_ruff_cache(dockerignore_text: str) -> None:
     """Linter cache should not enter the build context."""
-    assert ".ruff_cache" in dockerignore_text, (
-        ".dockerignore must exclude .ruff_cache/"
-    )
+    assert ".ruff_cache" in dockerignore_text, ".dockerignore must exclude .ruff_cache/"
 
 
 def test_dockerignore_excludes_pyc_files(dockerignore_text: str) -> None:
@@ -228,7 +224,9 @@ def test_pyproject_declares_ponddb_package() -> None:
     with PYPROJECT.open("rb") as f:
         data = tomllib.load(f)
 
-    hatch_build = data.get("tool", {}).get("hatch", {}).get("build", {}).get("targets", {}).get("wheel", {})
+    hatch_build = (
+        data.get("tool", {}).get("hatch", {}).get("build", {}).get("targets", {}).get("wheel", {})
+    )
     packages = hatch_build.get("packages", [])
     assert any("ponddb" in p for p in packages), (
         f"pyproject.toml hatch wheel packages must include 'src/ponddb', got: {packages}"

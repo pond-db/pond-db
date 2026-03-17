@@ -313,9 +313,7 @@ def test_query_result_rows_are_lists(manager, session_id: str) -> None:
         assert isinstance(row, list)
 
 
-def test_query_result_row_length_matches_column_count(
-    manager, session_id: str
-) -> None:
+def test_query_result_row_length_matches_column_count(manager, session_id: str) -> None:
     result = manager.execute_query(session_id, "SELECT 1 AS a, 2 AS b, 3 AS c")
     for row in result.rows:
         assert len(row) == len(result.columns)

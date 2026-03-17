@@ -31,9 +31,11 @@ def client(monkeypatch):
     """Fresh app client with POND_API_KEY set."""
     monkeypatch.setenv("POND_API_KEY", VALID_KEY)
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from fastapi.testclient import TestClient
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -189,9 +191,7 @@ BLOCKED_SQL_HTTP = [
 
 
 @pytest.mark.parametrize("sql", BLOCKED_SQL_HTTP)
-def test_blocked_sql_returns_403(
-    client, auth_headers, session_id: str, sql: str
-) -> None:
+def test_blocked_sql_returns_403(client, auth_headers, session_id: str, sql: str) -> None:
     """POST /query with a blocked SQL pattern must return HTTP 403 Forbidden."""
     resp = client.post(
         "/query",
@@ -216,9 +216,7 @@ def test_blocked_403_response_has_detail(client, auth_headers, session_id: str) 
     assert body["detail"]  # non-empty
 
 
-def test_blocked_403_detail_mentions_blocked_pattern(
-    client, auth_headers, session_id: str
-) -> None:
+def test_blocked_403_detail_mentions_blocked_pattern(client, auth_headers, session_id: str) -> None:
     """The 403 detail message should name the blocked pattern."""
     resp = client.post(
         "/query",
@@ -247,9 +245,7 @@ ALLOWED_SQL_HTTP = [
 
 
 @pytest.mark.parametrize("sql", ALLOWED_SQL_HTTP)
-def test_legitimate_sql_returns_200(
-    client, auth_headers, session_id: str, sql: str
-) -> None:
+def test_legitimate_sql_returns_200(client, auth_headers, session_id: str, sql: str) -> None:
     """POST /query with legitimate SQL must return HTTP 200."""
     resp = client.post(
         "/query",
@@ -358,6 +354,7 @@ def test_session_manager_calls_sandbox_before_duckdb() -> None:
 def test_sandbox_import_available() -> None:
     """sql_sandbox module must be importable from ponddb package."""
     from ponddb.security import sql_sandbox
+
     assert hasattr(sql_sandbox, "check_sql")
     assert hasattr(sql_sandbox, "BlockedSqlError")
     assert hasattr(sql_sandbox, "BLOCKED_PATTERNS")

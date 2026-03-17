@@ -30,8 +30,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -165,9 +167,7 @@ def test_result_complete_has_columns(
     assert "answer" in result["columns"]
 
 
-def test_result_complete_has_rows(
-    client: TestClient, session_id: str, auth_headers: dict
-) -> None:
+def test_result_complete_has_rows(client: TestClient, session_id: str, auth_headers: dict) -> None:
     exec_id = client.post(
         "/pondapi/execute",
         json={"session_id": session_id, "sql": "SELECT 99 AS n"},
@@ -220,7 +220,10 @@ def test_result_reflects_multirow_query(
 ) -> None:
     exec_id = client.post(
         "/pondapi/execute",
-        json={"session_id": session_id, "sql": "SELECT 'a' AS v UNION ALL SELECT 'b' UNION ALL SELECT 'c'"},
+        json={
+            "session_id": session_id,
+            "sql": "SELECT 'a' AS v UNION ALL SELECT 'b' UNION ALL SELECT 'c'",
+        },
         headers=auth_headers,
     ).json()["execution_id"]
     result = _wait_for_completion(client, exec_id, auth_headers)
@@ -311,9 +314,7 @@ def test_result_missing_auth_returns_401(
 # ---------------------------------------------------------------------------
 
 
-def test_execute_missing_session_id_returns_422(
-    client: TestClient, auth_headers: dict
-) -> None:
+def test_execute_missing_session_id_returns_422(client: TestClient, auth_headers: dict) -> None:
     resp = client.post(
         "/pondapi/execute",
         json={"sql": "SELECT 1"},
@@ -355,9 +356,7 @@ def test_execute_whitespace_sql_returns_400(
     assert resp.status_code == 400
 
 
-def test_execute_unknown_session_returns_404(
-    client: TestClient, auth_headers: dict
-) -> None:
+def test_execute_unknown_session_returns_404(client: TestClient, auth_headers: dict) -> None:
     resp = client.post(
         "/pondapi/execute",
         json={"session_id": "no-such-session-xyz", "sql": "SELECT 1"},
@@ -371,9 +370,7 @@ def test_execute_unknown_session_returns_404(
 # ---------------------------------------------------------------------------
 
 
-def test_result_cross_tenant_access_denied(
-    client: TestClient, session_id: str
-) -> None:
+def test_result_cross_tenant_access_denied(client: TestClient, session_id: str) -> None:
     """Tenant A cannot read tenant B's execution result."""
     from ponddb.auth.jwt_auth import create_access_token
 
@@ -412,16 +409,13 @@ def test_rate_limit_header_present_on_execute(
     # If accepted, rate-limit headers should be present (X-RateLimit-* or Retry-After)
     if resp.status_code == 202:
         has_rate_header = any(
-            h.lower().startswith("x-ratelimit") or h.lower() == "retry-after"
-            for h in resp.headers
+            h.lower().startswith("x-ratelimit") or h.lower() == "retry-after" for h in resp.headers
         )
         # Rate limit header is optional but status code must be correct
         assert resp.status_code == 202
 
 
-def test_rate_limit_exceeded_returns_429(
-    client: TestClient, auth_headers: dict
-) -> None:
+def test_rate_limit_exceeded_returns_429(client: TestClient, auth_headers: dict) -> None:
     """Submitting more than POND_PONDAPI_RATE_LIMIT concurrent executions returns 429."""
     # Create multiple sessions so we can have many in-flight
     sessions = []
@@ -446,9 +440,7 @@ def test_rate_limit_exceeded_returns_429(
     assert 429 in responses, f"Expected 429 among responses, got: {responses}"
 
 
-def test_rate_limit_response_has_detail(
-    client: TestClient, auth_headers: dict
-) -> None:
+def test_rate_limit_response_has_detail(client: TestClient, auth_headers: dict) -> None:
     """When rate limit is hit, response body includes a detail message."""
     sessions = []
     for _ in range(RATE_LIMIT + 2):
@@ -531,9 +523,7 @@ def test_execution_has_created_at_timestamp(
 # ---------------------------------------------------------------------------
 
 
-def test_submit_does_not_block_until_complete(
-    client: TestClient, auth_headers: dict
-) -> None:
+def test_submit_does_not_block_until_complete(client: TestClient, auth_headers: dict) -> None:
     """POST /pondapi/execute must return quickly (well under 2s) for a slow query."""
     # Create session
     session_id = client.post("/session").json()["session_id"]
@@ -554,9 +544,7 @@ def test_submit_does_not_block_until_complete(
     assert elapsed < 2.0, f"POST /pondapi/execute blocked for {elapsed:.2f}s"
 
 
-def test_two_executions_run_concurrently(
-    client: TestClient, auth_headers: dict
-) -> None:
+def test_two_executions_run_concurrently(client: TestClient, auth_headers: dict) -> None:
     """Two submissions should overlap in time — total wall time < 2× single time."""
     sid1 = client.post("/session").json()["session_id"]
     sid2 = client.post("/session").json()["session_id"]

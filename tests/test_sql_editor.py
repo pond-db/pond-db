@@ -86,7 +86,16 @@ def test_editor_loads_codemirror_from_cdn(client: TestClient) -> None:
     """CodeMirror must be loaded from a CDN — no local bundler required."""
     body = client.get("/editor").text
     # Accept any CDN: cdnjs, esm.sh, unpkg, jsdelivr, skypack
-    assert any(cdn in body for cdn in ("cdnjs.cloudflare.com", "esm.sh", "unpkg.com", "jsdelivr.net", "cdn.skypack.dev"))
+    assert any(
+        cdn in body
+        for cdn in (
+            "cdnjs.cloudflare.com",
+            "esm.sh",
+            "unpkg.com",
+            "jsdelivr.net",
+            "cdn.skypack.dev",
+        )
+    )
 
 
 def test_editor_references_codemirror_package(client: TestClient) -> None:
@@ -113,9 +122,15 @@ def test_editor_codemirror_cdn_url_uses_https(client: TestClient) -> None:
     cdn_hosts = ("cdnjs.cloudflare.com", "esm.sh", "unpkg.com", "jsdelivr.net", "cdn.skypack.dev")
     # Only check lines that actually load resources (import/src=), skip comments
     cdn_lines = [
-        line for line in body.splitlines()
+        line
+        for line in body.splitlines()
         if any(h in line for h in cdn_hosts)
-        and ("import" in line.lower() or "src=" in line.lower() or "href=" in line.lower() or "https://" in line)
+        and (
+            "import" in line.lower()
+            or "src=" in line.lower()
+            or "href=" in line.lower()
+            or "https://" in line
+        )
         and not line.strip().startswith("//")
     ]
     assert len(cdn_lines) > 0, "No CDN resource references found in editor page"
@@ -200,9 +215,10 @@ def test_editor_error_panel_is_initially_hidden_or_empty(client: TestClient) -> 
     body = client.get("/editor").text
     # Look for error element with hidden styles or empty content
     has_hidden_error = (
-        re.search(r'display:\s*none', body, re.IGNORECASE) is not None
-        or re.search(r'hidden', body, re.IGNORECASE) is not None
-        or re.search(r'class=["\'][^"\']*error[^"\']*["\'][^>]*></[a-z]+>', body, re.IGNORECASE) is not None
+        re.search(r"display:\s*none", body, re.IGNORECASE) is not None
+        or re.search(r"hidden", body, re.IGNORECASE) is not None
+        or re.search(r'class=["\'][^"\']*error[^"\']*["\'][^>]*></[a-z]+>', body, re.IGNORECASE)
+        is not None
     )
     assert has_hidden_error, "Error panel should be hidden or empty on page load"
 
@@ -280,11 +296,7 @@ def test_editor_page_uses_json_stringify_for_body(client: TestClient) -> None:
 def test_editor_page_handles_fetch_response_json(client: TestClient) -> None:
     """Page must parse response as JSON to extract columns/rows."""
     body = client.get("/editor").text
-    has_json_parse = (
-        "response.json()" in body
-        or ".json()" in body
-        or "JSON.parse" in body
-    )
+    has_json_parse = "response.json()" in body or ".json()" in body or "JSON.parse" in body
     assert has_json_parse, "Expected .json() or JSON.parse() to handle fetch response"
 
 
@@ -368,9 +380,7 @@ def test_editor_page_references_autocomplete(client: TestClient) -> None:
     """CodeMirror autocomplete extension must be referenced or set up."""
     body = client.get("/editor").text.lower()
     has_autocomplete = (
-        "autocomplete" in body
-        or "autocompletion" in body
-        or "@codemirror/autocomplete" in body
+        "autocomplete" in body or "autocompletion" in body or "@codemirror/autocomplete" in body
     )
     assert has_autocomplete, "Expected autocomplete reference in page"
 

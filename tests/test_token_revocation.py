@@ -46,8 +46,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 def client(env_setup) -> TestClient:
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -101,8 +103,12 @@ def test_access_token_jti_unique_across_calls(client: TestClient) -> None:
 
 def test_access_and_refresh_token_have_different_jti(fresh_token: dict) -> None:
     """Access and refresh tokens from the same call must have different jti values."""
-    access_jti = jose_jwt.decode(fresh_token["access_token"], JWT_SECRET, algorithms=["HS256"])["jti"]
-    refresh_jti = jose_jwt.decode(fresh_token["refresh_token"], JWT_SECRET, algorithms=["HS256"])["jti"]
+    access_jti = jose_jwt.decode(fresh_token["access_token"], JWT_SECRET, algorithms=["HS256"])[
+        "jti"
+    ]
+    refresh_jti = jose_jwt.decode(fresh_token["refresh_token"], JWT_SECRET, algorithms=["HS256"])[
+        "jti"
+    ]
     assert access_jti != refresh_jti
 
 
@@ -216,8 +222,9 @@ def test_verify_access_token_allows_when_redis_unavailable(env_setup) -> None:
             assert result is not None
             assert result.get("tenant_id") == "failopen-tenant"
             # Warning must be logged
-            assert mock_logger.warning.called or mock_logger.error.called, \
+            assert mock_logger.warning.called or mock_logger.error.called, (
                 "Redis failure should produce a log warning/error"
+            )
 
 
 def test_protected_endpoint_allows_when_redis_unavailable(client: TestClient) -> None:
@@ -226,14 +233,16 @@ def test_protected_endpoint_allows_when_redis_unavailable(client: TestClient) ->
     token = resp.json()["access_token"]
 
     from ponddb.auth import token_blocklist
+
     with mock.patch.object(
         token_blocklist,
         "is_revoked",
         side_effect=Exception("Redis connection refused"),
     ):
         history_resp = client.get("/history", headers={"Authorization": f"Bearer {token}"})
-        assert history_resp.status_code == 200, \
+        assert history_resp.status_code == 200, (
             "Endpoint must be accessible when Redis is unavailable (fail open)"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +301,9 @@ def test_revoke_missing_token_field_returns_422(client: TestClient) -> None:
 def test_revoke_malformed_token_returns_400_or_422(client: TestClient) -> None:
     """A non-JWT string should return 400 or 422 — not 500."""
     resp = client.post("/auth/revoke", json={"token": "not.a.valid.jwt.at.all"})
-    assert resp.status_code in (400, 422), \
+    assert resp.status_code in (400, 422), (
         f"Expected 400/422 for malformed token, got {resp.status_code}: {resp.text}"
+    )
 
 
 def test_revoke_wrong_secret_token_returns_400_or_401(client: TestClient) -> None:
@@ -309,8 +319,9 @@ def test_revoke_wrong_secret_token_returns_400_or_401(client: TestClient) -> Non
         algorithm="HS256",
     )
     resp = client.post("/auth/revoke", json={"token": fake_token})
-    assert resp.status_code in (400, 401), \
+    assert resp.status_code in (400, 401), (
         f"Expected 400/401 for wrong-secret token, got {resp.status_code}"
+    )
 
 
 def test_revoke_expired_token_succeeds_or_returns_400(client: TestClient) -> None:
@@ -327,8 +338,9 @@ def test_revoke_expired_token_succeeds_or_returns_400(client: TestClient) -> Non
         algorithm="HS256",
     )
     resp = client.post("/auth/revoke", json={"token": expired})
-    assert resp.status_code in (200, 400), \
+    assert resp.status_code in (200, 400), (
         f"Revoking expired token should be 200 or 400, got {resp.status_code}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -367,11 +379,15 @@ def test_refreshed_access_token_contains_jti(client: TestClient, refresh_token_s
 def test_refreshed_token_jti_differs_from_original(client: TestClient) -> None:
     """Each token issuance must produce a unique jti, including via refresh."""
     resp = client.post("/auth/token", json={"api_key": VALID_API_KEY})
-    original_jti = jose_jwt.decode(resp.json()["access_token"], JWT_SECRET, algorithms=["HS256"])["jti"]
+    original_jti = jose_jwt.decode(resp.json()["access_token"], JWT_SECRET, algorithms=["HS256"])[
+        "jti"
+    ]
     refresh_tok = resp.json()["refresh_token"]
 
     refresh_resp = client.post("/auth/refresh", json={"refresh_token": refresh_tok})
-    new_jti = jose_jwt.decode(refresh_resp.json()["access_token"], JWT_SECRET, algorithms=["HS256"])["jti"]
+    new_jti = jose_jwt.decode(
+        refresh_resp.json()["access_token"], JWT_SECRET, algorithms=["HS256"]
+    )["jti"]
 
     assert original_jti != new_jti, "Refreshed token must have a new unique jti"
 
@@ -414,28 +430,35 @@ def test_token_blocklist_module_is_importable() -> None:
 def test_token_blocklist_has_add_to_blocklist() -> None:
     """token_blocklist must expose an add_to_blocklist(jti) function."""
     from ponddb.auth import token_blocklist
-    assert callable(getattr(token_blocklist, "add_to_blocklist", None)), \
+
+    assert callable(getattr(token_blocklist, "add_to_blocklist", None)), (
         "token_blocklist must have add_to_blocklist()"
+    )
 
 
 def test_token_blocklist_has_is_revoked() -> None:
     """token_blocklist must expose an is_revoked(jti) function."""
     from ponddb.auth import token_blocklist
-    assert callable(getattr(token_blocklist, "is_revoked", None)), \
+
+    assert callable(getattr(token_blocklist, "is_revoked", None)), (
         "token_blocklist must have is_revoked()"
+    )
 
 
 def test_token_blocklist_has_logger() -> None:
     """token_blocklist must expose a logger for Redis-failure logging."""
     from ponddb.auth import token_blocklist
     import logging
-    assert isinstance(getattr(token_blocklist, "logger", None), logging.Logger), \
+
+    assert isinstance(getattr(token_blocklist, "logger", None), logging.Logger), (
         "token_blocklist must have a logging.Logger named 'logger'"
+    )
 
 
 def test_is_revoked_returns_false_for_unknown_jti(env_setup) -> None:
     """is_revoked must return False for a jti that was never revoked."""
     from ponddb.auth import token_blocklist
+
     result = token_blocklist.is_revoked("completely-unknown-jti-" + str(uuid.uuid4()))
     assert result is False
 
@@ -443,6 +466,7 @@ def test_is_revoked_returns_false_for_unknown_jti(env_setup) -> None:
 def test_add_then_is_revoked_returns_true(env_setup) -> None:
     """add_to_blocklist followed by is_revoked must return True."""
     from ponddb.auth import token_blocklist
+
     jti = "test-jti-" + str(uuid.uuid4())
     token_blocklist.add_to_blocklist(jti)
     try:
@@ -454,5 +478,7 @@ def test_add_then_is_revoked_returns_true(env_setup) -> None:
 def test_token_blocklist_has_remove_from_blocklist() -> None:
     """token_blocklist must expose a remove_from_blocklist(jti) for test cleanup."""
     from ponddb.auth import token_blocklist
-    assert callable(getattr(token_blocklist, "remove_from_blocklist", None)), \
+
+    assert callable(getattr(token_blocklist, "remove_from_blocklist", None)), (
         "token_blocklist must have remove_from_blocklist() for test cleanup"
+    )

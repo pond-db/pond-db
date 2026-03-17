@@ -34,8 +34,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 

@@ -122,9 +122,7 @@ def test_upload_csv_response_name_matches_filename(client: TestClient) -> None:
 
 
 def test_upload_csv_response_has_row_count(client: TestClient) -> None:
-    content = _make_csv_bytes(
-        [["x", "y"], ["1", "2"], ["3", "4"], ["5", "6"]]
-    )
+    content = _make_csv_bytes([["x", "y"], ["1", "2"], ["3", "4"], ["5", "6"]])
     resp = _upload_csv(client, filename="rows_check.csv", content=content)
     body = resp.json()
     assert "row_count" in body
@@ -404,9 +402,7 @@ def test_delete_response_has_detail(client: TestClient) -> None:
 
 def test_uploaded_csv_queryable_via_session(client: TestClient) -> None:
     """After upload, the dataset should be queryable as a table via /query."""
-    content = _make_csv_bytes(
-        [["id", "val"], ["1", "hello"], ["2", "world"]]
-    )
+    content = _make_csv_bytes([["id", "val"], ["1", "hello"], ["2", "world"]])
     _upload_csv(client, filename="queryable.csv", content=content)
 
     # Create a session

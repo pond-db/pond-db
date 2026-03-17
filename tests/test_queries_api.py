@@ -27,8 +27,10 @@ def set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(set_api_key) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -307,18 +309,14 @@ def test_get_queries_response_includes_expected_fields(client: TestClient) -> No
         },
         headers=_auth(client),
     )
-    resp = client.get(
-        "/queries", params={"created_by": "fielduser"}, headers=_auth(client)
-    )
+    resp = client.get("/queries", params={"created_by": "fielduser"}, headers=_auth(client))
     item = resp.json()[0]
     for field in ("slug", "title", "description", "sql", "created_by", "created_at"):
         assert field in item, f"Missing field: {field}"
 
 
 def test_get_queries_empty_for_unknown_user(client: TestClient) -> None:
-    resp = client.get(
-        "/queries", params={"created_by": "ghost-user-xyz"}, headers=_auth(client)
-    )
+    resp = client.get("/queries", params={"created_by": "ghost-user-xyz"}, headers=_auth(client))
     assert resp.status_code == 200
     assert resp.json() == []
 

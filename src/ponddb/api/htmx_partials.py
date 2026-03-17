@@ -25,9 +25,7 @@ _templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates
 
 def _fetch_execution(conn: sqlite3.Connection, execution_id: str) -> Optional[dict]:
     """Fetch a PondAPI execution row and format it for templates."""
-    cur = conn.execute(
-        "SELECT * FROM pondapi_executions WHERE execution_id=?", (execution_id,)
-    )
+    cur = conn.execute("SELECT * FROM pondapi_executions WHERE execution_id=?", (execution_id,))
     row = cur.fetchone()
     if row is None:
         return None
@@ -86,7 +84,9 @@ def make_htmx_router(
             raise HTTPException(status_code=404, detail="Workgroup not found")
         sessions = [s for s in manager.list_sessions() if s.get("workgroup_id") == wg_name]
         return _templates.TemplateResponse(
-            request, "_partials/workgroup_sessions.html", {"sessions": sessions},
+            request,
+            "_partials/workgroup_sessions.html",
+            {"sessions": sessions},
         )
 
     @router.get("/pondapi/{execution_id}/detail", response_class=HTMLResponse)
@@ -125,9 +125,7 @@ def make_htmx_router(
         if wg is None:
             raise HTTPException(status_code=404, detail="Workgroup not found")
         all_sessions = manager.list_sessions()
-        wg["active_sessions"] = sum(
-            1 for s in all_sessions if s.get("workgroup_id") == wg_name
-        )
+        wg["active_sessions"] = sum(1 for s in all_sessions if s.get("workgroup_id") == wg_name)
         return _templates.TemplateResponse(
             request,
             "_partials/workgroup_overview.html",
@@ -146,7 +144,8 @@ def make_htmx_router(
             try:
                 tenant_id = claims.get("tenant_id", "default")
                 history = await store.get_query_history(
-                    tenant_id=tenant_id, limit=25,
+                    tenant_id=tenant_id,
+                    limit=25,
                 )
             except Exception:
                 pass

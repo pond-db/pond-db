@@ -22,7 +22,7 @@ def make_user_router(user_store: UserStore) -> APIRouter:
         api_key_header = request.headers.get("X-API-Key", "")
 
         if authorization.startswith("Bearer "):
-            token = authorization[len("Bearer "):]
+            token = authorization[len("Bearer ") :]
             return verify_access_token(token)  # raises 401 on invalid
 
         if api_key_header:
@@ -38,7 +38,11 @@ def make_user_router(user_store: UserStore) -> APIRouter:
             # Fall back to static POND_API_KEY
             expected = _get_api_key()
             if expected and api_key_header == expected:
-                return {"tenant_id": "default", "scopes": ["query", "read", "write"], "type": "access"}
+                return {
+                    "tenant_id": "default",
+                    "scopes": ["query", "read", "write"],
+                    "type": "access",
+                }
             raise HTTPException(status_code=401, detail="Invalid API key")
 
         raise HTTPException(status_code=401, detail="Authentication required")

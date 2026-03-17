@@ -9,6 +9,8 @@
   <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python 3.12+">
 </p>
 
+[![CI](https://github.com/pond-db/pond-db/actions/workflows/ci.yml/badge.svg)](https://github.com/pond-db/pond-db/actions/workflows/ci.yml)
+
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="#why-ponddb">Why PondDB</a> ·

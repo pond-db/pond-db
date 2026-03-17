@@ -27,9 +27,7 @@ def admin(client: TestClient) -> dict:
 class TestAdminOperationsJourney:
     """Full admin workflow: namespace → workgroup → invite → quota → usage."""
 
-    def test_step_01_create_namespace(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_01_create_namespace(self, client: TestClient, admin: dict) -> None:
         resp = client.post(
             "/namespaces",
             json={"name": "test-org", "description": "Integration test org"},
@@ -40,9 +38,7 @@ class TestAdminOperationsJourney:
         assert data["name"] == "test-org"
         assert "id" in data
 
-    def test_step_02_create_workgroup(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_02_create_workgroup(self, client: TestClient, admin: dict) -> None:
         # Create namespace first
         ns = client.post(
             "/namespaces",
@@ -64,9 +60,7 @@ class TestAdminOperationsJourney:
         assert data["name"] == "analytics-wg"
         assert data["quota"]["max_sessions"] == 10
 
-    def test_step_03_create_invite(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_03_create_invite(self, client: TestClient, admin: dict) -> None:
         resp = client.post(
             "/invites",
             json={
@@ -82,9 +76,7 @@ class TestAdminOperationsJourney:
         assert data["status"] == "pending"
         assert "token" in data
 
-    def test_step_04_accept_invite_issues_jwt(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_04_accept_invite_issues_jwt(self, client: TestClient, admin: dict) -> None:
         # Create invite
         invite = client.post(
             "/invites",
@@ -104,9 +96,7 @@ class TestAdminOperationsJourney:
         assert data["status"] == "accepted"
         assert data["email"] == "accept-test@example.com"
 
-    def test_step_05_new_user_jwt_works(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_05_new_user_jwt_works(self, client: TestClient, admin: dict) -> None:
         # Create and accept invite
         invite = client.post(
             "/invites",
@@ -124,9 +114,7 @@ class TestAdminOperationsJourney:
         resp = client.get("/queries", headers=new_user_headers)
         assert resp.status_code == 200
 
-    def test_step_06_tenant_isolation_between_users(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_06_tenant_isolation_between_users(self, client: TestClient, admin: dict) -> None:
         # Admin saves a query
         admin_auth = jwt_headers(client, tenant_id="default")
         client.post(
@@ -141,13 +129,9 @@ class TestAdminOperationsJourney:
         other_titles = [q["title"] for q in other_queries]
         assert "Admin Secret Query" not in other_titles
 
-    def test_step_07_update_workgroup_quota(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_07_update_workgroup_quota(self, client: TestClient, admin: dict) -> None:
         # Create namespace + workgroup
-        ns = client.post(
-            "/namespaces", json={"name": "quota-test-ns"}, headers=admin
-        ).json()
+        ns = client.post("/namespaces", json={"name": "quota-test-ns"}, headers=admin).json()
         wg = client.post(
             "/workgroups",
             json={
@@ -168,9 +152,7 @@ class TestAdminOperationsJourney:
         updated = resp.json()
         assert updated["quota"]["max_sessions"] == 20
 
-    def test_step_08_revoke_invite(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_08_revoke_invite(self, client: TestClient, admin: dict) -> None:
         invite = client.post(
             "/invites",
             json={"email": "revoke-me@example.com", "role": "member"},
@@ -189,13 +171,9 @@ class TestAdminOperationsJourney:
         )
         assert resp.status_code in (400, 410)
 
-    def test_step_09_workgroup_usage(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_09_workgroup_usage(self, client: TestClient, admin: dict) -> None:
         # Create namespace + workgroup
-        ns = client.post(
-            "/namespaces", json={"name": "usage-test-ns"}, headers=admin
-        ).json()
+        ns = client.post("/namespaces", json={"name": "usage-test-ns"}, headers=admin).json()
         wg = client.post(
             "/workgroups",
             json={
@@ -213,13 +191,9 @@ class TestAdminOperationsJourney:
         assert "usage" in usage
         assert "quota" in usage
 
-    def test_step_10_list_namespaces_and_workgroups(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_step_10_list_namespaces_and_workgroups(self, client: TestClient, admin: dict) -> None:
         # Create a namespace
-        ns = client.post(
-            "/namespaces", json={"name": "list-test-ns"}, headers=admin
-        ).json()
+        ns = client.post("/namespaces", json={"name": "list-test-ns"}, headers=admin).json()
 
         # Create workgroups
         client.post(
@@ -244,9 +218,7 @@ class TestAdminOperationsJourney:
         assert "list-wg-1" in wg_names
         assert "list-wg-2" in wg_names
 
-    def test_full_admin_journey_sequential(
-        self, client: TestClient, admin: dict
-    ) -> None:
+    def test_full_admin_journey_sequential(self, client: TestClient, admin: dict) -> None:
         """Run the complete admin journey as a single sequential test."""
         # 1. Create namespace
         ns = client.post(

@@ -187,16 +187,14 @@ class PondClient:
                     raise
             except httpx.ConnectError as exc:
                 if attempt >= self.max_retries:
-                    raise PondDBError(
-                        f"Connection error after {attempt + 1} attempt(s)"
-                    ) from exc
+                    raise PondDBError(f"Connection error after {attempt + 1} attempt(s)") from exc
                 await asyncio.sleep(self._backoff(attempt))
                 attempt += 1
 
     @staticmethod
     def _backoff(attempt: int) -> float:
         """Exponential backoff with jitter: 2^attempt * uniform(0.5, 1.0)."""
-        return (2 ** attempt) * (0.5 + 0.5 * random.random())
+        return (2**attempt) * (0.5 + 0.5 * random.random())
 
     # ------------------------------------------------------------------
     # Public API methods
@@ -259,9 +257,7 @@ class PondClient:
 
         return resp.json()["slug"]
 
-    async def list_queries(
-        self, limit: int = 20, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    async def list_queries(self, limit: int = 20, offset: int = 0) -> list[dict[str, Any]]:
         """List saved queries for the authenticated namespace."""
         headers = self._bearer_headers() if self.access_token else {}
         params: dict[str, Any] = {"limit": limit, "offset": offset}

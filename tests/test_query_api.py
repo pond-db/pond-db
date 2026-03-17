@@ -26,6 +26,7 @@ def _set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_api_key) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
 
@@ -103,9 +104,7 @@ def test_destroy_session_response_has_detail(client: TestClient) -> None:
     assert "detail" in body
 
 
-def test_destroy_session_twice_returns_404_second_time(
-    client: TestClient, session_id: str
-) -> None:
+def test_destroy_session_twice_returns_404_second_time(client: TestClient, session_id: str) -> None:
     client.delete(f"/session/{session_id}")
     resp = client.delete(f"/session/{session_id}")
     assert resp.status_code == 404
@@ -126,17 +125,13 @@ def test_list_sessions_returns_list(client: TestClient) -> None:
     assert isinstance(data, list)
 
 
-def test_list_sessions_includes_created_session(
-    client: TestClient, session_id: str
-) -> None:
+def test_list_sessions_includes_created_session(client: TestClient, session_id: str) -> None:
     sessions = client.get("/sessions").json()
     ids = [s["session_id"] for s in sessions]
     assert session_id in ids
 
 
-def test_list_sessions_excludes_destroyed_session(
-    client: TestClient, session_id: str
-) -> None:
+def test_list_sessions_excludes_destroyed_session(client: TestClient, session_id: str) -> None:
     client.delete(f"/session/{session_id}")
     sessions = client.get("/sessions").json()
     ids = [s["session_id"] for s in sessions]
@@ -160,12 +155,18 @@ def test_list_sessions_each_item_has_session_id_and_status(
 def test_query_simple_select_returns_200(
     client: TestClient, session_id: str, auth_headers: dict
 ) -> None:
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
     assert resp.status_code == 200
 
 
-def test_query_response_has_columns(client: TestClient, session_id: str, auth_headers: dict) -> None:
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
+def test_query_response_has_columns(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
     data = resp.json()
     assert "columns" in data
     assert isinstance(data["columns"], list)
@@ -173,31 +174,45 @@ def test_query_response_has_columns(client: TestClient, session_id: str, auth_he
 
 
 def test_query_response_has_rows(client: TestClient, session_id: str, auth_headers: dict) -> None:
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
     data = resp.json()
     assert "rows" in data
     assert isinstance(data["rows"], list)
 
 
-def test_query_response_has_rowcount(client: TestClient, session_id: str, auth_headers: dict) -> None:
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
+def test_query_response_has_rowcount(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
     data = resp.json()
     assert "rowcount" in data
     assert isinstance(data["rowcount"], int)
     assert data["rowcount"] == 1
 
 
-def test_query_response_has_elapsed_ms(client: TestClient, session_id: str, auth_headers: dict) -> None:
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
+def test_query_response_has_elapsed_ms(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
     data = resp.json()
     assert "elapsed_ms" in data
     assert isinstance(data["elapsed_ms"], (int, float))
     assert data["elapsed_ms"] >= 0
 
 
-def test_query_simple_select_row_values(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_simple_select_row_values(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     resp = client.post(
-        "/query", json={"session_id": session_id, "sql": "SELECT 42 AS answer"}, headers=auth_headers
+        "/query",
+        json={"session_id": session_id, "sql": "SELECT 42 AS answer"},
+        headers=auth_headers,
     )
     data = resp.json()
     assert data["rows"] == [[42]]
@@ -228,7 +243,9 @@ def test_query_empty_result_set(client: TestClient, session_id: str, auth_header
     assert data["rows"] == []
 
 
-def test_query_create_table_returns_200(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_create_table_returns_200(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     sql = "CREATE TABLE t1 (id INTEGER, val TEXT)"
     resp = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
     assert resp.status_code == 200
@@ -258,7 +275,9 @@ def test_query_create_table_then_insert_then_select(
     assert data["rows"][1] == ["b", 2]
 
 
-def test_query_non_select_ddl_has_zero_rows(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_non_select_ddl_has_zero_rows(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     sql = "CREATE TABLE empty_ddl (id INTEGER)"
     resp = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
     data = resp.json()
@@ -270,9 +289,13 @@ def test_query_non_select_ddl_has_zero_rows(client: TestClient, session_id: str,
 # ---------------------------------------------------------------------------
 
 
-def test_query_invalid_sql_returns_400(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_invalid_sql_returns_400(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     resp = client.post(
-        "/query", json={"session_id": session_id, "sql": "SELECT FROM WHERE INVALID"}, headers=auth_headers
+        "/query",
+        json={"session_id": session_id, "sql": "SELECT FROM WHERE INVALID"},
+        headers=auth_headers,
     )
     assert resp.status_code == 400
 
@@ -281,7 +304,9 @@ def test_query_invalid_sql_response_has_detail(
     client: TestClient, session_id: str, auth_headers: dict
 ) -> None:
     resp = client.post(
-        "/query", json={"session_id": session_id, "sql": "NOT VALID SQL AT ALL !!!"}, headers=auth_headers
+        "/query",
+        json={"session_id": session_id, "sql": "NOT VALID SQL AT ALL !!!"},
+        headers=auth_headers,
     )
     body = resp.json()
     assert "detail" in body
@@ -301,12 +326,16 @@ def test_query_missing_session_id_returns_422(client: TestClient, auth_headers: 
     assert resp.status_code == 422
 
 
-def test_query_missing_sql_returns_422(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_missing_sql_returns_422(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     resp = client.post("/query", json={"session_id": session_id}, headers=auth_headers)
     assert resp.status_code == 422
 
 
-def test_query_empty_sql_returns_400(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_empty_sql_returns_400(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     resp = client.post("/query", json={"session_id": session_id, "sql": ""}, headers=auth_headers)
     assert resp.status_code == 400
 
@@ -315,13 +344,19 @@ def test_query_after_session_destroyed_returns_404(
     client: TestClient, session_id: str, auth_headers: dict
 ) -> None:
     client.delete(f"/session/{session_id}")
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers
+    )
     assert resp.status_code == 404
 
 
-def test_query_table_not_found_returns_400(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_table_not_found_returns_400(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     resp = client.post(
-        "/query", json={"session_id": session_id, "sql": "SELECT * FROM nonexistent_table"}, headers=auth_headers
+        "/query",
+        json={"session_id": session_id, "sql": "SELECT * FROM nonexistent_table"},
+        headers=auth_headers,
     )
     assert resp.status_code == 400
 
@@ -350,7 +385,9 @@ def test_sessions_are_isolated(client: TestClient, auth_headers: dict) -> None:
     assert resp.status_code == 400  # table does not exist in session B
 
 
-def test_data_persists_within_same_session(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_data_persists_within_same_session(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """INSERT in one query is visible in the next within the same session."""
     client.post(
         "/query",
@@ -379,15 +416,21 @@ def test_data_persists_within_same_session(client: TestClient, session_id: str, 
 # ---------------------------------------------------------------------------
 
 
-def test_query_default_format_is_json(client: TestClient, session_id: str, auth_headers: dict) -> None:
-    resp = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
+def test_query_default_format_is_json(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
+    resp = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
     assert resp.status_code == 200
     # response body must be parseable as JSON (TestClient already does this)
     data = resp.json()
     assert "rows" in data
 
 
-def test_query_explicit_json_format(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_query_explicit_json_format(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "SELECT 1 AS n", "format": "json"},

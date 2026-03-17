@@ -35,19 +35,23 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(env_setup) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
 def _admin_headers() -> dict[str, str]:
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token(ADMIN_TENANT, role="admin")
     return {"Authorization": f"Bearer {token}"}
 
 
 def _user_headers() -> dict[str, str]:
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token(REGULAR_TENANT)
     return {"Authorization": f"Bearer {token}"}
 
@@ -145,7 +149,9 @@ class TestWorkgroupQuotaFields:
             headers=_admin_headers(),
         )
         data = resp.json()
-        assert data["quota"]["max_query_duration_ms"] == 30000, f"max_query_duration_ms not stored: {data}"
+        assert data["quota"]["max_query_duration_ms"] == 30000, (
+            f"max_query_duration_ms not stored: {data}"
+        )
 
     def test_quota_max_result_mb_stored(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-result-mb-ns")
@@ -209,7 +215,9 @@ class TestWorkgroupQuotaFields:
             },
             headers=_admin_headers(),
         )
-        assert resp.status_code in (400, 422), f"Expected validation error for negative quota, got {resp.status_code}"
+        assert resp.status_code in (400, 422), (
+            f"Expected validation error for negative quota, got {resp.status_code}"
+        )
 
     def test_quota_max_sessions_zero_rejected(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-zero-quota-ns")
@@ -222,7 +230,9 @@ class TestWorkgroupQuotaFields:
             },
             headers=_admin_headers(),
         )
-        assert resp.status_code in (400, 422), f"Expected validation error for zero max_sessions, got {resp.status_code}"
+        assert resp.status_code in (400, 422), (
+            f"Expected validation error for zero max_sessions, got {resp.status_code}"
+        )
 
     def test_get_workgroup_includes_quota(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-get-quota-ns")
@@ -250,12 +260,16 @@ class TestWorkgroupUsageEndpoint:
         ns = _create_namespace(client, name="wq-usage-probe-ns")
         wg = _create_workgroup(client, namespace_id=ns["id"], name="wq-usage-probe")
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
-        assert resp.status_code not in (404, 405), f"Endpoint missing: {resp.status_code} {resp.text}"
+        assert resp.status_code not in (404, 405), (
+            f"Endpoint missing: {resp.status_code} {resp.text}"
+        )
 
     def test_usage_returns_200_for_existing_workgroup(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-usage-200-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-usage-200",
+            client,
+            namespace_id=ns["id"],
+            name="wq-usage-200",
             quota={"max_sessions": 5},
         )
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
@@ -279,7 +293,9 @@ class TestWorkgroupUsageEndpoint:
     def test_usage_contains_quota_block(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-usage-quota-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-usage-quota",
+            client,
+            namespace_id=ns["id"],
+            name="wq-usage-quota",
             quota={"max_sessions": 5},
         )
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
@@ -290,7 +306,9 @@ class TestWorkgroupUsageEndpoint:
     def test_usage_contains_active_sessions_count(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-usage-active-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-usage-active",
+            client,
+            namespace_id=ns["id"],
+            name="wq-usage-active",
             quota={"max_sessions": 5},
         )
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
@@ -301,7 +319,9 @@ class TestWorkgroupUsageEndpoint:
     def test_usage_initial_active_sessions_is_zero(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-usage-zero-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-usage-zero",
+            client,
+            namespace_id=ns["id"],
+            name="wq-usage-zero",
             quota={"max_sessions": 5},
         )
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
@@ -311,7 +331,9 @@ class TestWorkgroupUsageEndpoint:
     def test_usage_contains_available_slots(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-usage-avail-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-usage-avail",
+            client,
+            namespace_id=ns["id"],
+            name="wq-usage-avail",
             quota={"max_sessions": 5},
         )
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
@@ -322,7 +344,9 @@ class TestWorkgroupUsageEndpoint:
     def test_usage_contains_utilization_pct(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-usage-util-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-usage-util",
+            client,
+            namespace_id=ns["id"],
+            name="wq-usage-util",
             quota={"max_sessions": 4},
         )
         resp = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers())
@@ -355,7 +379,9 @@ class TestCheckAndReserveSessionSlot:
     def test_session_creation_accepts_workgroup_id(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-sess-wgid-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-sess-wgid",
+            client,
+            namespace_id=ns["id"],
+            name="wq-sess-wgid",
             quota={"max_sessions": 5},
         )
         resp = client.post("/session", json={"workgroup_id": wg["id"]})
@@ -364,7 +390,9 @@ class TestCheckAndReserveSessionSlot:
     def test_session_response_includes_workgroup_id(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-sess-resp-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-sess-resp",
+            client,
+            namespace_id=ns["id"],
+            name="wq-sess-resp",
             quota={"max_sessions": 5},
         )
         resp = client.post("/session", json={"workgroup_id": wg["id"]})
@@ -375,7 +403,9 @@ class TestCheckAndReserveSessionSlot:
     def test_session_increments_workgroup_active_sessions(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-sess-incr-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-sess-incr",
+            client,
+            namespace_id=ns["id"],
+            name="wq-sess-incr",
             quota={"max_sessions": 5},
         )
         client.post("/session", json={"workgroup_id": wg["id"]})
@@ -385,7 +415,9 @@ class TestCheckAndReserveSessionSlot:
     def test_two_sessions_increment_by_two(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-sess-two-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-sess-two",
+            client,
+            namespace_id=ns["id"],
+            name="wq-sess-two",
             quota={"max_sessions": 5},
         )
         client.post("/session", json={"workgroup_id": wg["id"]})
@@ -397,7 +429,9 @@ class TestCheckAndReserveSessionSlot:
         """Creating sessions beyond max_sessions must return 429 Too Many Requests."""
         ns = _create_namespace(client, name="wq-quota-limit-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-quota-limit",
+            client,
+            namespace_id=ns["id"],
+            name="wq-quota-limit",
             quota={"max_sessions": 2},
         )
         # Fill quota
@@ -407,12 +441,16 @@ class TestCheckAndReserveSessionSlot:
         assert r2.status_code == 201
         # Exceed quota
         r3 = client.post("/session", json={"workgroup_id": wg["id"]})
-        assert r3.status_code == 429, f"Expected 429 quota exceeded, got {r3.status_code}: {r3.text}"
+        assert r3.status_code == 429, (
+            f"Expected 429 quota exceeded, got {r3.status_code}: {r3.text}"
+        )
 
     def test_429_response_has_detail_message(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-429-msg-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-429-msg",
+            client,
+            namespace_id=ns["id"],
+            name="wq-429-msg",
             quota={"max_sessions": 1},
         )
         client.post("/session", json={"workgroup_id": wg["id"]})
@@ -421,13 +459,16 @@ class TestCheckAndReserveSessionSlot:
         body = resp.json()
         assert "detail" in body, f"Missing detail in 429 response: {body}"
         detail = body["detail"].lower()
-        assert any(kw in detail for kw in ("quota", "limit", "session", "exceed", "full")), \
+        assert any(kw in detail for kw in ("quota", "limit", "session", "exceed", "full")), (
             f"detail message not descriptive: {body['detail']}"
+        )
 
     def test_available_slots_decrements_when_session_created(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-avail-decr-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-avail-decr",
+            client,
+            namespace_id=ns["id"],
+            name="wq-avail-decr",
             quota={"max_sessions": 3},
         )
         client.post("/session", json={"workgroup_id": wg["id"]})
@@ -437,14 +478,17 @@ class TestCheckAndReserveSessionSlot:
     def test_utilization_pct_updates_after_session_creation(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-util-pct-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-util-pct",
+            client,
+            namespace_id=ns["id"],
+            name="wq-util-pct",
             quota={"max_sessions": 4},
         )
         client.post("/session", json={"workgroup_id": wg["id"]})
         usage = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers()).json()
         # 1/4 = 25%
-        assert abs(usage["utilization_pct"] - 25.0) < 0.01, \
+        assert abs(usage["utilization_pct"] - 25.0) < 0.01, (
             f"Expected utilization 25%, got {usage['utilization_pct']}"
+        )
 
     def test_session_without_workgroup_id_still_works(self, client: TestClient) -> None:
         """Sessions without a workgroup_id should continue to work normally."""
@@ -456,8 +500,9 @@ class TestCheckAndReserveSessionSlot:
             "/session",
             json={"workgroup_id": "00000000-0000-0000-0000-000000000000"},
         )
-        assert resp.status_code in (404, 422), \
+        assert resp.status_code in (404, 422), (
             f"Expected 404/422 for unknown workgroup, got {resp.status_code}"
+        )
 
     def test_workgroup_without_quota_has_unlimited_sessions(self, client: TestClient) -> None:
         """Workgroup with no quota (or None) should not block session creation."""
@@ -480,7 +525,9 @@ class TestQuotaTrackingLifecycle:
     def test_destroy_session_decrements_active_sessions(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-destroy-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-destroy",
+            client,
+            namespace_id=ns["id"],
+            name="wq-destroy",
             quota={"max_sessions": 3},
         )
         sess_resp = client.post("/session", json={"workgroup_id": wg["id"]})
@@ -494,13 +541,16 @@ class TestQuotaTrackingLifecycle:
 
         # Verify 0 active
         usage_after = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers()).json()
-        assert usage_after["usage"]["active_sessions"] == 0, \
+        assert usage_after["usage"]["active_sessions"] == 0, (
             f"Expected 0 after destroy: {usage_after}"
+        )
 
     def test_slot_freed_after_destroy_allows_new_session(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-freed-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-freed",
+            client,
+            namespace_id=ns["id"],
+            name="wq-freed",
             quota={"max_sessions": 1},
         )
         sess1 = client.post("/session", json={"workgroup_id": wg["id"]})
@@ -514,13 +564,16 @@ class TestQuotaTrackingLifecycle:
 
         # Now a new session should succeed
         new_sess = client.post("/session", json={"workgroup_id": wg["id"]})
-        assert new_sess.status_code == 201, \
+        assert new_sess.status_code == 201, (
             f"Expected 201 after freeing slot, got {new_sess.status_code}: {new_sess.text}"
+        )
 
     def test_available_slots_restores_after_destroy(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-restore-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-restore",
+            client,
+            namespace_id=ns["id"],
+            name="wq-restore",
             quota={"max_sessions": 2},
         )
         sess = client.post("/session", json={"workgroup_id": wg["id"]})
@@ -532,7 +585,9 @@ class TestQuotaTrackingLifecycle:
     def test_utilization_zero_after_all_sessions_destroyed(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-util-zero-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-util-zero",
+            client,
+            namespace_id=ns["id"],
+            name="wq-util-zero",
             quota={"max_sessions": 3},
         )
         sess = client.post("/session", json={"workgroup_id": wg["id"]})
@@ -552,18 +607,21 @@ class TestCheckAndReserveCallable:
 
     def test_function_is_importable(self) -> None:
         import ponddb.api.namespace_routes as nr
-        assert hasattr(nr, "check_and_reserve_session_slot"), \
+
+        assert hasattr(nr, "check_and_reserve_session_slot"), (
             "check_and_reserve_session_slot not found in ponddb.namespace_routes"
+        )
 
     def test_function_is_callable(self) -> None:
         import ponddb.api.namespace_routes as nr
+
         fn = getattr(nr, "check_and_reserve_session_slot", None)
-        assert fn is not None and callable(fn), \
-            "check_and_reserve_session_slot must be callable"
+        assert fn is not None and callable(fn), "check_and_reserve_session_slot must be callable"
 
     def test_raises_on_quota_exceeded(self) -> None:
         """Direct call with a quota-exceeded workgroup raises an appropriate exception."""
         import ponddb.api.namespace_routes as nr
+
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None, "check_and_reserve_session_slot not found"
 
@@ -578,12 +636,14 @@ class TestCheckAndReserveCallable:
             fn(workgroup)
         # The exception message should indicate quota exceeded
         msg = str(exc_info.value).lower()
-        assert any(kw in msg for kw in ("quota", "limit", "exceed", "full", "session")), \
+        assert any(kw in msg for kw in ("quota", "limit", "exceed", "full", "session")), (
             f"Exception message not descriptive: {exc_info.value}"
+        )
 
     def test_succeeds_when_slot_available(self) -> None:
         """Direct call with available slots should return without raising."""
         import ponddb.api.namespace_routes as nr
+
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None, "check_and_reserve_session_slot not found"
 
@@ -601,6 +661,7 @@ class TestCheckAndReserveCallable:
     def test_returns_reservation_info(self) -> None:
         """Direct call should return some confirmation (dict or truthy value)."""
         import ponddb.api.namespace_routes as nr
+
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None, "check_and_reserve_session_slot not found"
 
@@ -615,6 +676,7 @@ class TestCheckAndReserveCallable:
     def test_unlimited_workgroup_never_raises(self) -> None:
         """Workgroup with no quota (None max_sessions) should never block."""
         import ponddb.api.namespace_routes as nr
+
         fn = getattr(nr, "check_and_reserve_session_slot", None)
         assert fn is not None
 
@@ -639,21 +701,24 @@ class TestReconciliationTask:
 
     def test_reconcile_function_is_importable(self) -> None:
         import ponddb.api.namespace_routes as nr
-        assert hasattr(nr, "reconcile_workgroup_usage"), \
+
+        assert hasattr(nr, "reconcile_workgroup_usage"), (
             "reconcile_workgroup_usage not found in ponddb.namespace_routes"
+        )
 
     def test_reconcile_function_is_callable(self) -> None:
         import ponddb.api.namespace_routes as nr
+
         fn = getattr(nr, "reconcile_workgroup_usage", None)
         assert callable(fn), "reconcile_workgroup_usage must be callable"
 
-    def test_reconcile_sets_active_sessions_from_actual_sessions(
-        self, client: TestClient
-    ) -> None:
+    def test_reconcile_sets_active_sessions_from_actual_sessions(self, client: TestClient) -> None:
         """After reconciliation, active_sessions in usage must match real session count."""
         ns = _create_namespace(client, name="wq-recon-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-recon",
+            client,
+            namespace_id=ns["id"],
+            name="wq-recon",
             quota={"max_sessions": 5},
         )
         # Create 2 real sessions
@@ -667,13 +732,13 @@ class TestReconciliationTask:
             f"/workgroups/{wg['id']}/reconcile",
             headers=_admin_headers(),
         )
-        assert resp.status_code in (200, 202, 204), \
+        assert resp.status_code in (200, 202, 204), (
             f"Reconcile endpoint not found or failed: {resp.status_code} {resp.text}"
+        )
 
         # Usage must now be accurate
         usage = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers()).json()
-        assert usage["usage"]["active_sessions"] == 2, \
-            f"Reconcile did not fix count: {usage}"
+        assert usage["usage"]["active_sessions"] == 2, f"Reconcile did not fix count: {usage}"
 
     def test_reconcile_endpoint_exists(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-recon-ep-ns")
@@ -682,8 +747,9 @@ class TestReconciliationTask:
             f"/workgroups/{wg['id']}/reconcile",
             headers=_admin_headers(),
         )
-        assert resp.status_code not in (404, 405), \
+        assert resp.status_code not in (404, 405), (
             f"POST /workgroups/{{id}}/reconcile endpoint missing: {resp.status_code}"
+        )
 
     def test_reconcile_returns_404_for_unknown_workgroup(self, client: TestClient) -> None:
         resp = client.post(
@@ -698,13 +764,13 @@ class TestReconciliationTask:
         resp = client.post(f"/workgroups/{wg['id']}/reconcile")
         assert resp.status_code == 401
 
-    def test_reconcile_fixes_stale_count_after_external_destroy(
-        self, client: TestClient
-    ) -> None:
+    def test_reconcile_fixes_stale_count_after_external_destroy(self, client: TestClient) -> None:
         """If active_sessions count is stale (e.g. above real count), reconcile corrects it."""
         ns = _create_namespace(client, name="wq-stale-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-stale",
+            client,
+            namespace_id=ns["id"],
+            name="wq-stale",
             quota={"max_sessions": 5},
         )
         # Create then destroy a session
@@ -717,13 +783,16 @@ class TestReconciliationTask:
 
         # Usage should be 0
         usage = client.get(f"/workgroups/{wg['id']}/usage", headers=_admin_headers()).json()
-        assert usage["usage"]["active_sessions"] == 0, \
+        assert usage["usage"]["active_sessions"] == 0, (
             f"Reconcile did not clear stale session: {usage}"
+        )
 
     def test_reconcile_response_contains_reconciled_count(self, client: TestClient) -> None:
         ns = _create_namespace(client, name="wq-recon-resp-ns")
         wg = _create_workgroup(
-            client, namespace_id=ns["id"], name="wq-recon-resp",
+            client,
+            namespace_id=ns["id"],
+            name="wq-recon-resp",
             quota={"max_sessions": 5},
         )
         client.post("/session", json={"workgroup_id": wg["id"]})
@@ -737,5 +806,6 @@ class TestReconciliationTask:
             assert isinstance(data, dict), "Reconcile response should be a JSON object"
             # Must have at least one useful field
             useful_keys = {"active_sessions", "reconciled", "workgroup_id", "detail"}
-            assert any(k in data for k in useful_keys), \
+            assert any(k in data for k in useful_keys), (
                 f"Reconcile response has no useful fields: {data}"
+            )

@@ -36,8 +36,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -57,6 +59,7 @@ def logged_in_client(client: TestClient) -> TestClient:
 def admin_headers() -> dict[str, str]:
     """Create admin JWT headers for workgroup management."""
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token("default", role="admin")
     return {"Authorization": f"Bearer {token}"}
 
@@ -65,7 +68,9 @@ def admin_headers() -> dict[str, str]:
 def wg_name(client: TestClient, admin_headers: dict) -> str:
     """Create a namespace + workgroup and return the workgroup name."""
     ns_resp = client.post(
-        "/namespaces", json={"name": "tabs-ns"}, headers=admin_headers,
+        "/namespaces",
+        json={"name": "tabs-ns"},
+        headers=admin_headers,
     )
     ns_id = ns_resp.json()["id"]
     client.post(
@@ -105,7 +110,9 @@ class TestTabOverview:
         resp = client.get(f"/htmx/workgroup/{wg_name}/overview", headers=auth_headers)
         assert resp.status_code == 200
 
-    def test_returns_html_fragment(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_returns_html_fragment(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/overview", headers=auth_headers).text
         assert "<html" not in body.lower()
         assert "<body" not in body.lower()
@@ -118,7 +125,9 @@ class TestTabOverview:
         body = client.get(f"/htmx/workgroup/{wg_name}/overview", headers=auth_headers).text
         assert "detail-row" in body
 
-    def test_shows_workgroup_name(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_shows_workgroup_name(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/overview", headers=auth_headers).text
         assert wg_name in body
 
@@ -132,12 +141,16 @@ class TestTabHistory:
         resp = client.get(f"/htmx/workgroup/{wg_name}/history", headers=auth_headers)
         assert resp.status_code == 200
 
-    def test_returns_html_fragment(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_returns_html_fragment(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/history", headers=auth_headers).text
         assert "<html" not in body.lower()
         assert "<body" not in body.lower()
 
-    def test_has_history_content(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_has_history_content(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/history", headers=auth_headers).text
         # Should have either a table or "No recent queries" message
         assert "history" in body.lower() or "queries" in body.lower() or "<table" in body.lower()
@@ -152,7 +165,9 @@ class TestTabApikeys:
         resp = client.get(f"/htmx/workgroup/{wg_name}/apikeys", headers=auth_headers)
         assert resp.status_code == 200
 
-    def test_returns_html_fragment(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_returns_html_fragment(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/apikeys", headers=auth_headers).text
         assert "<html" not in body.lower()
         assert "<body" not in body.lower()
@@ -161,7 +176,9 @@ class TestTabApikeys:
         body = client.get(f"/htmx/workgroup/{wg_name}/apikeys", headers=auth_headers).text
         assert "key-display" in body
 
-    def test_has_auth_header_info(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_has_auth_header_info(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/apikeys", headers=auth_headers).text
         assert "x-api-key" in body.lower()
 
@@ -188,11 +205,15 @@ class TestSuspendResume:
         resp = client.post("/htmx/session/fake-id/resume")
         assert resp.status_code == 401
 
-    def test_suspend_unknown_session_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+    def test_suspend_unknown_session_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
         resp = client.post("/htmx/session/nonexistent/suspend", headers=auth_headers)
         assert resp.status_code == 404
 
-    def test_resume_unknown_session_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+    def test_resume_unknown_session_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
         resp = client.post("/htmx/session/nonexistent/resume", headers=auth_headers)
         assert resp.status_code == 404
 
@@ -248,7 +269,9 @@ class TestWorkgroupPageHTMX:
         assert "history" in body
         assert "api key" in body
 
-    def test_tabs_target_content_container(self, logged_in_client: TestClient, wg_name: str) -> None:
+    def test_tabs_target_content_container(
+        self, logged_in_client: TestClient, wg_name: str
+    ) -> None:
         body = logged_in_client.get(f"/workgroup/{wg_name}").text
         assert "wg-tab-content" in body
 

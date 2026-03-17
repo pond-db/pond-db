@@ -54,14 +54,17 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(env_setup) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
 def _admin_headers() -> dict[str, str]:
     """Return Authorization headers with a valid admin JWT."""
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token(ADMIN_TENANT, role="admin")
     return {"Authorization": f"Bearer {token}"}
 
@@ -69,6 +72,7 @@ def _admin_headers() -> dict[str, str]:
 def _regular_headers() -> dict[str, str]:
     """Return Authorization headers with a regular (non-admin) JWT."""
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token(REGULAR_TENANT)
     return {"Authorization": f"Bearer {token}"}
 
@@ -85,7 +89,9 @@ def _api_key_headers() -> dict[str, str]:
 def _create_namespace(client: TestClient, name: str = "test-ns", **kwargs) -> dict[str, Any]:
     payload: dict[str, Any] = {"name": name, "description": "Test namespace", **kwargs}
     resp = client.post("/namespaces", json=payload, headers=_admin_headers())
-    assert resp.status_code == 201, f"Expected 201 creating namespace, got {resp.status_code}: {resp.text}"
+    assert resp.status_code == 201, (
+        f"Expected 201 creating namespace, got {resp.status_code}: {resp.text}"
+    )
     return resp.json()
 
 
@@ -102,7 +108,9 @@ def _create_workgroup(
         **kwargs,
     }
     resp = client.post("/workgroups", json=payload, headers=_admin_headers())
-    assert resp.status_code == 201, f"Expected 201 creating workgroup, got {resp.status_code}: {resp.text}"
+    assert resp.status_code == 201, (
+        f"Expected 201 creating workgroup, got {resp.status_code}: {resp.text}"
+    )
     return resp.json()
 
 
@@ -716,25 +724,26 @@ class TestAdminJwtTokenClaims:
     def test_create_access_token_accepts_role_admin(self) -> None:
         """create_access_token must accept a role kwarg without raising."""
         from ponddb.auth.jwt_auth import create_access_token
+
         token = create_access_token("test-admin", role="admin")
         assert token is not None
         assert isinstance(token, str)
 
     def test_admin_token_contains_role_admin_claim(self) -> None:
         from ponddb.auth.jwt_auth import create_access_token
+
         token = create_access_token("test-admin", role="admin")
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         assert claims.get("role") == "admin"
 
     def test_regular_token_has_no_admin_role(self) -> None:
         from ponddb.auth.jwt_auth import create_access_token
+
         token = create_access_token("test-regular")
         claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         assert claims.get("role") != "admin"
 
-    def test_admin_token_is_still_valid_for_query_endpoint(
-        self, client: TestClient
-    ) -> None:
+    def test_admin_token_is_still_valid_for_query_endpoint(self, client: TestClient) -> None:
         """Admin token is a superset — it must still work for regular auth endpoints."""
         session_resp = client.post("/session")
         assert session_resp.status_code == 201
@@ -778,9 +787,7 @@ class TestNamespaceSchemaValidation:
         assert resp.status_code in (201, 422)
 
     def test_name_cannot_contain_slashes(self, client: TestClient) -> None:
-        resp = client.post(
-            "/namespaces", json={"name": "bad/name"}, headers=_admin_headers()
-        )
+        resp = client.post("/namespaces", json={"name": "bad/name"}, headers=_admin_headers())
         # May be 400 (rejected) or 201 (allowed — less strict) depending on design
         assert resp.status_code in (201, 400, 422)
 

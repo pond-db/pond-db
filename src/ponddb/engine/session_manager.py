@@ -116,7 +116,8 @@ class SessionManager:
     def _active_count_for_workgroup(self, workgroup_id: str) -> int:
         """Count ACTIVE sessions in a workgroup."""
         return sum(
-            1 for s in self._sessions.values()
+            1
+            for s in self._sessions.values()
             if s.workgroup_id == workgroup_id and s.status == SessionStatus.ACTIVE
         )
 
@@ -149,7 +150,8 @@ class SessionManager:
                     self.resume_session(suspended_sid)
                     logger.info(
                         "Quota hit for %s — resumed suspended session %s",
-                        workgroup_id, suspended_sid[:8],
+                        workgroup_id,
+                        suspended_sid[:8],
                     )
                     return suspended_sid
                 raise WorkgroupQuotaExceeded(
@@ -210,9 +212,7 @@ class SessionManager:
             sessions = [s for s in sessions if s["workgroup_id"] == workgroup_id]
         return sessions
 
-    def check_workgroup_access(
-        self, session_id: str, caller_workgroup_id: Optional[str]
-    ) -> None:
+    def check_workgroup_access(self, session_id: str, caller_workgroup_id: Optional[str]) -> None:
         """Raise WorkgroupAccessError if caller's workgroup doesn't match session's.
 
         Passing None as caller_workgroup_id skips the check entirely (backwards compat).
@@ -243,10 +243,15 @@ class SessionManager:
         session.status = SessionStatus.SUSPENDED
         session.suspended_at = datetime.now(timezone.utc)
         if self.store is not None:
-            _drive(self.store.save_session(
-                session_id, session.namespace, "SUSPENDED",
-                session.created_at, session.last_active,
-            ))
+            _drive(
+                self.store.save_session(
+                    session_id,
+                    session.namespace,
+                    "SUSPENDED",
+                    session.created_at,
+                    session.last_active,
+                )
+            )
 
     def resume_session(self, session_id: str) -> None:
         if session_id not in self._sessions:
@@ -260,10 +265,15 @@ class SessionManager:
         now = datetime.now(timezone.utc)
         session.last_active = now
         if self.store is not None:
-            _drive(self.store.save_session(
-                session_id, session.namespace, "ACTIVE",
-                session.created_at, now,
-            ))
+            _drive(
+                self.store.save_session(
+                    session_id,
+                    session.namespace,
+                    "ACTIVE",
+                    session.created_at,
+                    now,
+                )
+            )
 
     async def load_from_store(self) -> None:
         """Repopulate in-memory state from the MetadataStore."""
@@ -314,14 +324,16 @@ class SessionManager:
             rel = session.conn.execute(sql)
             session.last_active = datetime.now(timezone.utc)
             if rel is None:
-                return QueryResult(columns=[], rows=[], rowcount=0,
-                                   elapsed_ms=(time.perf_counter() - start) * 1000)
+                return QueryResult(
+                    columns=[], rows=[], rowcount=0, elapsed_ms=(time.perf_counter() - start) * 1000
+                )
             columns = [desc[0] for desc in rel.description] if rel.description else []
             raw_rows = rel.fetchall()
             rows = [list(row) for row in raw_rows]
             elapsed_ms = (time.perf_counter() - start) * 1000
-            return QueryResult(columns=columns, rows=rows,
-                               rowcount=len(rows), elapsed_ms=elapsed_ms)
+            return QueryResult(
+                columns=columns, rows=rows, rowcount=len(rows), elapsed_ms=elapsed_ms
+            )
         except duckdb.Error as exc:
             raise QueryError(str(exc)) from exc
 
@@ -329,7 +341,8 @@ class SessionManager:
         """Suspend ACTIVE sessions idle longer than idle_timeout. Returns suspended IDs."""
         now = datetime.now(timezone.utc)
         to_suspend = [
-            sid for sid, s in self._sessions.items()
+            sid
+            for sid, s in self._sessions.items()
             if s.status == SessionStatus.ACTIVE
             and (now - s.last_active).total_seconds() > self.idle_timeout
         ]
@@ -352,7 +365,8 @@ class SessionManager:
         """
         now = datetime.now(timezone.utc)
         to_destroy = [
-            sid for sid, s in self._sessions.items()
+            sid
+            for sid, s in self._sessions.items()
             if s.status == SessionStatus.SUSPENDED
             and s.suspended_at is not None
             and (now - s.suspended_at).total_seconds() > max_suspend_age

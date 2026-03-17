@@ -156,6 +156,7 @@ async def test_save_session_upsert_updates_last_active(store) -> None:
     await store.save_session("sid-u2", "ns", "ACTIVE", t1, t1)
 
     import asyncio as _asyncio
+
     await _asyncio.sleep(0.01)
     t2 = _now()
     await store.save_session("sid-u2", "ns", "ACTIVE", t1, t2)

@@ -99,11 +99,16 @@ def test_schema_response_structure(client: TestClient, session_id: str, auth_hea
     assert isinstance(tbl["columns"], list)
 
 
-def test_schema_column_has_name_and_type(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_schema_column_has_name_and_type(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """Column entries must have both 'name' and 'type' keys."""
     client.post(
         "/query",
-        json={"session_id": session_id, "sql": "CREATE TABLE typed_tbl (id INTEGER, label VARCHAR, score DOUBLE)"},
+        json={
+            "session_id": session_id,
+            "sql": "CREATE TABLE typed_tbl (id INTEGER, label VARCHAR, score DOUBLE)",
+        },
         headers=auth_headers,
     )
     resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
@@ -117,10 +122,15 @@ def test_schema_column_has_name_and_type(client: TestClient, session_id: str, au
         assert "type" in col, f"Column entry missing 'type': {col}"
 
 
-def test_schema_column_names_are_correct(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_schema_column_names_are_correct(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     client.post(
         "/query",
-        json={"session_id": session_id, "sql": "CREATE TABLE col_test (alpha INTEGER, beta VARCHAR)"},
+        json={
+            "session_id": session_id,
+            "sql": "CREATE TABLE col_test (alpha INTEGER, beta VARCHAR)",
+        },
         headers=auth_headers,
     )
     resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
@@ -131,11 +141,16 @@ def test_schema_column_names_are_correct(client: TestClient, session_id: str, au
     assert "beta" in col_names
 
 
-def test_schema_column_types_are_strings(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_schema_column_types_are_strings(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """Type values must be non-empty strings (e.g. 'INTEGER', 'VARCHAR')."""
     client.post(
         "/query",
-        json={"session_id": session_id, "sql": "CREATE TABLE type_test (x INTEGER, y DOUBLE, z VARCHAR)"},
+        json={
+            "session_id": session_id,
+            "sql": "CREATE TABLE type_test (x INTEGER, y DOUBLE, z VARCHAR)",
+        },
         headers=auth_headers,
     )
     resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)
@@ -146,7 +161,9 @@ def test_schema_column_types_are_strings(client: TestClient, session_id: str, au
         assert len(col["type"]) > 0
 
 
-def test_schema_includes_multiple_tables(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_schema_includes_multiple_tables(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """Multiple tables created in the same session all appear in schema."""
     client.post(
         "/query",
@@ -165,7 +182,9 @@ def test_schema_includes_multiple_tables(client: TestClient, session_id: str, au
     assert "beta_tbl" in names
 
 
-def test_schema_only_returns_user_tables_not_system(client: TestClient, session_id: str, auth_headers: dict) -> None:
+def test_schema_only_returns_user_tables_not_system(
+    client: TestClient, session_id: str, auth_headers: dict
+) -> None:
     """Schema must not include DuckDB internal system tables/schemas (e.g. information_schema tables)."""
     client.post(
         "/query",
@@ -289,7 +308,7 @@ def test_editor_page_has_sidebar_toggle_button(client: TestClient) -> None:
         "sidebar-toggle" in html
         or "toggle-sidebar" in html
         or "collapse-sidebar" in html
-        or "id=\"sidebar-btn\"" in html
+        or 'id="sidebar-btn"' in html
         or "id='sidebar-btn'" in html
     )
 
@@ -307,7 +326,7 @@ def test_editor_page_has_table_list_container(client: TestClient) -> None:
     assert (
         "schema-tables" in html
         or "table-list" in html
-        or "id=\"schema-tree\"" in html
+        or 'id="schema-tree"' in html
         or "id='schema-tree'" in html
     )
 
@@ -344,7 +363,12 @@ def test_editor_page_sidebar_collapsible_css(client: TestClient) -> None:
     resp = client.get("/editor")
     html = resp.text
     # CSS or JS must handle the hidden/collapsed state
-    assert "collapsed" in html or "sidebar-hidden" in html or "display: none" in html or "display:none" in html
+    assert (
+        "collapsed" in html
+        or "sidebar-hidden" in html
+        or "display: none" in html
+        or "display:none" in html
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +393,10 @@ def test_schema_view_has_columns(client: TestClient, session_id: str, auth_heade
     """Views should have column metadata in schema response."""
     client.post(
         "/query",
-        json={"session_id": session_id, "sql": "CREATE VIEW view_cols AS SELECT 42 AS answer, 'hello' AS greeting"},
+        json={
+            "session_id": session_id,
+            "sql": "CREATE VIEW view_cols AS SELECT 42 AS answer, 'hello' AS greeting",
+        },
         headers=auth_headers,
     )
     resp = client.get(f"/schema?session_id={session_id}", headers=auth_headers)

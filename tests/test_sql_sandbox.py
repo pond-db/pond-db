@@ -30,30 +30,30 @@ def _import_check():
 
 BLOCKED_SQL_CASES = [
     # (pattern_label, sql)
-    ("COPY",             "COPY mytable TO '/tmp/out.csv'"),
-    ("COPY",             "copy orders from '/data/orders.csv'"),
-    ("LOAD",             "LOAD '/tmp/evil.so'"),
-    ("LOAD",             "load 'extension.duckdb_extension'"),
-    ("INSTALL",          "INSTALL httpfs"),
-    ("INSTALL",          "install 'spatial'"),
-    ("ATTACH",           "ATTACH '/data/other.db' AS other"),
-    ("ATTACH",           "attach 'file.db'"),
-    ("EXPORT DATABASE",  "EXPORT DATABASE '/tmp/backup'"),
-    ("IMPORT DATABASE",  "IMPORT DATABASE '/tmp/backup'"),
-    ("CREATE SECRET",    "CREATE SECRET my_secret (TYPE S3, KEY_ID 'xxx')"),
-    ("CREATE SECRET",    "create secret (type r2, secret 'abc')"),
-    ("read_csv",         "SELECT * FROM read_csv('/etc/passwd')"),
-    ("read_csv",         "select * from read_csv_auto('/data/file.csv')"),
-    ("read_parquet",     "SELECT * FROM read_parquet('/data/file.parquet')"),
-    ("read_json",        "SELECT * FROM read_json('/tmp/data.json')"),
-    ("read_json",        "select * from read_json_auto('/tmp/x.json')"),
-    ("read_text",        "SELECT * FROM read_text('/etc/hosts')"),
-    ("read_blob",        "SELECT * FROM read_blob('/etc/shadow')"),
-    ("glob",             "SELECT * FROM glob('/data/*.csv')"),
-    ("SET",              "SET memory_limit = '100GB'"),
-    ("SET",              "set threads = 64"),
-    ("PRAGMA",           "PRAGMA database_list"),
-    ("PRAGMA",           "pragma threads"),
+    ("COPY", "COPY mytable TO '/tmp/out.csv'"),
+    ("COPY", "copy orders from '/data/orders.csv'"),
+    ("LOAD", "LOAD '/tmp/evil.so'"),
+    ("LOAD", "load 'extension.duckdb_extension'"),
+    ("INSTALL", "INSTALL httpfs"),
+    ("INSTALL", "install 'spatial'"),
+    ("ATTACH", "ATTACH '/data/other.db' AS other"),
+    ("ATTACH", "attach 'file.db'"),
+    ("EXPORT DATABASE", "EXPORT DATABASE '/tmp/backup'"),
+    ("IMPORT DATABASE", "IMPORT DATABASE '/tmp/backup'"),
+    ("CREATE SECRET", "CREATE SECRET my_secret (TYPE S3, KEY_ID 'xxx')"),
+    ("CREATE SECRET", "create secret (type r2, secret 'abc')"),
+    ("read_csv", "SELECT * FROM read_csv('/etc/passwd')"),
+    ("read_csv", "select * from read_csv_auto('/data/file.csv')"),
+    ("read_parquet", "SELECT * FROM read_parquet('/data/file.parquet')"),
+    ("read_json", "SELECT * FROM read_json('/tmp/data.json')"),
+    ("read_json", "select * from read_json_auto('/tmp/x.json')"),
+    ("read_text", "SELECT * FROM read_text('/etc/hosts')"),
+    ("read_blob", "SELECT * FROM read_blob('/etc/shadow')"),
+    ("glob", "SELECT * FROM glob('/data/*.csv')"),
+    ("SET", "SET memory_limit = '100GB'"),
+    ("SET", "set threads = 64"),
+    ("PRAGMA", "PRAGMA database_list"),
+    ("PRAGMA", "pragma threads"),
 ]
 
 # Deduplicate to 14 distinct blocked pattern *names*
@@ -96,12 +96,15 @@ def test_blocked_sql_error_message_mentions_pattern() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("sql", [
-    "copy t to '/tmp/out.csv'",
-    "COPY T TO '/TMP/OUT.CSV'",
-    "Copy T To '/tmp/out.csv'",
-    "cOpY t tO '/tmp/out.csv'",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "copy t to '/tmp/out.csv'",
+        "COPY T TO '/TMP/OUT.CSV'",
+        "Copy T To '/tmp/out.csv'",
+        "cOpY t tO '/tmp/out.csv'",
+    ],
+)
 def test_blocked_case_insensitive(sql: str) -> None:
     """Blocked-pattern check is case-insensitive."""
     from ponddb.security.sql_sandbox import BlockedSqlError, check_sql
@@ -115,12 +118,15 @@ def test_blocked_case_insensitive(sql: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("sql", [
-    "  COPY t TO '/tmp/out.csv'",
-    "\nLOAD '/tmp/lib.so'",
-    "\t  INSTALL spatial",
-    "\n\n  ATTACH '/db.db'",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "  COPY t TO '/tmp/out.csv'",
+        "\nLOAD '/tmp/lib.so'",
+        "\t  INSTALL spatial",
+        "\n\n  ATTACH '/db.db'",
+    ],
+)
 def test_blocked_with_leading_whitespace(sql: str) -> None:
     """Blocked patterns are still caught when SQL has leading whitespace."""
     from ponddb.security.sql_sandbox import BlockedSqlError, check_sql

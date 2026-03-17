@@ -104,7 +104,10 @@ class TestOAuthStateToken:
     def test_token_is_url_safe(self, state_utils):
         token = state_utils.generate_state("google")
         # URL-safe characters only (base64url or hex)
-        assert all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=.+" for c in token)
+        assert all(
+            c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=.+"
+            for c in token
+        )
 
 
 # ===========================================================================
@@ -218,9 +221,13 @@ class TestAuthCallback:
     def test_provider_mismatch_in_state_returns_400(self, client):
         # State generated for github but used on google callback
         state = self._make_valid_state("github")
-        with patch("ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock) as mock_ex:
+        with patch(
+            "ponddb.api.oauth_routes._exchange_code_for_token", new_callable=AsyncMock
+        ) as mock_ex:
             mock_ex.return_value = {"access_token": "tok", "token_type": "bearer"}
-            with patch("ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock) as mock_ui:
+            with patch(
+                "ponddb.api.oauth_routes._fetch_user_info", new_callable=AsyncMock
+            ) as mock_ui:
                 mock_ui.return_value = {"id": "123", "email": "u@example.com"}
                 resp = client.get(f"/auth/google/callback?code=abc&state={state}")
         assert resp.status_code == 400

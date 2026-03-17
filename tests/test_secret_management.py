@@ -26,12 +26,12 @@ from jose import jwt as jose_jwt
 
 STRONG_SECRET = "this-is-a-very-strong-secret-key-32plus-chars"
 WEAK_SECRETS = [
-    "short",           # too short
-    "password",        # common word
-    "12345678",        # only digits
-    "secret",          # common word
-    "abc",             # too short
-    "",                # empty
+    "short",  # too short
+    "password",  # common word
+    "12345678",  # only digits
+    "secret",  # common word
+    "abc",  # too short
+    "",  # empty
 ]
 
 
@@ -52,6 +52,7 @@ def test_file_secret_returns_contents_when_file_exists(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     result = jwt_module._get_secret()
@@ -70,6 +71,7 @@ def test_file_secret_strips_trailing_newline(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     result = jwt_module._get_secret()
@@ -89,6 +91,7 @@ def test_file_secret_preferred_over_env_var(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     result = jwt_module._get_secret()
@@ -107,6 +110,7 @@ def test_file_secret_can_create_and_verify_token(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     token = jwt_module.create_access_token("test-tenant")
@@ -119,9 +123,7 @@ def test_file_secret_can_create_and_verify_token(
 # ---------------------------------------------------------------------------
 
 
-def test_missing_secret_file_raises_500(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_missing_secret_file_raises_500(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """POND_JWT_SECRET_FILE pointing to a non-existent file → HTTPException(500)."""
     non_existent = str(tmp_path / "does_not_exist.txt")
 
@@ -130,6 +132,7 @@ def test_missing_secret_file_raises_500(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises(HTTPException) as exc_info:
@@ -149,6 +152,7 @@ def test_missing_secret_file_error_mentions_file(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises(HTTPException) as exc_info:
@@ -159,9 +163,7 @@ def test_missing_secret_file_error_mentions_file(
     assert "file" in detail or "secret" in detail
 
 
-def test_empty_secret_file_raises_500(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_empty_secret_file_raises_500(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A file that exists but is empty → HTTPException(500)."""
     secret_file = tmp_path / "empty_secret.txt"
     secret_file.write_text("")
@@ -171,6 +173,7 @@ def test_empty_secret_file_raises_500(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises(HTTPException) as exc_info:
@@ -188,6 +191,7 @@ def test_validate_secret_strength_function_exists() -> None:
     """validate_secret_strength must be importable from jwt_auth."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     assert hasattr(jwt_module, "validate_secret_strength"), (
@@ -196,12 +200,11 @@ def test_validate_secret_strength_function_exists() -> None:
 
 
 @pytest.mark.parametrize("weak_secret", WEAK_SECRETS)
-def test_weak_secret_raises_value_error(
-    weak_secret: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_weak_secret_raises_value_error(weak_secret: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """validate_secret_strength must raise ValueError for weak/short secrets."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises((ValueError, HTTPException)):
@@ -212,6 +215,7 @@ def test_strong_secret_passes_validation(monkeypatch: pytest.MonkeyPatch) -> Non
     """A long, random-looking secret must pass validation without raising."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # Should not raise
@@ -222,6 +226,7 @@ def test_secret_minimum_length_is_at_least_16_chars() -> None:
     """Secrets shorter than 16 chars must always be rejected."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises((ValueError, HTTPException)):
@@ -232,6 +237,7 @@ def test_secret_16_or_more_chars_may_pass() -> None:
     """A secret of exactly 32 mixed chars should pass (not too short)."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     secret = "aB3!aB3!aB3!aB3!aB3!aB3!aB3!aB3!"  # 32 chars with mixed content
@@ -248,6 +254,7 @@ def test_startup_validates_pond_jwt_secret_weakness(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # Startup validation: calling the validation function with the env var should raise
@@ -261,6 +268,7 @@ def test_startup_validation_can_be_triggered_at_import(
     """validate_startup_secret() must raise if POND_JWT_SECRET is weak or missing."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     assert hasattr(jwt_module, "validate_startup_secret"), (
@@ -277,6 +285,7 @@ def test_validate_startup_secret_passes_with_strong_env(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # Should not raise
@@ -292,6 +301,7 @@ def test_validate_startup_secret_raises_with_weak_env(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises((ValueError, HTTPException, RuntimeError)):
@@ -307,6 +317,7 @@ def test_validate_startup_secret_raises_when_no_secret(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises((ValueError, HTTPException, RuntimeError)):
@@ -325,6 +336,7 @@ def test_validate_startup_secret_passes_with_file_based_strong_secret(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # Should not raise
@@ -340,6 +352,7 @@ def test_versioned_secret_env_vars_exist_in_docs_or_code() -> None:
     """_get_secret() should support POND_JWT_SECRET_V2 (primary) and POND_JWT_SECRET_V1 (fallback)."""
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # The function must exist and be callable
@@ -360,6 +373,7 @@ def test_primary_versioned_secret_used_when_v2_set(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     result = jwt_module._get_secret()
@@ -379,6 +393,7 @@ def test_fallback_to_v1_when_only_v1_set(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     result = jwt_module._get_secret()
@@ -414,6 +429,7 @@ def test_verify_token_falls_back_to_v1_secret(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # Verifying a V1-signed token should succeed via fallback
@@ -435,6 +451,7 @@ def test_verify_token_uses_v2_as_primary(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     # Create a token — should use V2
@@ -472,6 +489,7 @@ def test_token_signed_with_unknown_secret_still_rejected(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     with pytest.raises(HTTPException) as exc_info:
@@ -494,6 +512,7 @@ def test_get_all_secrets_returns_list_of_configured_secrets(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     assert hasattr(jwt_module, "_get_all_secrets"), (
@@ -518,6 +537,7 @@ def test_get_all_secrets_with_only_base_env_var(
 
     import importlib
     import ponddb.auth.jwt_auth as jwt_module
+
     importlib.reload(jwt_module)
 
     secrets = jwt_module._get_all_secrets()

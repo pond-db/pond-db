@@ -39,6 +39,7 @@ def _mem_kb() -> float:
     """Current process max RSS in KB (Linux: already KB; macOS: bytes → KB)."""
     try:
         import sys
+
         rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         if sys.platform == "darwin":
             return rss / 1024.0

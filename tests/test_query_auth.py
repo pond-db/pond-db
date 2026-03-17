@@ -28,8 +28,10 @@ def client(set_api_key) -> TestClient:
     # module-level auth dependency is evaluated.
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -81,9 +83,7 @@ def test_query_401_content_type_is_json(client: TestClient, session_id: str) -> 
     assert "application/json" in resp.headers["content-type"]
 
 
-def test_query_empty_api_key_header_returns_401(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_empty_api_key_header_returns_401(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "SELECT 1"},
@@ -92,9 +92,7 @@ def test_query_empty_api_key_header_returns_401(
     assert resp.status_code == 401
 
 
-def test_query_whitespace_api_key_returns_401(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_whitespace_api_key_returns_401(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "SELECT 1"},
@@ -108,9 +106,7 @@ def test_query_whitespace_api_key_returns_401(
 # ---------------------------------------------------------------------------
 
 
-def test_query_with_auth_invalid_sql_still_returns_400(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_auth_invalid_sql_still_returns_400(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "NOT VALID SQL"},
@@ -130,9 +126,7 @@ def test_query_with_auth_unknown_session_still_returns_404(
     assert resp.status_code == 404
 
 
-def test_query_with_auth_missing_sql_still_returns_422(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_auth_missing_sql_still_returns_422(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id},
@@ -146,9 +140,7 @@ def test_query_with_auth_missing_sql_still_returns_422(
 # ---------------------------------------------------------------------------
 
 
-def test_query_with_auth_returns_columns_and_rows(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_auth_returns_columns_and_rows(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "SELECT 42 AS answer"},
@@ -181,9 +173,7 @@ def test_list_sessions_does_not_require_api_key(client: TestClient) -> None:
     assert resp.status_code == 200
 
 
-def test_destroy_session_does_not_require_api_key(
-    client: TestClient, session_id: str
-) -> None:
+def test_destroy_session_does_not_require_api_key(client: TestClient, session_id: str) -> None:
     resp = client.delete(f"/session/{session_id}")
     assert resp.status_code == 200
 
@@ -200,6 +190,7 @@ def test_query_respects_pond_api_key_env_var(monkeypatch: pytest.MonkeyPatch) ->
 
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
 
@@ -231,6 +222,7 @@ def test_query_no_pond_api_key_env_var_rejects_all(
 
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
 

@@ -46,9 +46,7 @@ class TestCompleteCustomerJourney:
         sid = create_session(client)
         assert len(sid) > 0
 
-    def test_step_03_execute_inline_sql(
-        self, client: TestClient, auth: dict
-    ) -> None:
+    def test_step_03_execute_inline_sql(self, client: TestClient, auth: dict) -> None:
         sid = create_session(client)
         result = execute_and_poll(client, sid, "SELECT 42 AS answer", auth)
         assert result["status"] == "complete"
@@ -56,9 +54,7 @@ class TestCompleteCustomerJourney:
         assert result["rows"] == [[42]]
         assert result["rowcount"] == 1
 
-    def test_step_04_upload_csv_dataset(
-        self, client: TestClient, hdrs: dict
-    ) -> None:
+    def test_step_04_upload_csv_dataset(self, client: TestClient, hdrs: dict) -> None:
         csv_data = "id,product,revenue\n1,Widget,100.50\n2,Gadget,250.75\n3,Doohickey,50.25\n"
         files = {"file": ("journey_sales.csv", io.BytesIO(csv_data.encode()), "text/csv")}
         resp = client.post("/datasets", files=files, headers=hdrs)
@@ -70,15 +66,16 @@ class TestCompleteCustomerJourney:
         # Cleanup
         client.delete("/datasets/journey_sales", headers=hdrs)
 
-    def test_step_05_query_with_tables(
-        self, client: TestClient, auth: dict
-    ) -> None:
+    def test_step_05_query_with_tables(self, client: TestClient, auth: dict) -> None:
         """Create table, insert data, query — proving full SQL lifecycle in session."""
         sid = create_session(client)
         # Use /query (sync) to create and populate a table
         client.post(
             "/query",
-            json={"session_id": sid, "sql": "CREATE TABLE cities (id INT, city VARCHAR, pop BIGINT)"},
+            json={
+                "session_id": sid,
+                "sql": "CREATE TABLE cities (id INT, city VARCHAR, pop BIGINT)",
+            },
             headers=auth,
         )
         client.post(
@@ -114,9 +111,7 @@ class TestCompleteCustomerJourney:
         assert data["slug"] == "journey-test-query"
         assert data["visibility"] == "public"
 
-    def test_step_07_list_saved_queries(
-        self, client: TestClient, auth: dict
-    ) -> None:
+    def test_step_07_list_saved_queries(self, client: TestClient, auth: dict) -> None:
         # Save a query first
         client.post(
             "/queries",
@@ -150,14 +145,10 @@ class TestCompleteCustomerJourney:
         assert data["slug"] == "journey-share-test"
         assert data["rows"][0][0] == "shared"
 
-    def test_step_09_view_schema(
-        self, client: TestClient, auth: dict
-    ) -> None:
+    def test_step_09_view_schema(self, client: TestClient, auth: dict) -> None:
         sid = create_session(client)
         # Create a table so schema has something
-        execute_and_poll(
-            client, sid, "CREATE TABLE journey_test (id INT, name VARCHAR)", auth
-        )
+        execute_and_poll(client, sid, "CREATE TABLE journey_test (id INT, name VARCHAR)", auth)
         resp = client.get(f"/schema?session_id={sid}", headers=auth)
         assert resp.status_code == 200
         schema = resp.json()
@@ -169,9 +160,7 @@ class TestCompleteCustomerJourney:
         assert "id" in col_names
         assert "name" in col_names
 
-    def test_step_10_check_query_history(
-        self, client: TestClient, auth: dict
-    ) -> None:
+    def test_step_10_check_query_history(self, client: TestClient, auth: dict) -> None:
         sid = create_session(client)
         # Execute via /query (sync) — this records history
         client.post(
@@ -201,9 +190,7 @@ class TestCompleteCustomerJourney:
         session_ids = [s["session_id"] for s in sessions]
         assert sid not in session_ids
 
-    def test_full_journey_sequential(
-        self, client: TestClient, auth: dict, hdrs: dict
-    ) -> None:
+    def test_full_journey_sequential(self, client: TestClient, auth: dict, hdrs: dict) -> None:
         """Run the complete journey as a single sequential test."""
         # 1. Health check
         assert client.get("/health").status_code == 200

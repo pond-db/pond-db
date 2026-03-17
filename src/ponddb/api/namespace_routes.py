@@ -146,7 +146,9 @@ def make_namespace_workgroup_router(
     ) -> dict[str, Any]:
         for ns in _namespaces.values():
             if ns["name"] == body.name:
-                raise HTTPException(status_code=409, detail=f"Namespace '{body.name}' already exists")
+                raise HTTPException(
+                    status_code=409, detail=f"Namespace '{body.name}' already exists"
+                )
         now = _now()
         ns_id = str(uuid4())
         record: dict[str, Any] = {

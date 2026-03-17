@@ -27,8 +27,10 @@ def _set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_api_key) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -92,7 +94,8 @@ def test_metrics_sessions_active_zero_when_no_sessions(client: TestClient) -> No
 
 
 def test_metrics_sessions_active_increments_on_create(
-    client: TestClient, auth_headers: dict,
+    client: TestClient,
+    auth_headers: dict,
 ) -> None:
     client.post("/session", headers=auth_headers)
     resp = client.get("/metrics")
@@ -101,7 +104,9 @@ def test_metrics_sessions_active_increments_on_create(
 
 
 def test_metrics_sessions_active_decrements_on_destroy(
-    client: TestClient, session_id: str, auth_headers: dict,
+    client: TestClient,
+    session_id: str,
+    auth_headers: dict,
 ) -> None:
     before = _extract_gauge(client.get("/metrics").text, "ponddb_sessions_active")
     client.delete(f"/session/{session_id}", headers=auth_headers)
@@ -110,7 +115,8 @@ def test_metrics_sessions_active_decrements_on_destroy(
 
 
 def test_metrics_sessions_active_counts_multiple_sessions(
-    client: TestClient, auth_headers: dict,
+    client: TestClient,
+    auth_headers: dict,
 ) -> None:
     client.post("/session", headers=auth_headers)
     client.post("/session", headers=auth_headers)
@@ -162,7 +168,8 @@ def test_metrics_query_duration_has_type_histogram(client: TestClient) -> None:
 def test_metrics_query_duration_has_bucket_lines(client: TestClient) -> None:
     resp = client.get("/metrics")
     bucket_lines = [
-        l for l in resp.text.splitlines()
+        l
+        for l in resp.text.splitlines()
         if "ponddb_query_duration_seconds_bucket" in l and not l.startswith("#")
     ]
     assert len(bucket_lines) >= 1
@@ -171,7 +178,8 @@ def test_metrics_query_duration_has_bucket_lines(client: TestClient) -> None:
 def test_metrics_query_duration_has_count_line(client: TestClient) -> None:
     resp = client.get("/metrics")
     count_lines = [
-        l for l in resp.text.splitlines()
+        l
+        for l in resp.text.splitlines()
         if "ponddb_query_duration_seconds_count" in l and not l.startswith("#")
     ]
     assert len(count_lines) >= 1
@@ -180,7 +188,8 @@ def test_metrics_query_duration_has_count_line(client: TestClient) -> None:
 def test_metrics_query_duration_has_sum_line(client: TestClient) -> None:
     resp = client.get("/metrics")
     sum_lines = [
-        l for l in resp.text.splitlines()
+        l
+        for l in resp.text.splitlines()
         if "ponddb_query_duration_seconds_sum" in l and not l.startswith("#")
     ]
     assert len(sum_lines) >= 1
@@ -195,13 +204,9 @@ def test_metrics_query_duration_count_starts_at_zero(client: TestClient) -> None
 def test_metrics_query_duration_count_increments_after_query(
     client: TestClient, session_id: str, auth_headers: dict
 ) -> None:
-    before = _extract_histogram_count(
-        client.get("/metrics").text, "ponddb_query_duration_seconds"
-    )
+    before = _extract_histogram_count(client.get("/metrics").text, "ponddb_query_duration_seconds")
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
-    after = _extract_histogram_count(
-        client.get("/metrics").text, "ponddb_query_duration_seconds"
-    )
+    after = _extract_histogram_count(client.get("/metrics").text, "ponddb_query_duration_seconds")
     assert after == before + 1.0
 
 
@@ -219,9 +224,7 @@ def test_metrics_query_duration_sum_in_seconds_not_ms(
 ) -> None:
     """Duration must be in seconds (Prometheus convention), not milliseconds."""
     client.post("/query", json={"session_id": session_id, "sql": "SELECT 1"}, headers=auth_headers)
-    total = _extract_histogram_sum(
-        client.get("/metrics").text, "ponddb_query_duration_seconds"
-    )
+    total = _extract_histogram_sum(client.get("/metrics").text, "ponddb_query_duration_seconds")
     # A simple in-memory query should be well under 5 seconds
     assert total < 5.0
 
@@ -235,9 +238,7 @@ def test_metrics_query_duration_multiple_queries_accumulate(
             json={"session_id": session_id, "sql": f"SELECT {i}"},
             headers=auth_headers,
         )
-    count = _extract_histogram_count(
-        client.get("/metrics").text, "ponddb_query_duration_seconds"
-    )
+    count = _extract_histogram_count(client.get("/metrics").text, "ponddb_query_duration_seconds")
     assert count == 5.0
 
 
@@ -245,17 +246,13 @@ def test_metrics_failed_query_not_recorded_in_histogram(
     client: TestClient, session_id: str, auth_headers: dict
 ) -> None:
     """Only successful queries count toward the duration histogram."""
-    before = _extract_histogram_count(
-        client.get("/metrics").text, "ponddb_query_duration_seconds"
-    )
+    before = _extract_histogram_count(client.get("/metrics").text, "ponddb_query_duration_seconds")
     client.post(
         "/query",
         json={"session_id": session_id, "sql": "NOT VALID SQL !!!"},
         headers=auth_headers,
     )
-    after = _extract_histogram_count(
-        client.get("/metrics").text, "ponddb_query_duration_seconds"
-    )
+    after = _extract_histogram_count(client.get("/metrics").text, "ponddb_query_duration_seconds")
     # Failed queries should NOT increment the histogram
     assert after == before
 

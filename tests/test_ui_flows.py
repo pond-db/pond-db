@@ -41,6 +41,7 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_env) -> TestClient:
     import ponddb.app as m
+
     importlib.reload(m)
     return TestClient(m.app, follow_redirects=False)
 
@@ -65,6 +66,7 @@ def admin(client: TestClient) -> TestClient:
 @pytest.fixture
 def admin_jwt() -> dict[str, str]:
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token("default", role="admin")
     return {"Authorization": f"Bearer {token}"}
 
@@ -171,28 +173,44 @@ class TestSessionLifecycle:
 
 class TestAdminInviteFlow:
     def test_create_invite_appears_in_list(self, admin: TestClient) -> None:
-        admin.post("/admin/invites", data={
-            "email": "flow-test@example.com", "role": "member", "expires_in_hours": "168",
-        })
+        admin.post(
+            "/admin/invites",
+            data={
+                "email": "flow-test@example.com",
+                "role": "member",
+                "expires_in_hours": "168",
+            },
+        )
         body = admin.get("/admin/invites").text
         assert "flow-test@example.com" in body
 
     def test_invite_row_has_revoke_button(self, admin: TestClient) -> None:
-        admin.post("/admin/invites", data={
-            "email": "revoke-test@example.com", "role": "member", "expires_in_hours": "168",
-        })
+        admin.post(
+            "/admin/invites",
+            data={
+                "email": "revoke-test@example.com",
+                "role": "member",
+                "expires_in_hours": "168",
+            },
+        )
         body = admin.get("/admin/invites").text
         assert "Revoke" in body
         assert 'method="POST"' in body
 
     def test_revoke_changes_status(self, admin: TestClient) -> None:
-        admin.post("/admin/invites", data={
-            "email": "revoke-status@example.com", "role": "member", "expires_in_hours": "168",
-        })
+        admin.post(
+            "/admin/invites",
+            data={
+                "email": "revoke-status@example.com",
+                "role": "member",
+                "expires_in_hours": "168",
+            },
+        )
         body = admin.get("/admin/invites").text
         # Extract token from row
         import re
-        tokens = re.findall(r'/admin/invites/([^/]+)/revoke', body)
+
+        tokens = re.findall(r"/admin/invites/([^/]+)/revoke", body)
         assert len(tokens) > 0
         admin.post(f"/admin/invites/{tokens[0]}/revoke")
         body2 = admin.get("/admin/invites").text
@@ -203,19 +221,27 @@ class TestAdminInviteFlow:
 
 
 class TestWorkgroupTabData:
-    def test_overview_tab_shows_quota(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_overview_tab_shows_quota(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/overview", headers=auth_headers).text
         assert "max" in body.lower() or "session" in body.lower()
 
-    def test_sessions_tab_shows_table(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_sessions_tab_shows_table(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/sessions", headers=auth_headers).text
         assert "<table" in body.lower() or "no active" in body.lower()
 
-    def test_history_tab_shows_content(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_history_tab_shows_content(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/history", headers=auth_headers).text
         assert "history" in body.lower() or "queries" in body.lower() or "<table" in body.lower()
 
-    def test_apikeys_tab_shows_endpoints(self, client: TestClient, auth_headers: dict, wg_name: str) -> None:
+    def test_apikeys_tab_shows_endpoints(
+        self, client: TestClient, auth_headers: dict, wg_name: str
+    ) -> None:
         body = client.get(f"/htmx/workgroup/{wg_name}/apikeys", headers=auth_headers).text
         assert "/auth/token" in body
         assert "x-api-key" in body.lower()

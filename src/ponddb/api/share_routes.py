@@ -26,8 +26,8 @@ _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 # Token bucket rate limiter (in-memory, per-IP)
 # ---------------------------------------------------------------------------
 
-_RATE_LIMIT = 10        # max requests per window
-_RATE_WINDOW = 60.0     # window size in seconds
+_RATE_LIMIT = 10  # max requests per window
+_RATE_WINDOW = 60.0  # window size in seconds
 
 # {ip: [request_timestamps]}
 _buckets: dict[str, list[float]] = {}

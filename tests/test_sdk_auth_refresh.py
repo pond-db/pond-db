@@ -108,7 +108,9 @@ class TestTokenRefresh:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             result = await client.query("SELECT 1")
 
         assert result["rowcount"] == 1
@@ -147,7 +149,9 @@ class TestTokenRefresh:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             await client.query("SELECT 1")
 
         assert len(refresh_calls) == 1
@@ -182,7 +186,9 @@ class TestTokenRefresh:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             await client.query("SELECT 1")
 
         # Should have proactively refreshed
@@ -214,7 +220,9 @@ class TestTokenRefresh:
             )
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with pytest.raises(AuthenticationError):
                 await client.query("SELECT 1")
 
@@ -243,7 +251,9 @@ class TestTokenRefresh:
             )
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             with pytest.raises(Exception):
                 await client.query("INVALID SQL")
 
@@ -281,7 +291,9 @@ class TestTokenRefresh:
             resp.raise_for_status = MagicMock()
             return resp
 
-        with patch.object(client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect):
+        with patch.object(
+            client._http, "post", new_callable=AsyncMock, side_effect=post_side_effect
+        ):
             await client.query("SELECT 1")
 
         assert client.access_token == refreshed_token_response["access_token"]

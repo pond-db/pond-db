@@ -82,14 +82,17 @@ def make_website_router(
     @router.get("/", response_class=HTMLResponse)
     async def landing(request: Request) -> Response:
         contact_email = os.environ.get("POND_CONTACT_EMAIL", "contact@databasecompany.com")
-        return _templates.TemplateResponse(request, "landing.html", {"contact_email": contact_email})
+        return _templates.TemplateResponse(
+            request, "landing.html", {"contact_email": contact_email}
+        )
 
     @router.get("/login", response_class=HTMLResponse)
     async def login_page(request: Request) -> Response:
         invite_state = request.query_params.get("invite_state", "")
         namespace_name = request.query_params.get("namespace_name", "")
         return _templates.TemplateResponse(
-            request, "login.html",
+            request,
+            "login.html",
             {"error": None, "invite_state": invite_state, "namespace_name": namespace_name},
         )
 
@@ -110,9 +113,7 @@ def make_website_router(
         session_data = {"tenant_id": "default", "role": "admin"}
         cookie_val = _sign_session(session_data)
         response = RedirectResponse(url="/dashboard", status_code=303)
-        response.set_cookie(
-            COOKIE_NAME, cookie_val, httponly=True, samesite="lax", max_age=86400
-        )
+        response.set_cookie(COOKIE_NAME, cookie_val, httponly=True, samesite="lax", max_age=86400)
         return response
 
     @router.post("/logout")
@@ -134,9 +135,7 @@ def make_website_router(
         all_sessions = manager.list_sessions()
         for wg in wg_list:
             wg_name = wg.get("name", "")
-            wg["active_sessions"] = sum(
-                1 for s in all_sessions if s.get("workgroup_id") == wg_name
-            )
+            wg["active_sessions"] = sum(1 for s in all_sessions if s.get("workgroup_id") == wg_name)
 
         # Queries today + recent executions from metadata store
         queries_today = 0
@@ -262,7 +261,8 @@ def make_website_router(
             "smtp_configured": bool(os.environ.get("POND_SMTP_HOST")),
         }
         return _templates.TemplateResponse(
-            request, "settings.html",
+            request,
+            "settings.html",
             {
                 "current_user": current_user,
                 "config": config,

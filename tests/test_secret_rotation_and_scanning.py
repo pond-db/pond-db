@@ -36,6 +36,7 @@ README = REPO_ROOT / "README.md"
 # Helper: skip detect-secrets tests gracefully if the tool is absent
 # ---------------------------------------------------------------------------
 
+
 def _detect_secrets_available() -> bool:
     result = subprocess.run(
         [sys.executable, "-m", "detect_secrets", "--version"],
@@ -61,9 +62,7 @@ def test_rotation_script_is_executable() -> None:
     """scripts/rotate_jwt_secret.sh must be executable."""
     assert SCRIPT_PATH.exists(), "Rotation script missing"
     mode = SCRIPT_PATH.stat().st_mode
-    assert bool(mode & stat.S_IXUSR), (
-        f"{SCRIPT_PATH} must have execute permission (chmod +x)"
-    )
+    assert bool(mode & stat.S_IXUSR), f"{SCRIPT_PATH} must have execute permission (chmod +x)"
 
 
 def test_rotation_script_has_bash_shebang() -> None:
@@ -112,9 +111,7 @@ def test_rotation_script_generates_new_secret(tmp_path: Path) -> None:
 
     # New .env must contain a POND_JWT_SECRET different from the old one
     new_env_text = env_file.read_text()
-    assert "POND_JWT_SECRET=" in new_env_text, (
-        "Updated .env must contain POND_JWT_SECRET=..."
-    )
+    assert "POND_JWT_SECRET=" in new_env_text, "Updated .env must contain POND_JWT_SECRET=..."
     # Extract new secret value
     for line in new_env_text.splitlines():
         if line.startswith("POND_JWT_SECRET="):
@@ -148,8 +145,11 @@ def test_rotation_script_promotes_old_secret_to_v1(tmp_path: Path) -> None:
 
     result = subprocess.run(
         ["bash", str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=30,
-        env=env, cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+        cwd=str(tmp_path),
     )
     assert result.returncode == 0, f"Script failed: {result.stderr}"
 
@@ -184,8 +184,11 @@ def test_rotation_script_writes_audit_event(tmp_path: Path) -> None:
 
     result = subprocess.run(
         ["bash", str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=30,
-        env=env, cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+        cwd=str(tmp_path),
     )
     assert result.returncode == 0, f"Script failed: {result.stderr}"
 
@@ -218,8 +221,11 @@ def test_rotation_script_audit_entry_contains_timestamp(tmp_path: Path) -> None:
     }
     subprocess.run(
         ["bash", str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=30,
-        env=env, cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+        cwd=str(tmp_path),
     )
 
     if not audit_log.exists():
@@ -248,8 +254,11 @@ def test_rotation_script_new_secret_meets_minimum_entropy(tmp_path: Path) -> Non
     }
     result = subprocess.run(
         ["bash", str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=30,
-        env=env, cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+        cwd=str(tmp_path),
     )
     assert result.returncode == 0, f"Script failed: {result.stderr}"
 
@@ -280,12 +289,13 @@ def test_rotation_script_missing_env_file_fails_gracefully(tmp_path: Path) -> No
     }
     result = subprocess.run(
         ["bash", str(SCRIPT_PATH)],
-        capture_output=True, text=True, timeout=30,
-        env=env, cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+        cwd=str(tmp_path),
     )
-    assert result.returncode != 0, (
-        "Script must exit non-zero when POND_ENV_FILE does not exist"
-    )
+    assert result.returncode != 0, "Script must exit non-zero when POND_ENV_FILE does not exist"
     combined = result.stdout + result.stderr
     assert combined.strip(), "Script must emit an error message on failure"
 
@@ -395,9 +405,7 @@ def test_readme_secret_section_mentions_rotation() -> None:
     assert README.exists(), "README.md missing"
     content = README.read_text()
     lower = content.lower()
-    assert "rotat" in lower, (
-        "README Secret Management section must mention rotation (rotat...)"
-    )
+    assert "rotat" in lower, "README Secret Management section must mention rotation (rotat...)"
     assert "rotate_jwt_secret" in lower or "rotate_jwt_secret.sh" in lower, (
         "README must reference the rotate_jwt_secret.sh script"
     )
@@ -436,7 +444,7 @@ def test_detect_secrets_finds_injected_secret(tmp_path: Path) -> None:
     # Inject a realistic-looking secret into a temp Python file
     target = tmp_path / "config_with_leak.py"
     target.write_text(
-        '# This file intentionally contains a leaked secret for testing\n'
+        "# This file intentionally contains a leaked secret for testing\n"
         'JWT_SECRET = "supersecretvalue1234567890abcdef"\n'
     )
 
@@ -470,7 +478,7 @@ def test_detect_secrets_clean_file_has_no_findings(tmp_path: Path) -> None:
     clean_file = tmp_path / "clean_module.py"
     clean_file.write_text(
         '"""A module with no hard-coded secrets."""\n\n'
-        'def greet(name: str) -> str:\n'
+        "def greet(name: str) -> str:\n"
         '    return f"Hello, {name}!"\n'
     )
 

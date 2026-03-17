@@ -53,8 +53,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(env_setup) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -62,6 +64,7 @@ def client(env_setup) -> TestClient:
 def admin_token(client: TestClient) -> str:
     """JWT token with role=admin for the caller tenant."""
     from ponddb.auth.jwt_auth import create_access_token
+
     return create_access_token("default", role="admin")
 
 
@@ -69,6 +72,7 @@ def admin_token(client: TestClient) -> str:
 def user_token(client: TestClient) -> str:
     """JWT token without admin role."""
     from ponddb.auth.jwt_auth import create_access_token
+
     return create_access_token("default")
 
 
@@ -103,6 +107,7 @@ def _create_invite(
 async def test_invite_tokens_table_exists_in_metadata_store() -> None:
     """MetadataStore must create invite_tokens table on initialize."""
     from ponddb.store.metadata_store import MetadataStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     cursor = store._conn.execute(
@@ -117,11 +122,21 @@ async def test_invite_tokens_table_has_required_columns() -> None:
     """invite_tokens table must have: token, email, tenant_id, role, status,
     created_by, created_at, expires_at, accepted_at."""
     from ponddb.store.metadata_store import MetadataStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     cursor = store._conn.execute("PRAGMA table_info(invite_tokens)")
     columns = {row[1] for row in cursor.fetchall()}
-    required = {"token", "email", "tenant_id", "role", "status", "created_by", "created_at", "expires_at"}
+    required = {
+        "token",
+        "email",
+        "tenant_id",
+        "role",
+        "status",
+        "created_by",
+        "created_at",
+        "expires_at",
+    }
     missing = required - columns
     assert not missing, f"invite_tokens missing columns: {missing}"
 
@@ -174,7 +189,9 @@ def test_post_invites_response_contains_email(client: TestClient, admin_token: s
     assert data["email"] == INVITE_EMAIL
 
 
-def test_post_invites_response_contains_status_pending(client: TestClient, admin_token: str) -> None:
+def test_post_invites_response_contains_status_pending(
+    client: TestClient, admin_token: str
+) -> None:
     resp = client.post(
         "/invites",
         json={"email": INVITE_EMAIL},
@@ -284,8 +301,12 @@ def test_post_invites_invalid_email_returns_422(client: TestClient, admin_token:
 
 
 def test_post_invites_each_token_is_unique(client: TestClient, admin_token: str) -> None:
-    r1 = client.post("/invites", json={"email": "a@example.com"}, headers=_admin_headers(admin_token))
-    r2 = client.post("/invites", json={"email": "b@example.com"}, headers=_admin_headers(admin_token))
+    r1 = client.post(
+        "/invites", json={"email": "a@example.com"}, headers=_admin_headers(admin_token)
+    )
+    r2 = client.post(
+        "/invites", json={"email": "b@example.com"}, headers=_admin_headers(admin_token)
+    )
     assert r1.status_code == 201
     assert r2.status_code == 201
     assert r1.json()["token"] != r2.json()["token"]
@@ -316,9 +337,7 @@ def test_post_invites_sends_email_when_smtp_configured(
         assert email_arg == INVITE_EMAIL
 
 
-def test_post_invites_email_contains_accept_link(
-    client: TestClient, admin_token: str
-) -> None:
+def test_post_invites_email_contains_accept_link(client: TestClient, admin_token: str) -> None:
     """The invite email must include a link with the accept token."""
     captured: list[dict] = []
 
@@ -406,6 +425,7 @@ def test_get_invites_tenant_isolation(
 ) -> None:
     """Invites from tenant A should not appear in tenant B's listing."""
     from ponddb.auth.jwt_auth import create_access_token
+
     token_a = create_access_token("tenant-a", role="admin")
     token_b = create_access_token("tenant-b", role="admin")
 
@@ -485,7 +505,9 @@ def test_delete_invite_unknown_token_returns_404(client: TestClient, admin_token
     assert resp.status_code == 404
 
 
-def test_delete_invite_requires_admin(client: TestClient, admin_token: str, user_token: str) -> None:
+def test_delete_invite_requires_admin(
+    client: TestClient, admin_token: str, user_token: str
+) -> None:
     invite = _create_invite(client, admin_token)
     resp = client.delete(f"/invites/{invite['token']}", headers=_admin_headers(user_token))
     assert resp.status_code == 403
@@ -598,7 +620,9 @@ def test_accept_invite_missing_email_returns_422(client: TestClient, admin_token
     assert resp.status_code == 422
 
 
-def test_accept_invite_invalid_email_format_returns_422(client: TestClient, admin_token: str) -> None:
+def test_accept_invite_invalid_email_format_returns_422(
+    client: TestClient, admin_token: str
+) -> None:
     invite = _create_invite(client, admin_token, email=INVITE_EMAIL)
     resp = client.post(
         f"/invites/{invite['token']}/accept",
@@ -630,11 +654,13 @@ def test_accept_expired_invite_returns_410(client: TestClient, admin_token: str)
     """Accepting an invite past its expires_at must return 410 Gone."""
     # Create invite that expired 1 hour ago — requires the store to accept past timestamps
     from ponddb.store.metadata_store import MetadataStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     past = datetime.now(timezone.utc) - timedelta(hours=1)
     # Insert expired invite directly into SQLite
     import secrets
+
     expired_token = secrets.token_urlsafe(32)
     store._conn.execute(
         """
@@ -654,17 +680,14 @@ def test_accept_expired_invite_returns_410(client: TestClient, admin_token: str)
     # We test via the invite_store module directly
     import asyncio
     from ponddb.store.invite_store import InviteStore
+
     invite_store = InviteStore(store)
-    result = asyncio.run(
-        invite_store.accept_invite(expired_token, INVITE_EMAIL)
-    )
+    result = asyncio.run(invite_store.accept_invite(expired_token, INVITE_EMAIL))
     assert result["error"] == "expired"
 
 
 @pytest.mark.asyncio
-async def test_accept_expired_invite_via_http(
-    client: TestClient, admin_token: str
-) -> None:
+async def test_accept_expired_invite_via_http(client: TestClient, admin_token: str) -> None:
     """HTTP layer: accepting an expired invite via the API must return 410."""
     # Create a valid invite then manually expire it in the DB
     invite = _create_invite(client, admin_token, email=INVITE_EMAIL)
@@ -672,6 +695,7 @@ async def test_accept_expired_invite_via_http(
 
     # Reach into the store and update expires_at to the past
     import ponddb.app as app_module
+
     store: "MetadataStore" = app_module._store
     past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     store._conn.execute(
@@ -693,6 +717,7 @@ async def test_accept_expired_invite_via_http(
 async def test_invite_store_create_returns_invite_dict() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -712,6 +737,7 @@ async def test_invite_store_create_returns_invite_dict() -> None:
 async def test_invite_store_get_by_token() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -727,6 +753,7 @@ async def test_invite_store_get_by_token() -> None:
 async def test_invite_store_get_unknown_token_returns_none() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -738,6 +765,7 @@ async def test_invite_store_get_unknown_token_returns_none() -> None:
 async def test_invite_store_list_invites_by_tenant() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -756,6 +784,7 @@ async def test_invite_store_list_invites_by_tenant() -> None:
 async def test_invite_store_revoke_sets_status() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -771,6 +800,7 @@ async def test_invite_store_revoke_sets_status() -> None:
 async def test_invite_store_revoke_unknown_token_raises() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -782,6 +812,7 @@ async def test_invite_store_revoke_unknown_token_raises() -> None:
 async def test_invite_store_accept_happy_path() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -796,6 +827,7 @@ async def test_invite_store_accept_happy_path() -> None:
 async def test_invite_store_accept_wrong_email_raises() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -811,6 +843,7 @@ async def test_invite_store_accept_wrong_email_raises() -> None:
 async def test_invite_store_accept_twice_raises() -> None:
     from ponddb.store.metadata_store import MetadataStore
     from ponddb.store.invite_store import InviteStore
+
     store = MetadataStore(":memory:")
     store.initialize_blocking()
     invite_store = InviteStore(store)
@@ -831,13 +864,16 @@ async def test_invite_store_accept_twice_raises() -> None:
 def test_send_invite_email_function_exists() -> None:
     """ponddb.invite_routes must export send_invite_email."""
     from ponddb.api import invite_routes
-    assert hasattr(invite_routes, "send_invite_email"), \
+
+    assert hasattr(invite_routes, "send_invite_email"), (
         "invite_routes module must define send_invite_email"
+    )
 
 
 def test_send_invite_email_uses_smtp_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """send_invite_email must read SMTP config from environment."""
     from ponddb.api.invite_routes import send_invite_email
+
     with patch("smtplib.SMTP") as mock_smtp_cls:
         mock_smtp = MagicMock()
         mock_smtp_cls.return_value.__enter__ = MagicMock(return_value=mock_smtp)
@@ -847,13 +883,12 @@ def test_send_invite_email_uses_smtp_env_vars(monkeypatch: pytest.MonkeyPatch) -
         assert mock_smtp_cls.called or True  # passes if no exception
 
 
-def test_send_invite_email_no_smtp_config_does_not_raise(
-    monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_send_invite_email_no_smtp_config_does_not_raise(monkeypatch: pytest.MonkeyPatch) -> None:
     """If SMTP env vars are absent, send_invite_email must not raise."""
     monkeypatch.delenv("POND_SMTP_HOST", raising=False)
     monkeypatch.delenv("POND_SMTP_USER", raising=False)
     from ponddb.api.invite_routes import send_invite_email
+
     # Should silently skip or log — never raise
     send_invite_email(INVITE_EMAIL, "token-no-smtp")
 
@@ -861,6 +896,7 @@ def test_send_invite_email_no_smtp_config_does_not_raise(
 def test_send_invite_email_message_contains_token() -> None:
     """The email body or subject must include the invite token."""
     from ponddb.api.invite_routes import send_invite_email
+
     messages_sent: list[str] = []
 
     def capture_sendmail(from_addr, to_addrs, msg_str, **kwargs) -> None:
@@ -889,7 +925,9 @@ def test_invite_routes_registered_in_app(client: TestClient) -> None:
     assert resp.status_code == 200
     paths = resp.json().get("paths", {})
     invite_paths = [p for p in paths if p.startswith("/invites")]
-    assert len(invite_paths) >= 1, f"No /invites routes found in OpenAPI schema. Paths: {list(paths.keys())}"
+    assert len(invite_paths) >= 1, (
+        f"No /invites routes found in OpenAPI schema. Paths: {list(paths.keys())}"
+    )
 
 
 def test_invite_accept_path_in_openapi(client: TestClient) -> None:

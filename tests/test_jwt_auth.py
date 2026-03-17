@@ -42,8 +42,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 def client(env_setup) -> TestClient:
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -58,7 +60,9 @@ def session_id(client: TestClient) -> str:
 def access_token(client: TestClient) -> str:
     """Obtain a valid JWT access token via /auth/token."""
     resp = client.post("/auth/token", json={"api_key": VALID_API_KEY})
-    assert resp.status_code == 200, f"Expected 200 from /auth/token, got {resp.status_code}: {resp.text}"
+    assert resp.status_code == 200, (
+        f"Expected 200 from /auth/token, got {resp.status_code}: {resp.text}"
+    )
     return resp.json()["access_token"]
 
 
@@ -156,8 +160,8 @@ def test_access_token_expires_in_approximately_one_hour(client: TestClient) -> N
     claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     exp = claims["exp"]
     # Token should expire between 55 and 70 minutes from now
-    assert exp >= before + 55 * 60, f"exp {exp} < before+55m {before + 55*60}"
-    assert exp <= after + 70 * 60, f"exp {exp} > after+70m {after + 70*60}"
+    assert exp >= before + 55 * 60, f"exp {exp} < before+55m {before + 55 * 60}"
+    assert exp <= after + 70 * 60, f"exp {exp} > after+70m {after + 70 * 60}"
 
 
 def test_access_token_contains_scopes_claim(client: TestClient) -> None:
@@ -179,8 +183,9 @@ def test_access_token_scopes_include_query(client: TestClient) -> None:
         scope_set = set(scopes)
     else:
         scope_set = set(str(scopes).split())
-    assert "query" in scope_set or "read" in scope_set or "write" in scope_set, \
+    assert "query" in scope_set or "read" in scope_set or "write" in scope_set, (
         f"Expected a query/read/write scope, got: {scopes}"
+    )
 
 
 def test_access_token_signed_with_hs256(client: TestClient) -> None:
@@ -216,8 +221,9 @@ def test_refresh_token_contains_type_claim(client: TestClient) -> None:
     claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     # Refresh tokens must be distinguishable from access tokens
     token_type = claims.get("type") or claims.get("token_type") or claims.get("scope", "")
-    assert "refresh" in str(token_type).lower(), \
+    assert "refresh" in str(token_type).lower(), (
         f"Refresh token should have type=refresh in claims, got: {claims}"
+    )
 
 
 def test_refresh_token_has_longer_expiry_than_access_token(client: TestClient) -> None:
@@ -225,8 +231,9 @@ def test_refresh_token_has_longer_expiry_than_access_token(client: TestClient) -
     data = resp.json()
     access_claims = jose_jwt.decode(data["access_token"], JWT_SECRET, algorithms=["HS256"])
     refresh_claims = jose_jwt.decode(data["refresh_token"], JWT_SECRET, algorithms=["HS256"])
-    assert refresh_claims["exp"] > access_claims["exp"], \
+    assert refresh_claims["exp"] > access_claims["exp"], (
         "Refresh token should expire later than access token"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +275,7 @@ def test_token_expiry_respects_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
 
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
 
@@ -278,8 +286,12 @@ def test_token_expiry_respects_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
     token = resp.json()["access_token"]
     claims = jose_jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     # Should expire in ~2 minutes, not 1 hour
-    assert claims["exp"] <= before + 180, "Expiry should be ~2 minutes when POND_JWT_EXPIRY_SECONDS=120"
-    assert claims["exp"] >= before + 90, "Expiry should be at least 90s when POND_JWT_EXPIRY_SECONDS=120"
+    assert claims["exp"] <= before + 180, (
+        "Expiry should be ~2 minutes when POND_JWT_EXPIRY_SECONDS=120"
+    )
+    assert claims["exp"] >= before + 90, (
+        "Expiry should be at least 90s when POND_JWT_EXPIRY_SECONDS=120"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -299,9 +311,7 @@ def test_refresh_returns_200_for_valid_refresh_token(
     assert resp.status_code == 200
 
 
-def test_refresh_response_contains_new_access_token(
-    client: TestClient, refresh_token: str
-) -> None:
+def test_refresh_response_contains_new_access_token(client: TestClient, refresh_token: str) -> None:
     resp = client.post("/auth/refresh", json={"refresh_token": refresh_token})
     assert resp.status_code == 200
     data = resp.json()
@@ -310,9 +320,7 @@ def test_refresh_response_contains_new_access_token(
     assert len(data["access_token"]) > 0
 
 
-def test_refresh_new_access_token_is_valid_jwt(
-    client: TestClient, refresh_token: str
-) -> None:
+def test_refresh_new_access_token_is_valid_jwt(client: TestClient, refresh_token: str) -> None:
     resp = client.post("/auth/refresh", json={"refresh_token": refresh_token})
     new_token = resp.json()["access_token"]
     claims = jose_jwt.decode(new_token, JWT_SECRET, algorithms=["HS256"])
@@ -320,9 +328,7 @@ def test_refresh_new_access_token_is_valid_jwt(
     assert "tenant_id" in claims
 
 
-def test_refresh_new_access_token_has_fresh_expiry(
-    client: TestClient, refresh_token: str
-) -> None:
+def test_refresh_new_access_token_has_fresh_expiry(client: TestClient, refresh_token: str) -> None:
     before = int(time.time())
     resp = client.post("/auth/refresh", json={"refresh_token": refresh_token})
     after = int(time.time())
@@ -382,8 +388,10 @@ def test_refresh_with_expired_refresh_token_returns_401(
 
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     c = TestClient(app)
 
     # Craft an already-expired refresh token
@@ -430,9 +438,7 @@ def test_query_without_auth_returns_401(client: TestClient, session_id: str) -> 
     assert resp.status_code == 401
 
 
-def test_query_with_expired_jwt_returns_401(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_expired_jwt_returns_401(client: TestClient, session_id: str) -> None:
     expired_token = jose_jwt.encode(
         {
             "sub": "default",
@@ -452,9 +458,7 @@ def test_query_with_expired_jwt_returns_401(
     assert resp.status_code == 401
 
 
-def test_query_with_malformed_jwt_returns_401(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_malformed_jwt_returns_401(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "SELECT 1"},
@@ -463,12 +467,15 @@ def test_query_with_malformed_jwt_returns_401(
     assert resp.status_code == 401
 
 
-def test_query_with_wrong_secret_jwt_returns_401(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_wrong_secret_jwt_returns_401(client: TestClient, session_id: str) -> None:
     bad_token = jose_jwt.encode(
-        {"sub": "default", "tenant_id": "default", "scopes": ["query"],
-         "type": "access", "exp": int(time.time()) + 3600},
+        {
+            "sub": "default",
+            "tenant_id": "default",
+            "scopes": ["query"],
+            "type": "access",
+            "exp": int(time.time()) + 3600,
+        },
         WRONG_SECRET,
         algorithm="HS256",
     )
@@ -497,9 +504,7 @@ def test_query_with_refresh_token_as_bearer_returns_401(
 # ---------------------------------------------------------------------------
 
 
-def test_query_with_api_key_still_returns_200(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_api_key_still_returns_200(client: TestClient, session_id: str) -> None:
     """X-API-Key header must still be accepted for backward compatibility."""
     resp = client.post(
         "/query",
@@ -509,9 +514,7 @@ def test_query_with_api_key_still_returns_200(
     assert resp.status_code == 200
 
 
-def test_query_with_wrong_api_key_returns_401(
-    client: TestClient, session_id: str
-) -> None:
+def test_query_with_wrong_api_key_returns_401(client: TestClient, session_id: str) -> None:
     resp = client.post(
         "/query",
         json={"session_id": session_id, "sql": "SELECT 1"},
@@ -525,9 +528,7 @@ def test_query_with_wrong_api_key_returns_401(
 # ---------------------------------------------------------------------------
 
 
-def test_history_with_valid_jwt_returns_200(
-    client: TestClient, access_token: str
-) -> None:
+def test_history_with_valid_jwt_returns_200(client: TestClient, access_token: str) -> None:
     resp = client.get(
         "/history",
         headers={"Authorization": f"Bearer {access_token}"},
@@ -598,8 +599,9 @@ def test_custom_tenant_id_in_token_request(client: TestClient) -> None:
         assert claims.get("tenant_id") == "acme-corp"
     else:
         # Server may not support custom tenant_id in token request — that's ok
-        assert resp.status_code in (400, 422), \
+        assert resp.status_code in (400, 422), (
             f"Expected 200 or 400/422 for custom tenant_id, got {resp.status_code}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -612,9 +614,7 @@ def test_token_response_content_type_is_json(client: TestClient) -> None:
     assert "application/json" in resp.headers.get("content-type", "")
 
 
-def test_refresh_response_content_type_is_json(
-    client: TestClient, refresh_token: str
-) -> None:
+def test_refresh_response_content_type_is_json(client: TestClient, refresh_token: str) -> None:
     resp = client.post("/auth/refresh", json={"refresh_token": refresh_token})
     assert "application/json" in resp.headers.get("content-type", "")
 
@@ -632,11 +632,11 @@ def test_token_endpoint_fails_when_no_jwt_secret(
 
     import importlib
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
 
     c = TestClient(app, raise_server_exceptions=False)
     resp = c.post("/auth/token", json={"api_key": VALID_API_KEY})
     # Must not return 200 — either 500 (misconfigured) or 503 or similar
-    assert resp.status_code != 200, \
-        "Should not issue tokens when POND_JWT_SECRET is unset"
+    assert resp.status_code != 200, "Should not issue tokens when POND_JWT_SECRET is unset"

@@ -467,9 +467,7 @@ class TestTokenRevokeEvent:
         evts = _events_of_type(captured_events, "token_revoke")
         assert evts, "Expected a 'token_revoke' event"
         detail = evts[0].get("detail") or ""
-        assert jti and jti in detail, (
-            f"Expected jti {jti!r} in token_revoke detail: {detail!r}"
-        )
+        assert jti and jti in detail, f"Expected jti {jti!r} in token_revoke detail: {detail!r}"
 
     def test_invalid_token_revoke_not_logged_as_success(self, env_setup, captured_events):
         """POST /auth/revoke with a garbage token → 400 and no token_revoke event."""
@@ -648,9 +646,12 @@ class TestTokenRefreshEvent:
         evts = _events_of_type(captured_events, "token_refresh")
         assert evts, "Expected a 'token_refresh' event even on failure"
         detail = (evts[0].get("detail") or "").lower()
-        assert "fail" in detail or "invalid" in detail or "error" in detail or evts[0].get("result") == "failure", (
-            "Failed token_refresh event should indicate failure"
-        )
+        assert (
+            "fail" in detail
+            or "invalid" in detail
+            or "error" in detail
+            or evts[0].get("result") == "failure"
+        ), "Failed token_refresh event should indicate failure"
 
     def test_token_refresh_failure_captures_ip(self, env_setup, captured_events):
         """Failed token_refresh event still captures ip_address."""

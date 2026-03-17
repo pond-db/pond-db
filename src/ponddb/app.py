@@ -33,7 +33,10 @@ from ponddb.auth.jwt_auth import (
 )
 from ponddb.auth import token_blocklist
 from ponddb.store.metadata_store import MetadataStore
-from ponddb.api.namespace_routes import check_and_reserve_session_slot, make_namespace_workgroup_router
+from ponddb.api.namespace_routes import (
+    check_and_reserve_session_slot,
+    make_namespace_workgroup_router,
+)
 from ponddb.api.query_routes import make_query_router
 from ponddb.pondapi.result_cache import ResultCache
 from ponddb.engine.session_manager import QueryError, SessionManager, WorkgroupAccessError
@@ -111,6 +114,7 @@ def _render_metrics(session_count: int) -> str:
     lines.append(f"ponddb_compute_units_total {_compute_units_total}")
 
     return "\n".join(lines) + "\n"
+
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -294,6 +298,7 @@ async def revoke_token(req: RevokeRequest, request: Request) -> dict[str, Any]:
 
     return {"detail": "revoked", "jti": jti}
 
+
 _templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 _sqlite_path = os.environ.get("POND_SQLITE_PATH", ":memory:")
@@ -329,11 +334,14 @@ _dataset_versions: dict[str, int] = {}
 
 # PondAPI async execution router (uses the same SQLite connection as MetadataStore)
 import sqlite3 as _sqlite3  # noqa: E402
+
 _pondapi_db_conn = _sqlite3.connect(":memory:", check_same_thread=False)
 _pondapi_db_conn.row_factory = _sqlite3.Row
 app.include_router(make_pondapi_execute_router(_manager, _pondapi_db_conn))
 app.include_router(make_pondapi_htmx_router(_manager, _pondapi_db_conn))
-app.include_router(make_website_router(_manager, _workgroups, store=_store, dataset_manager=_dataset_manager))
+app.include_router(
+    make_website_router(_manager, _workgroups, store=_store, dataset_manager=_dataset_manager)
+)
 
 
 def _get_usage_stats() -> dict:
@@ -617,7 +625,9 @@ async def get_history(
     offset: int = Query(default=0),
 ) -> Any:
     if status is not None and status not in _VALID_STATUSES:
-        raise HTTPException(status_code=400, detail=f"Invalid status: {status!r}. Must be 'success' or 'error'")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid status: {status!r}. Must be 'success' or 'error'"
+        )
 
     start_dt: Optional[datetime] = None
     end_dt: Optional[datetime] = None
@@ -649,12 +659,14 @@ async def get_history(
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         from ponddb.api.website_routes import _get_session, _build_current_user
+
         session = _get_session(request)
         if not session:
             return RedirectResponse(url="/login", status_code=302)
         wg_list = list(_workgroups.values())
         return _templates.TemplateResponse(
-            request, "history.html",
+            request,
+            "history.html",
             {
                 "history": rows,
                 "status_filter": status or "",
@@ -682,9 +694,7 @@ def build_app() -> FastAPI:
     """
     cors_raw = os.environ.get("POND_CORS_ORIGINS", "")
     allow_origins: list[str] = (
-        [o.strip() for o in cors_raw.split(",") if o.strip()]
-        if cors_raw.strip()
-        else []
+        [o.strip() for o in cors_raw.split(",") if o.strip()] if cors_raw.strip() else []
     )
 
     new_app = FastAPI(

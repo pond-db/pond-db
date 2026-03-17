@@ -30,8 +30,10 @@ def _set_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 def client(_set_api_key):
     from fastapi.testclient import TestClient
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -285,7 +287,9 @@ def test_query_second_call_returns_x_cache_hit(client, auth_headers, session_id)
     assert first.status_code == 200
     assert first.headers.get("X-Cache") == "MISS"
 
-    second = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+    second = client.post(
+        "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+    )
     assert second.status_code == 200
     assert second.headers.get("X-Cache") == "HIT"
 
@@ -306,7 +310,9 @@ def test_cache_hit_returns_identical_data(client, auth_headers, session_id) -> N
     sql = "SELECT 42 AS answer, 'hello' AS greeting"
 
     first = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
-    second = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+    second = client.post(
+        "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+    )
 
     assert second.headers.get("X-Cache") == "HIT"
     assert first.json()["columns"] == second.json()["columns"]
@@ -318,8 +324,12 @@ def test_different_sql_strings_produce_separate_cache_entries(
     client, auth_headers, session_id
 ) -> None:
     """Two different SQL queries each get their own MISS."""
-    r1 = client.post("/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers)
-    r2 = client.post("/query", json={"session_id": session_id, "sql": "SELECT 2 AS n"}, headers=auth_headers)
+    r1 = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 1 AS n"}, headers=auth_headers
+    )
+    r2 = client.post(
+        "/query", json={"session_id": session_id, "sql": "SELECT 2 AS n"}, headers=auth_headers
+    )
 
     assert r1.headers.get("X-Cache") == "MISS"
     assert r2.headers.get("X-Cache") == "MISS"
@@ -329,17 +339,21 @@ def test_third_call_still_hits_cache(client, auth_headers, session_id) -> None:
     """Cache remains valid for subsequent calls (not just the second)."""
     sql = "SELECT 'triple' AS t"
     for i in range(3):
-        resp = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+        resp = client.post(
+            "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+        )
         assert resp.status_code == 200
         expected = "MISS" if i == 0 else "HIT"
-        assert resp.headers.get("X-Cache") == expected, f"Call #{i+1}: expected {expected}"
+        assert resp.headers.get("X-Cache") == expected, f"Call #{i + 1}: expected {expected}"
 
 
 def test_failed_query_not_cached(client, auth_headers, session_id) -> None:
     """A query that raises a DuckDB error is not stored in cache (next call is still MISS)."""
     bad_sql = "SELECT * FROM absolutely_missing_table_xyz_123"
 
-    first = client.post("/query", json={"session_id": session_id, "sql": bad_sql}, headers=auth_headers)
+    first = client.post(
+        "/query", json={"session_id": session_id, "sql": bad_sql}, headers=auth_headers
+    )
     assert first.status_code == 400
 
     # On error, X-Cache should be MISS if present at all
@@ -348,7 +362,9 @@ def test_failed_query_not_cached(client, auth_headers, session_id) -> None:
         assert x_cache == "MISS"
 
     # A repeated call to the same bad SQL should also be 400 (not a cached 200)
-    second = client.post("/query", json={"session_id": session_id, "sql": bad_sql}, headers=auth_headers)
+    second = client.post(
+        "/query", json={"session_id": session_id, "sql": bad_sql}, headers=auth_headers
+    )
     assert second.status_code == 400
 
 
@@ -362,12 +378,16 @@ def test_write_increments_dataset_version_and_invalidates_cache(
     client.post("/query", json={"session_id": session_id, "sql": setup_sql}, headers=auth_headers)
 
     # First SELECT — MISS
-    r1 = client.post("/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers)
+    r1 = client.post(
+        "/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers
+    )
     assert r1.status_code == 200
     assert r1.headers.get("X-Cache") == "MISS"
 
     # Second SELECT — HIT
-    r2 = client.post("/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers)
+    r2 = client.post(
+        "/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers
+    )
     assert r2.status_code == 200
     assert r2.headers.get("X-Cache") == "HIT"
 
@@ -379,7 +399,9 @@ def test_write_increments_dataset_version_and_invalidates_cache(
     )
 
     # Third SELECT — must be MISS because data changed
-    r3 = client.post("/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers)
+    r3 = client.post(
+        "/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers
+    )
     assert r3.status_code == 200
     assert r3.headers.get("X-Cache") == "MISS"
 
@@ -389,14 +411,20 @@ def test_write_increments_dataset_version_and_invalidates_cache(
 
 def test_create_table_invalidates_cache(client, auth_headers, session_id) -> None:
     """CREATE TABLE is treated as a write and bumps the dataset version."""
-    select_sql = "SELECT count(*) AS n FROM information_schema.tables WHERE table_name = 'ddl_inv_tbl'"
+    select_sql = (
+        "SELECT count(*) AS n FROM information_schema.tables WHERE table_name = 'ddl_inv_tbl'"
+    )
 
     # Before table creation
-    r1 = client.post("/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers)
+    r1 = client.post(
+        "/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers
+    )
     assert r1.status_code == 200
     assert r1.headers.get("X-Cache") == "MISS"
 
-    r2 = client.post("/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers)
+    r2 = client.post(
+        "/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers
+    )
     assert r2.headers.get("X-Cache") == "HIT"
 
     # DDL write: create table
@@ -407,7 +435,9 @@ def test_create_table_invalidates_cache(client, auth_headers, session_id) -> Non
     )
 
     # Cache must be invalidated
-    r3 = client.post("/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers)
+    r3 = client.post(
+        "/query", json={"session_id": session_id, "sql": select_sql}, headers=auth_headers
+    )
     assert r3.headers.get("X-Cache") == "MISS"
 
 
@@ -416,14 +446,14 @@ def test_cache_hit_response_is_200(client, auth_headers, session_id) -> None:
     sql = "SELECT 'status_check' AS v"
     client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
 
-    second = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+    second = client.post(
+        "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+    )
     assert second.status_code == 200
     assert second.headers.get("X-Cache") == "HIT"
 
 
-def test_cache_hit_elapsed_ms_less_than_original(
-    client, auth_headers, session_id
-) -> None:
+def test_cache_hit_elapsed_ms_less_than_original(client, auth_headers, session_id) -> None:
     """Cache HIT elapsed_ms should be much lower than original DuckDB execution."""
     # Use a slightly heavier query to get a measurable baseline
     sql = "SELECT i, i*i AS sq FROM range(1000) t(i)"
@@ -431,7 +461,9 @@ def test_cache_hit_elapsed_ms_less_than_original(
     first = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
     assert first.headers.get("X-Cache") == "MISS"
 
-    second = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+    second = client.post(
+        "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+    )
     assert second.headers.get("X-Cache") == "HIT"
     # Cached response should be significantly faster (at least 10x)
     assert second.json()["elapsed_ms"] < first.json()["elapsed_ms"]
@@ -459,18 +491,20 @@ def test_query_without_api_key_has_no_cache_header(client, session_id) -> None:
     assert resp.headers.get("X-Cache") is None
 
 
-def test_cache_miss_followed_by_hit_same_sql_and_session(
-    client, auth_headers, session_id
-) -> None:
+def test_cache_miss_followed_by_hit_same_sql_and_session(client, auth_headers, session_id) -> None:
     """Comprehensive MISS → HIT sequence with result verification."""
     sql = "SELECT 7 AS lucky, 'test' AS label"
 
-    miss_resp = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+    miss_resp = client.post(
+        "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+    )
     assert miss_resp.status_code == 200
     assert miss_resp.headers.get("X-Cache") == "MISS"
     original_data = miss_resp.json()
 
-    hit_resp = client.post("/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers)
+    hit_resp = client.post(
+        "/query", json={"session_id": session_id, "sql": sql}, headers=auth_headers
+    )
     assert hit_resp.status_code == 200
     assert hit_resp.headers.get("X-Cache") == "HIT"
     cached_data = hit_resp.json()

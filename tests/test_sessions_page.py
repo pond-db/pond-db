@@ -37,8 +37,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -163,7 +165,9 @@ class TestPondapiDetailPartial:
         )
         if exec_resp.status_code in (200, 202):
             eid = exec_resp.json()["execution_id"]
-            import time; time.sleep(0.5)  # let execution complete
+            import time
+
+            time.sleep(0.5)  # let execution complete
             resp = client.get(
                 f"/htmx/pondapi/{eid}/detail",
                 headers={"X-API-Key": VALID_KEY},

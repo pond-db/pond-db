@@ -48,18 +48,21 @@ P1_CONTROLS = {
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def client(monkeypatch):
     """TestClient with a valid JWT secret so all controls can be active."""
     monkeypatch.setenv("POND_JWT_SECRET", "test-secret-for-testing-1234567890")
     monkeypatch.setenv("POND_API_KEY", "test-api-key")
     from ponddb.app import app
+
     return TestClient(app, raise_server_exceptions=False)
 
 
 # ---------------------------------------------------------------------------
 # Happy path: all controls active → 200
 # ---------------------------------------------------------------------------
+
 
 def test_security_health_returns_200_when_all_controls_active(client: TestClient) -> None:
     """All 8 controls active → HTTP 200."""
@@ -132,16 +135,21 @@ def test_security_health_security_headers_true_by_default(client: TestClient) ->
 # P0 failure: sql_sandbox disabled → 503
 # ---------------------------------------------------------------------------
 
+
 def test_security_health_503_when_sql_sandbox_disabled(client: TestClient, monkeypatch) -> None:
     """Emptying BLOCKED_PATTERNS disables the sandbox — a P0 failure → 503."""
     from ponddb.security import sql_sandbox
+
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     assert resp.status_code == 503
 
 
-def test_security_health_sql_sandbox_false_when_patterns_empty(client: TestClient, monkeypatch) -> None:
+def test_security_health_sql_sandbox_false_when_patterns_empty(
+    client: TestClient, monkeypatch
+) -> None:
     from ponddb.security import sql_sandbox
+
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     data = resp.json()
@@ -150,6 +158,7 @@ def test_security_health_sql_sandbox_false_when_patterns_empty(client: TestClien
 
 def test_security_health_status_degraded_when_p0_fails(client: TestClient, monkeypatch) -> None:
     from ponddb.security import sql_sandbox
+
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     data = resp.json()
@@ -159,6 +168,7 @@ def test_security_health_status_degraded_when_p0_fails(client: TestClient, monke
 def test_security_health_503_still_returns_json(client: TestClient, monkeypatch) -> None:
     """503 response must still have JSON body — monitoring tools parse it."""
     from ponddb.security import sql_sandbox
+
     monkeypatch.setattr(sql_sandbox, "BLOCKED_PATTERNS", [])
     resp = client.get("/health/security")
     assert resp.status_code == 503
@@ -171,6 +181,7 @@ def test_security_health_503_still_returns_json(client: TestClient, monkeypatch)
 # P0 failure: JWT secret missing → 503
 # ---------------------------------------------------------------------------
 
+
 def test_security_health_503_when_jwt_secret_missing(monkeypatch) -> None:
     """Missing JWT secret is a P0 failure → 503."""
     monkeypatch.delenv("POND_JWT_SECRET", raising=False)
@@ -178,6 +189,7 @@ def test_security_health_503_when_jwt_secret_missing(monkeypatch) -> None:
     monkeypatch.delenv("POND_JWT_SECRET_V2", raising=False)
     monkeypatch.delenv("POND_JWT_SECRET_FILE", raising=False)
     from ponddb.app import app
+
     test_client = TestClient(app, raise_server_exceptions=False)
     resp = test_client.get("/health/security")
     assert resp.status_code == 503
@@ -189,6 +201,7 @@ def test_security_health_jwt_secret_false_when_missing(monkeypatch) -> None:
     monkeypatch.delenv("POND_JWT_SECRET_V2", raising=False)
     monkeypatch.delenv("POND_JWT_SECRET_FILE", raising=False)
     from ponddb.app import app
+
     test_client = TestClient(app, raise_server_exceptions=False)
     resp = test_client.get("/health/security")
     data = resp.json()
@@ -203,6 +216,7 @@ def test_security_health_jwt_secret_false_when_missing(monkeypatch) -> None:
 # Because it is P1, this must NOT cause a 503.
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def client_no_redis(monkeypatch):
     """Client with JWT secret set but no POND_REDIS_URL — simulates Redis unavailable."""
@@ -210,6 +224,7 @@ def client_no_redis(monkeypatch):
     monkeypatch.setenv("POND_API_KEY", "test-api-key")
     monkeypatch.delenv("POND_REDIS_URL", raising=False)
     from ponddb.app import app
+
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -237,6 +252,7 @@ def test_security_health_status_healthy_when_only_p1_fails(client_no_redis: Test
 # Endpoint routing and method constraints
 # ---------------------------------------------------------------------------
 
+
 def test_security_health_get_is_allowed(client: TestClient) -> None:
     resp = client.get("/health/security")
     assert resp.status_code in (200, 503)  # not 404, not 405
@@ -263,6 +279,7 @@ def test_security_health_requires_no_auth(client: TestClient) -> None:
 # All P0 and P1 controls appear in response
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("control", sorted(P0_CONTROLS))
 def test_security_health_p0_control_present(client: TestClient, control: str) -> None:
     resp = client.get("/health/security")
@@ -280,6 +297,7 @@ def test_security_health_p1_control_present(client: TestClient, control: str) ->
 # ---------------------------------------------------------------------------
 # nginx internal-only: verify X-Robots-Tag or similar marker (advisory)
 # ---------------------------------------------------------------------------
+
 
 def test_security_health_response_is_machine_parseable(client: TestClient) -> None:
     """Response structure is stable and parseable by monitoring tools."""

@@ -39,8 +39,10 @@ def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(_set_env) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -216,18 +218,14 @@ class TestSuspendButtonBehavior:
         assert len(match) == 1
         assert match[0]["status"] == "SUSPENDED"
 
-    def test_double_suspend_returns_409(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_double_suspend_returns_409(self, client: TestClient, auth_headers: dict) -> None:
         """Suspending an already-suspended session returns 409, not 500."""
         sid = client.post("/session").json()["session_id"]
         client.post(f"/htmx/session/{sid}/suspend", headers=auth_headers)
         resp = client.post(f"/htmx/session/{sid}/suspend", headers=auth_headers)
         assert resp.status_code == 409
 
-    def test_suspend_nonexistent_returns_404(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_suspend_nonexistent_returns_404(self, client: TestClient, auth_headers: dict) -> None:
         resp = client.post("/htmx/session/fake-id-000/suspend", headers=auth_headers)
         assert resp.status_code == 404
 
@@ -259,17 +257,13 @@ class TestResumeButtonBehavior:
         assert len(match) == 1
         assert match[0]["status"] == "ACTIVE"
 
-    def test_double_resume_returns_409(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_double_resume_returns_409(self, client: TestClient, auth_headers: dict) -> None:
         """Resuming an already-active session returns 409, not 500."""
         sid = client.post("/session").json()["session_id"]
         resp = client.post(f"/htmx/session/{sid}/resume", headers=auth_headers)
         assert resp.status_code == 409
 
-    def test_resume_nonexistent_returns_404(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_resume_nonexistent_returns_404(self, client: TestClient, auth_headers: dict) -> None:
         resp = client.post("/htmx/session/fake-id-000/resume", headers=auth_headers)
         assert resp.status_code == 404
 
@@ -277,9 +271,7 @@ class TestResumeButtonBehavior:
 class TestSuspendResumeRoundTrip:
     """Full suspend -> resume -> query cycle works end-to-end."""
 
-    def test_suspend_resume_query(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_suspend_resume_query(self, client: TestClient, auth_headers: dict) -> None:
         """Session can execute queries after suspend+resume cycle."""
         sid = client.post("/session").json()["session_id"]
         # Suspend
@@ -295,9 +287,7 @@ class TestSuspendResumeRoundTrip:
         assert resp.status_code == 200
         assert resp.json()["rows"] == [[42]]
 
-    def test_htmx_response_has_7_columns(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
+    def test_htmx_response_has_7_columns(self, client: TestClient, auth_headers: dict) -> None:
         """The session_row.html partial returns exactly 7 <td> cells."""
         sid = client.post("/session").json()["session_id"]
         resp = client.post(f"/htmx/session/{sid}/suspend", headers=auth_headers)
@@ -313,9 +303,7 @@ class TestSuspendResumeRoundTrip:
 class TestNoSideEffectSessionCreation:
     """GET requests to dashboard/sessions pages must not create sessions."""
 
-    def test_dashboard_no_session_creation(
-        self, logged_in_client: TestClient
-    ) -> None:
+    def test_dashboard_no_session_creation(self, logged_in_client: TestClient) -> None:
         """Visiting /dashboard does not increase session count."""
         before = len(logged_in_client.get("/sessions").json())
         logged_in_client.get("/dashboard")
@@ -324,9 +312,7 @@ class TestNoSideEffectSessionCreation:
         after = len(logged_in_client.get("/sessions").json())
         assert after == before
 
-    def test_sessions_page_no_session_creation(
-        self, logged_in_client: TestClient
-    ) -> None:
+    def test_sessions_page_no_session_creation(self, logged_in_client: TestClient) -> None:
         """Visiting /dashboard/sessions 5 times does not increase count."""
         before = len(logged_in_client.get("/sessions").json())
         for _ in range(5):
@@ -334,18 +320,14 @@ class TestNoSideEffectSessionCreation:
         after = len(logged_in_client.get("/sessions").json())
         assert after == before
 
-    def test_settings_page_no_session_creation(
-        self, logged_in_client: TestClient
-    ) -> None:
+    def test_settings_page_no_session_creation(self, logged_in_client: TestClient) -> None:
         """Visiting /settings does not create sessions."""
         before = len(logged_in_client.get("/sessions").json())
         logged_in_client.get("/settings")
         after = len(logged_in_client.get("/sessions").json())
         assert after == before
 
-    def test_session_only_created_by_explicit_post(
-        self, client: TestClient
-    ) -> None:
+    def test_session_only_created_by_explicit_post(self, client: TestClient) -> None:
         """Sessions are only created by POST /session."""
         before = len(client.get("/sessions").json())
         resp = client.post("/session")

@@ -351,9 +351,7 @@ def _no_workgroup_token(tenant_id: str) -> str:
 def _create_ns_wg(client: TestClient) -> tuple[str, str]:
     """Helper: create a namespace and workgroup; return (ns_id, wg_id)."""
     admin_h = {"Authorization": f"Bearer {_admin_token()}"}
-    ns = client.post(
-        "/namespaces", json={"name": f"ns-{id(client)}"}, headers=admin_h
-    ).json()
+    ns = client.post("/namespaces", json={"name": f"ns-{id(client)}"}, headers=admin_h).json()
     wg = client.post(
         "/workgroups",
         json={"name": f"wg-{id(client)}", "namespace_id": ns["id"]},
@@ -373,9 +371,7 @@ class TestSessionCreationReturnsWorkgroupId:
         assert "workgroup_id" in data, f"Missing workgroup_id in response: {data}"
         assert data["workgroup_id"] == wg_id
 
-    def test_session_without_workgroup_id_has_default_in_response(
-        self, client: TestClient
-    ) -> None:
+    def test_session_without_workgroup_id_has_default_in_response(self, client: TestClient) -> None:
         """Backwards-compat: no workgroup_id → response still contains workgroup_id='default'
         (or omits it, but must not break)."""
         resp = client.post("/session")
@@ -414,9 +410,7 @@ class TestCrossWorkgroupQueryForbidden:
     def test_different_workgroup_query_returns_403(self, client: TestClient) -> None:
         """Token with workgroup_id=B cannot query session belonging to workgroup A → 403."""
         admin_h = {"Authorization": f"Bearer {_admin_token()}"}
-        ns = client.post(
-            "/namespaces", json={"name": "x-wg-ns-403"}, headers=admin_h
-        ).json()
+        ns = client.post("/namespaces", json={"name": "x-wg-ns-403"}, headers=admin_h).json()
         wg_a = client.post(
             "/workgroups",
             json={"name": "x-wg-a-403", "namespace_id": ns["id"]},
@@ -447,9 +441,7 @@ class TestCrossWorkgroupQueryForbidden:
     def test_cross_workgroup_403_response_has_detail(self, client: TestClient) -> None:
         """403 response must have a detail message."""
         admin_h = {"Authorization": f"Bearer {_admin_token()}"}
-        ns = client.post(
-            "/namespaces", json={"name": "x-wg-ns-msg"}, headers=admin_h
-        ).json()
+        ns = client.post("/namespaces", json={"name": "x-wg-ns-msg"}, headers=admin_h).json()
         wg_a = client.post(
             "/workgroups",
             json={"name": "x-wg-a-msg", "namespace_id": ns["id"]},
@@ -493,9 +485,7 @@ class TestCrossWorkgroupQueryForbidden:
             f"Backwards-compat token should query default session: {resp.status_code} {resp.text}"
         )
 
-    def test_token_without_workgroup_claim_can_query_any_session(
-        self, client: TestClient
-    ) -> None:
+    def test_token_without_workgroup_claim_can_query_any_session(self, client: TestClient) -> None:
         """Tokens without workgroup_id claim skip the cross-workgroup check entirely."""
         _, wg_id = _create_ns_wg(client)
         sess_resp = client.post("/session", json={"workgroup_id": wg_id})
@@ -555,9 +545,7 @@ class TestCrossWorkgroupQueryForbidden:
 class TestListSessionsApiWorkgroupFilter:
     """GET /sessions?workgroup_id=... must filter by workgroup."""
 
-    def test_list_sessions_accepts_workgroup_id_query_param(
-        self, client: TestClient
-    ) -> None:
+    def test_list_sessions_accepts_workgroup_id_query_param(self, client: TestClient) -> None:
         """GET /sessions?workgroup_id=X must not return 422 (unknown param)."""
         _, wg_id = _create_ns_wg(client)
         resp = client.get(f"/sessions?workgroup_id={wg_id}")
@@ -567,9 +555,7 @@ class TestListSessionsApiWorkgroupFilter:
 
     def test_list_sessions_filters_by_workgroup(self, client: TestClient) -> None:
         admin_h = {"Authorization": f"Bearer {_admin_token()}"}
-        ns = client.post(
-            "/namespaces", json={"name": "ls-wg-ns"}, headers=admin_h
-        ).json()
+        ns = client.post("/namespaces", json={"name": "ls-wg-ns"}, headers=admin_h).json()
         wg_a = client.post(
             "/workgroups",
             json={"name": "ls-wg-a", "namespace_id": ns["id"]},
@@ -591,13 +577,9 @@ class TestListSessionsApiWorkgroupFilter:
             f"Expected only wg_a sessions: {result}"
         )
 
-    def test_list_sessions_without_filter_includes_all_workgroups(
-        self, client: TestClient
-    ) -> None:
+    def test_list_sessions_without_filter_includes_all_workgroups(self, client: TestClient) -> None:
         admin_h = {"Authorization": f"Bearer {_admin_token()}"}
-        ns = client.post(
-            "/namespaces", json={"name": "ls-all-ns"}, headers=admin_h
-        ).json()
+        ns = client.post("/namespaces", json={"name": "ls-all-ns"}, headers=admin_h).json()
         wg_a = client.post(
             "/workgroups",
             json={"name": "ls-all-a", "namespace_id": ns["id"]},

@@ -73,9 +73,7 @@ class TestNoSideEffectSessionCreation:
             page.wait_for_load_state("networkidle")
 
         after = len(_get_sessions_via_api(page))
-        assert after == before, (
-            f"Dashboard page loads created {after - before} sessions!"
-        )
+        assert after == before, f"Dashboard page loads created {after - before} sessions!"
 
     def test_sessions_page_no_side_effects(self, page: Page) -> None:
         """Loading /dashboard/sessions 5 times must not create sessions."""
@@ -92,9 +90,7 @@ class TestNoSideEffectSessionCreation:
             page.wait_for_load_state("networkidle")
 
         after = len(_get_sessions_via_api(page))
-        assert after == before, (
-            f"Sessions page loads created {after - before} sessions!"
-        )
+        assert after == before, f"Sessions page loads created {after - before} sessions!"
 
 
 # ---------------------------------------------------------------------------
@@ -215,9 +211,7 @@ class TestDashboardContent:
         page.goto("/dashboard")
         page.wait_for_load_state("networkidle")
         stat_cards = page.locator(".stat-card")
-        assert stat_cards.count() >= 3, (
-            f"Expected >= 3 stat cards, got {stat_cards.count()}"
-        )
+        assert stat_cards.count() >= 3, f"Expected >= 3 stat cards, got {stat_cards.count()}"
 
     def test_sidebar_nav_links(self, page: Page) -> None:
         """Sidebar contains navigation links."""

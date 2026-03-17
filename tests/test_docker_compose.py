@@ -43,7 +43,9 @@ def test_compose_ponddb_builds_from_context(ponddb_service: dict) -> None:
     assert build is not None, "ponddb service must have a 'build' key"
     # Can be "." or {"context": "."} form
     if isinstance(build, dict):
-        assert build.get("context") == ".", f"build.context must be '.', got {build.get('context')!r}"
+        assert build.get("context") == ".", (
+            f"build.context must be '.', got {build.get('context')!r}"
+        )
     else:
         assert build == ".", f"build must be '.', got {build!r}"
 
@@ -128,25 +130,19 @@ def test_compose_healthcheck_uses_health_endpoint(ponddb_service: dict) -> None:
 def test_compose_healthcheck_has_interval(ponddb_service: dict) -> None:
     """Healthcheck must specify an interval."""
     hc = ponddb_service.get("healthcheck", {})
-    assert "interval" in hc, (
-        "healthcheck must have an 'interval' key (e.g. interval: 30s)"
-    )
+    assert "interval" in hc, "healthcheck must have an 'interval' key (e.g. interval: 30s)"
 
 
 def test_compose_healthcheck_has_timeout(ponddb_service: dict) -> None:
     """Healthcheck must specify a timeout."""
     hc = ponddb_service.get("healthcheck", {})
-    assert "timeout" in hc, (
-        "healthcheck must have a 'timeout' key (e.g. timeout: 5s)"
-    )
+    assert "timeout" in hc, "healthcheck must have a 'timeout' key (e.g. timeout: 5s)"
 
 
 def test_compose_healthcheck_has_retries(ponddb_service: dict) -> None:
     """Healthcheck must specify retry count."""
     hc = ponddb_service.get("healthcheck", {})
-    assert "retries" in hc, (
-        "healthcheck must have a 'retries' key (e.g. retries: 3)"
-    )
+    assert "retries" in hc, "healthcheck must have a 'retries' key (e.g. retries: 3)"
 
 
 def test_compose_healthcheck_uses_http(ponddb_service: dict) -> None:
@@ -167,9 +163,7 @@ def test_compose_healthcheck_uses_http(ponddb_service: dict) -> None:
 def test_dockerignore_excludes_tests_dir() -> None:
     """tests/ must be excluded from build context — keeps image lean."""
     content = DOCKERIGNORE.read_text()
-    assert "tests/" in content or "tests" in content, (
-        ".dockerignore must exclude tests/ directory"
-    )
+    assert "tests/" in content or "tests" in content, ".dockerignore must exclude tests/ directory"
 
 
 def test_dockerignore_excludes_venv() -> None:

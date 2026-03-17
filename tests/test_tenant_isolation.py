@@ -45,8 +45,10 @@ def env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def client(env_setup) -> TestClient:
     import ponddb.app as app_module
+
     importlib.reload(app_module)
     from ponddb.app import app
+
     return TestClient(app)
 
 
@@ -54,16 +56,19 @@ def client(env_setup) -> TestClient:
 def store(tmp_path):
     """Fresh MetadataStore for direct store tests."""
     from ponddb.store.metadata_store import MetadataStore
+
     s = MetadataStore(str(tmp_path / "tenant_test.db"))
     s.initialize_blocking()
     yield s
     import asyncio
+
     asyncio.run(s.close())
 
 
 def _jwt_headers(tenant_id: str) -> dict:
     """Return Authorization headers with a valid JWT for tenant_id."""
     from ponddb.auth.jwt_auth import create_access_token
+
     token = create_access_token(tenant_id)
     return {"Authorization": f"Bearer {token}"}
 
@@ -87,9 +92,7 @@ async def test_queries_table_has_tenant_id_column(tmp_path) -> None:
 
     cursor = store._conn.execute("PRAGMA table_info(queries)")
     columns = {row[1] for row in cursor.fetchall()}
-    assert "tenant_id" in columns, (
-        "'queries' table must have a 'tenant_id' column for isolation"
-    )
+    assert "tenant_id" in columns, "'queries' table must have a 'tenant_id' column for isolation"
     await store.close()
 
 
@@ -157,16 +160,25 @@ async def test_get_query_public_accessible_cross_tenant(store) -> None:
 async def test_list_queries_filtered_by_tenant_id(store) -> None:
     """list_queries() by tenant_id returns only that tenant's queries."""
     await store.save_query(
-        title="Alpha Query One", description="", sql="SELECT 1",
-        created_by="user1", tenant_id=TENANT_A,
+        title="Alpha Query One",
+        description="",
+        sql="SELECT 1",
+        created_by="user1",
+        tenant_id=TENANT_A,
     )
     await store.save_query(
-        title="Alpha Query Two", description="", sql="SELECT 2",
-        created_by="user1", tenant_id=TENANT_A,
+        title="Alpha Query Two",
+        description="",
+        sql="SELECT 2",
+        created_by="user1",
+        tenant_id=TENANT_A,
     )
     await store.save_query(
-        title="Beta Query", description="", sql="SELECT 3",
-        created_by="user2", tenant_id=TENANT_B,
+        title="Beta Query",
+        description="",
+        sql="SELECT 3",
+        created_by="user2",
+        tenant_id=TENANT_B,
     )
 
     alpha_queries = await store.list_queries(tenant_id=TENANT_A)
@@ -243,7 +255,8 @@ async def test_empty_tenant_sees_no_private_queries(store) -> None:
     results = await store.list_queries(tenant_id="brand-new-tenant")
     # The brand new tenant must see zero private queries from other tenants
     private_from_others = [
-        r for r in results
+        r
+        for r in results
         if r.get("tenant_id") != "brand-new-tenant" and r.get("visibility") == "private"
     ]
     assert len(private_from_others) == 0
@@ -292,14 +305,22 @@ async def test_get_query_history_filters_by_tenant_id(store) -> None:
     """get_query_history(tenant_id) returns only that tenant's history."""
     now = datetime.now(timezone.utc)
     await store.log_query_history(
-        namespace=TENANT_A, tenant_id=TENANT_A,
-        sql="SELECT 'alpha'", duration_ms=1.0,
-        rows_returned=1, status="success", executed_at=now,
+        namespace=TENANT_A,
+        tenant_id=TENANT_A,
+        sql="SELECT 'alpha'",
+        duration_ms=1.0,
+        rows_returned=1,
+        status="success",
+        executed_at=now,
     )
     await store.log_query_history(
-        namespace=TENANT_B, tenant_id=TENANT_B,
-        sql="SELECT 'beta'", duration_ms=2.0,
-        rows_returned=1, status="success", executed_at=now,
+        namespace=TENANT_B,
+        tenant_id=TENANT_B,
+        sql="SELECT 'beta'",
+        duration_ms=2.0,
+        rows_returned=1,
+        status="success",
+        executed_at=now,
     )
 
     alpha_rows = await store.get_query_history(tenant_id=TENANT_A)
@@ -318,10 +339,13 @@ async def test_tenant_b_cannot_see_tenant_a_history(store) -> None:
     now = datetime.now(timezone.utc)
     for i in range(5):
         await store.log_query_history(
-            namespace=TENANT_A, tenant_id=TENANT_A,
+            namespace=TENANT_A,
+            tenant_id=TENANT_A,
             sql=f"SELECT {i} -- alpha secret",
-            duration_ms=float(i), rows_returned=1,
-            status="success", executed_at=now,
+            duration_ms=float(i),
+            rows_returned=1,
+            status="success",
+            executed_at=now,
         )
 
     # Tenant B should see nothing from Tenant A
@@ -336,10 +360,13 @@ async def test_query_history_isolation_multiple_tenants(store) -> None:
     now = datetime.now(timezone.utc)
     for tenant in [TENANT_A, TENANT_B, TENANT_C]:
         await store.log_query_history(
-            namespace=tenant, tenant_id=tenant,
+            namespace=tenant,
+            tenant_id=tenant,
             sql=f"SELECT '{tenant}' AS who",
-            duration_ms=1.0, rows_returned=1,
-            status="success", executed_at=now,
+            duration_ms=1.0,
+            rows_returned=1,
+            status="success",
+            executed_at=now,
         )
 
     for tenant in [TENANT_A, TENANT_B, TENANT_C]:
@@ -384,16 +411,12 @@ def test_history_endpoint_uses_jwt_tenant_id_for_isolation(client) -> None:
     # Tenant B's history must NOT contain Tenant A's query
     hist_b = client.get("/history", headers=headers_b).json()
     alpha_leaked = [h for h in hist_b if "alpha-secret-42" in h.get("sql", "")]
-    assert len(alpha_leaked) == 0, (
-        "Tenant B's /history must not contain Tenant A's queries"
-    )
+    assert len(alpha_leaked) == 0, "Tenant B's /history must not contain Tenant A's queries"
 
     # Tenant A's history must NOT contain Tenant B's query
     hist_a = client.get("/history", headers=headers_a).json()
     beta_leaked = [h for h in hist_a if "beta-data-99" in h.get("sql", "")]
-    assert len(beta_leaked) == 0, (
-        "Tenant A's /history must not contain Tenant B's queries"
-    )
+    assert len(beta_leaked) == 0, "Tenant A's /history must not contain Tenant B's queries"
 
 
 def test_history_each_tenant_sees_own_history(client) -> None:
@@ -468,9 +491,7 @@ def test_queries_endpoint_public_visible_cross_tenant(client) -> None:
     # Tenant B's list should include Tenant A's public query
     list_b = client.get("/queries", headers=headers_b).json()
     titles_b = [q["title"] for q in list_b]
-    assert "Alpha Public Shared Query" in titles_b, (
-        "Tenant B should see Tenant A's public query"
-    )
+    assert "Alpha Public Shared Query" in titles_b, "Tenant B should see Tenant A's public query"
 
 
 def test_get_query_by_slug_private_blocked_for_wrong_tenant_http(client) -> None:
@@ -548,17 +569,38 @@ def test_queries_list_endpoint_uses_jwt_tenant_id(client) -> None:
     headers_b = _jwt_headers(TENANT_B)
 
     # Tenant A saves two queries
-    client.post("/queries", json={
-        "title": "A Q1", "description": "", "sql": "SELECT 1", "visibility": "private",
-    }, headers=headers_a)
-    client.post("/queries", json={
-        "title": "A Q2", "description": "", "sql": "SELECT 2", "visibility": "private",
-    }, headers=headers_a)
+    client.post(
+        "/queries",
+        json={
+            "title": "A Q1",
+            "description": "",
+            "sql": "SELECT 1",
+            "visibility": "private",
+        },
+        headers=headers_a,
+    )
+    client.post(
+        "/queries",
+        json={
+            "title": "A Q2",
+            "description": "",
+            "sql": "SELECT 2",
+            "visibility": "private",
+        },
+        headers=headers_a,
+    )
 
     # Tenant B saves one query
-    client.post("/queries", json={
-        "title": "B Q1", "description": "", "sql": "SELECT 3", "visibility": "private",
-    }, headers=headers_b)
+    client.post(
+        "/queries",
+        json={
+            "title": "B Q1",
+            "description": "",
+            "sql": "SELECT 3",
+            "visibility": "private",
+        },
+        headers=headers_b,
+    )
 
     # Tenant A sees only their own queries (not B's private)
     list_a = client.get("/queries", headers=headers_a).json()
@@ -653,12 +695,9 @@ def test_proof_tenant_a_cannot_read_tenant_b_private_query_store(client) -> None
         assert resp.status_code == 201
 
     list_b = client.get("/queries", headers=headers_b).json()
-    alpha_visible_to_b = [
-        q for q in list_b if q.get("title", "").startswith("Alpha Confidential")
-    ]
+    alpha_visible_to_b = [q for q in list_b if q.get("title", "").startswith("Alpha Confidential")]
     assert len(alpha_visible_to_b) == 0, (
-        f"Tenant B must see 0 of Tenant A's private queries, "
-        f"but saw {len(alpha_visible_to_b)}"
+        f"Tenant B must see 0 of Tenant A's private queries, but saw {len(alpha_visible_to_b)}"
     )
 
 
@@ -686,12 +725,9 @@ def test_proof_tenant_b_cannot_read_tenant_a_query_history(client) -> None:
     )
 
     hist_b = client.get("/history", headers=headers_b).json()
-    leaked = [
-        h for h in hist_b if "alpha_confidential_value" in h.get("sql", "")
-    ]
+    leaked = [h for h in hist_b if "alpha_confidential_value" in h.get("sql", "")]
     assert len(leaked) == 0, (
-        f"Tenant B must see 0 entries from Tenant A's history, "
-        f"but saw {len(leaked)}: {leaked}"
+        f"Tenant B must see 0 entries from Tenant A's history, but saw {len(leaked)}: {leaked}"
     )
 
 
@@ -727,9 +763,7 @@ def test_proof_new_tenant_starts_with_empty_history(client) -> None:
     headers_new = _jwt_headers(new_tenant_id)
 
     hist = client.get("/history", headers=headers_new).json()
-    assert hist == [], (
-        f"Brand new tenant must have empty history, but got {len(hist)} entries"
-    )
+    assert hist == [], f"Brand new tenant must have empty history, but got {len(hist)} entries"
 
 
 def test_proof_new_tenant_sees_no_private_queries_in_list(client) -> None:
@@ -753,7 +787,8 @@ def test_proof_new_tenant_sees_no_private_queries_in_list(client) -> None:
 
     queries = client.get("/queries", headers=headers_new).json()
     private_from_others = [
-        q for q in queries
+        q
+        for q in queries
         if q.get("visibility") == "private" and q.get("tenant_id") != new_tenant_id
     ]
     assert len(private_from_others) == 0, (

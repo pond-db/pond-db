@@ -57,9 +57,7 @@ def nginx_conf_text() -> str:
 
 def test_compose_has_cloudflared_service(services: dict) -> None:
     """docker-compose.yml must define a cloudflared service."""
-    assert "cloudflared" in services, (
-        "Expected 'cloudflared' service in docker-compose.yml"
-    )
+    assert "cloudflared" in services, "Expected 'cloudflared' service in docker-compose.yml"
 
 
 # ---------------------------------------------------------------------------
@@ -155,9 +153,7 @@ def test_cloudflared_healthcheck_has_test(cloudflared_service: dict) -> None:
     """cloudflared healthcheck must specify a test command."""
     hc = cloudflared_service.get("healthcheck", {})
     test_cmd = hc.get("test")
-    assert test_cmd is not None, (
-        "cloudflared healthcheck must have a 'test' key"
-    )
+    assert test_cmd is not None, "cloudflared healthcheck must have a 'test' key"
     test_str = " ".join(test_cmd) if isinstance(test_cmd, list) else str(test_cmd)
     assert len(test_str.strip()) > 0, "cloudflared healthcheck test must not be empty"
 
@@ -173,9 +169,7 @@ def test_cloudflared_healthcheck_has_interval(cloudflared_service: dict) -> None
 def test_cloudflared_healthcheck_has_retries(cloudflared_service: dict) -> None:
     """cloudflared healthcheck must specify retry count."""
     hc = cloudflared_service.get("healthcheck", {})
-    assert "retries" in hc, (
-        "cloudflared healthcheck must have a 'retries' key (e.g. retries: 3)"
-    )
+    assert "retries" in hc, "cloudflared healthcheck must have a 'retries' key (e.g. retries: 3)"
 
 
 # ---------------------------------------------------------------------------
@@ -204,8 +198,7 @@ def test_cloudflared_has_restart_policy(cloudflared_service: dict) -> None:
     """cloudflared service must have a restart policy for resilience."""
     restart = cloudflared_service.get("restart")
     assert restart in ("unless-stopped", "always", "on-failure"), (
-        f"cloudflared must have restart policy (unless-stopped/always/on-failure), "
-        f"got: {restart!r}"
+        f"cloudflared must have restart policy (unless-stopped/always/on-failure), got: {restart!r}"
     )
 
 
@@ -222,8 +215,7 @@ def test_cloudflared_does_not_expose_ports(cloudflared_service: dict) -> None:
     """
     ports = cloudflared_service.get("ports", [])
     assert len(ports) == 0, (
-        f"cloudflared service must NOT expose ports (it connects outbound). "
-        f"Found ports: {ports}"
+        f"cloudflared service must NOT expose ports (it connects outbound). Found ports: {ports}"
     )
 
 
@@ -232,9 +224,7 @@ def test_cloudflared_does_not_expose_ports(cloudflared_service: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_cloudflared_and_nginx_on_same_network(
-    cloudflared_service: dict, services: dict
-) -> None:
+def test_cloudflared_and_nginx_on_same_network(cloudflared_service: dict, services: dict) -> None:
     """cloudflared and nginx must be on the same Docker network so cloudflared can resolve 'nginx'.
 
     If neither service declares explicit networks, they share the implicit default
@@ -247,9 +237,7 @@ def test_cloudflared_and_nginx_on_same_network(
     nginx_networks = nginx_service.get("networks", {})
 
     cf_set = set(cf_networks.keys() if isinstance(cf_networks, dict) else cf_networks)
-    nginx_set = set(
-        nginx_networks.keys() if isinstance(nginx_networks, dict) else nginx_networks
-    )
+    nginx_set = set(nginx_networks.keys() if isinstance(nginx_networks, dict) else nginx_networks)
 
     if not cf_set and not nginx_set:
         # Both on the implicit default network — fine
@@ -294,10 +282,7 @@ def test_nginx_conf_uses_cf_ip_as_real_ip(nginx_conf_text: str) -> None:
         proxy_set_header X-Real-IP $http_cf_connecting_ip;
     """
     # Either set X-Real-IP from cf_connecting_ip, or forward the header directly
-    has_real_ip_from_cf = (
-        "cf_connecting_ip" in nginx_conf_text
-        and "X-Real-IP" in nginx_conf_text
-    )
+    has_real_ip_from_cf = "cf_connecting_ip" in nginx_conf_text and "X-Real-IP" in nginx_conf_text
     has_cf_header_passthrough = "CF-Connecting-IP" in nginx_conf_text
 
     assert has_real_ip_from_cf or has_cf_header_passthrough, (

@@ -54,9 +54,7 @@ class TestSqlInjectionBattery:
         ("glob", "SELECT * FROM glob('/etc/*')"),
     ]
 
-    def test_sql_injection_battery(
-        self, client: TestClient, sid: str, auth: dict
-    ) -> None:
+    def test_sql_injection_battery(self, client: TestClient, sid: str, auth: dict) -> None:
         for name, sql in self.SANDBOX_BLOCKED:
             resp = client.post(
                 "/query",
@@ -131,15 +129,11 @@ class TestAuthBypassAttempts:
             secret,
             algorithm="HS256",
         )
-        resp = client.get(
-            "/queries", headers={"Authorization": f"Bearer {expired_token}"}
-        )
+        resp = client.get("/queries", headers={"Authorization": f"Bearer {expired_token}"})
         assert resp.status_code in (401, 403)
 
     def test_malformed_jwt_rejected(self, client: TestClient) -> None:
-        resp = client.get(
-            "/queries", headers={"Authorization": "Bearer not-a-valid-jwt"}
-        )
+        resp = client.get("/queries", headers={"Authorization": "Bearer not-a-valid-jwt"})
         assert resp.status_code in (401, 403)
 
     def test_wrong_secret_jwt_rejected(self, client: TestClient) -> None:
@@ -150,9 +144,7 @@ class TestAuthBypassAttempts:
             "completely-wrong-secret",
             algorithm="HS256",
         )
-        resp = client.get(
-            "/queries", headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = client.get("/queries", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code in (401, 403)
 
     def test_empty_api_key_rejected(self, client: TestClient) -> None:

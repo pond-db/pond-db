@@ -37,7 +37,8 @@ def make_dataset_router(manager: DatasetManager) -> APIRouter:
 
     @router.post("/datasets", status_code=201)
     async def upload_dataset(
-        file: UploadFile, _auth: dict = Depends(require_auth),
+        file: UploadFile,
+        _auth: dict = Depends(require_auth),
     ) -> dict:
         content = await file.read()
         filename = file.filename or ""
@@ -51,7 +52,8 @@ def make_dataset_router(manager: DatasetManager) -> APIRouter:
 
     @router.get("/datasets")
     async def list_datasets(
-        request: Request, _auth: dict = Depends(require_auth),
+        request: Request,
+        _auth: dict = Depends(require_auth),
     ) -> Any:
         datasets = [_info_to_dict(d) for d in manager.list_datasets()]
 
@@ -59,11 +61,13 @@ def make_dataset_router(manager: DatasetManager) -> APIRouter:
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
             from ponddb.api.website_routes import _get_session, _build_current_user
+
             session = _get_session(request)
             if not session:
                 return RedirectResponse(url="/login", status_code=302)
             return _templates.TemplateResponse(
-                request, "datasets.html",
+                request,
+                "datasets.html",
                 {
                     "datasets": datasets,
                     "current_user": _build_current_user(session),
@@ -76,7 +80,8 @@ def make_dataset_router(manager: DatasetManager) -> APIRouter:
 
     @router.get("/datasets/{name}")
     async def get_dataset(
-        name: str, _auth: dict = Depends(require_auth),
+        name: str,
+        _auth: dict = Depends(require_auth),
     ) -> dict:
         info = manager.get_dataset(name)
         if info is None:
@@ -85,7 +90,8 @@ def make_dataset_router(manager: DatasetManager) -> APIRouter:
 
     @router.delete("/datasets/{name}")
     async def delete_dataset(
-        name: str, _auth: dict = Depends(require_auth),
+        name: str,
+        _auth: dict = Depends(require_auth),
     ) -> dict:
         removed = manager.delete_dataset(name)
         if not removed:

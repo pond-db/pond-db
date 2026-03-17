@@ -14,7 +14,6 @@ Tests FAIL until:
   - ponddb/session_manager.py accepts a MetadataStore and persists transitions
 """
 
-
 import pytest
 import pytest_asyncio
 

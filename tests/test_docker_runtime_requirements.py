@@ -250,7 +250,8 @@ def test_dockerfile_runtime_does_not_raw_copy_src(runtime_stage_lines: list[str]
     and creates an inconsistency (two copies of the source on different paths).
     """
     raw_src_copies = [
-        line for line in runtime_stage_lines
+        line
+        for line in runtime_stage_lines
         if re.match(r"\s*COPY\s+src[/\s]", line) and "--from=" not in line
     ]
     assert len(raw_src_copies) == 0, (
