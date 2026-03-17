@@ -8,8 +8,6 @@ Also tests backward compatibility with the legacy duckcloud SDK package.
 
 from pathlib import Path
 
-import pytest
-
 
 class TestPackageImports:
     def test_ponddb_importable(self) -> None:
