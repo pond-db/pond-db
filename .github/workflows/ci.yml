@@ -28,6 +28,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -60,6 +61,7 @@ jobs:
 
       - name: Run tests (shard ${{ matrix.shard }}/4)
         run: pytest ${{ steps.split.outputs.files }} --cov=src/ponddb --cov-report=term-missing -v --tb=short
+        timeout-minutes: 12
 
   build:
     runs-on: ubuntu-latest
