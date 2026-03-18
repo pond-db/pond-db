@@ -175,12 +175,20 @@ class MemoryStore:
                     causal_parent_id, created_at, updated_at, expires_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    mid, kwargs["agent_id"], kwargs["workgroup_id"],
-                    kwargs["memory_type"], kwargs.get("access_scope", "private"),
-                    content, memory_key,
-                    kwargs.get("importance", 0.5), kwargs.get("utility", 0.5),
-                    linked, kwargs.get("causal_parent_id"),
-                    now, now, kwargs.get("expires_at"),
+                    mid,
+                    kwargs["agent_id"],
+                    kwargs["workgroup_id"],
+                    kwargs["memory_type"],
+                    kwargs.get("access_scope", "private"),
+                    content,
+                    memory_key,
+                    kwargs.get("importance", 0.5),
+                    kwargs.get("utility", 0.5),
+                    linked,
+                    kwargs.get("causal_parent_id"),
+                    now,
+                    now,
+                    kwargs.get("expires_at"),
                 ),
             )
             self._conn.commit()
@@ -195,7 +203,11 @@ class MemoryStore:
             return None
         d = self._row_to_dict(row)
         d["content"] = json.loads(d["content"]) if isinstance(d["content"], str) else d["content"]
-        d["linked_memory_ids"] = json.loads(d["linked_memory_ids"]) if isinstance(d["linked_memory_ids"], str) else d["linked_memory_ids"]
+        d["linked_memory_ids"] = (
+            json.loads(d["linked_memory_ids"])
+            if isinstance(d["linked_memory_ids"], str)
+            else d["linked_memory_ids"]
+        )
         return d
 
     def update_memory(self, memory_id: str, **kwargs: Any) -> Optional[dict[str, Any]]:
@@ -228,7 +240,9 @@ class MemoryStore:
                 (now, memory_id),
             )
             self._conn.commit()
-            row = self._conn.execute("SELECT * FROM agent_memories WHERE id = ?", (memory_id,)).fetchone()
+            row = self._conn.execute(
+                "SELECT * FROM agent_memories WHERE id = ?", (memory_id,)
+            ).fetchone()
         return self._row_to_dict(row) if row else None
 
     def update_utility(self, memory_id: str, reward: float) -> Optional[dict[str, Any]]:

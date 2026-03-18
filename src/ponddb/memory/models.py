@@ -67,7 +67,9 @@ class GrantCreate(BaseModel):
     grantor_workgroup_id: str
     grantee_workgroup_id: Optional[str] = None
     grantee_agent_id: Optional[str] = None
-    memory_type_filter: Optional[Literal["working", "episodic", "semantic", "procedural", "shared"]] = None
+    memory_type_filter: Optional[
+        Literal["working", "episodic", "semantic", "procedural", "shared"]
+    ] = None
     min_importance: float = Field(0.0, ge=0.0, le=1.0)
     permission: Literal["read", "write", "read_write"]
     valid_until: Optional[str] = None

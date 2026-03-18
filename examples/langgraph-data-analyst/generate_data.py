@@ -60,11 +60,7 @@ def main() -> None:
             quantity = random.randint(1, 100)
 
             # Apply anomaly: 3x revenue for West in March 2025
-            if (
-                region == ANOMALY_REGION
-                and d.year == ANOMALY_YEAR
-                and d.month == ANOMALY_MONTH
-            ):
+            if region == ANOMALY_REGION and d.year == ANOMALY_YEAR and d.month == ANOMALY_MONTH:
                 revenue = round(revenue * ANOMALY_MULTIPLIER, 2)
 
             writer.writerow([d.isoformat(), region, product, revenue, quantity])

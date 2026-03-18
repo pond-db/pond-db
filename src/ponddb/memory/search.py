@@ -41,24 +41,40 @@ def search_memories(
 
     # 1. Own workgroup
     own = _query_workgroup(
-        conn, workgroup_id, caller_agent_id=caller_agent_id,
-        agent_id=agent_id, memory_type=memory_type,
-        access_scope=access_scope, min_importance=min_importance,
-        min_utility=min_utility, since=since, until=until,
-        content_contains=content_contains, limit=limit, now=now,
+        conn,
+        workgroup_id,
+        caller_agent_id=caller_agent_id,
+        agent_id=agent_id,
+        memory_type=memory_type,
+        access_scope=access_scope,
+        min_importance=min_importance,
+        min_utility=min_utility,
+        since=since,
+        until=until,
+        content_contains=content_contains,
+        limit=limit,
+        now=now,
     )
     results.extend(own)
 
     # 2. Granted workgroups
-    for grant in (granted_workgroups or []):
+    for grant in granted_workgroups or []:
         gtype = grant.get("type_filter") or memory_type
         gimp = max(grant.get("min_importance", 0.0), min_importance or 0.0)
         granted = _query_workgroup(
-            conn, grant["workgroup_id"], caller_agent_id=caller_agent_id,
-            agent_id=agent_id, memory_type=gtype,
-            access_scope=access_scope, min_importance=gimp,
-            min_utility=min_utility, since=since, until=until,
-            content_contains=content_contains, limit=limit, now=now,
+            conn,
+            grant["workgroup_id"],
+            caller_agent_id=caller_agent_id,
+            agent_id=agent_id,
+            memory_type=gtype,
+            access_scope=access_scope,
+            min_importance=gimp,
+            min_utility=min_utility,
+            since=since,
+            until=until,
+            content_contains=content_contains,
+            limit=limit,
+            now=now,
             exclude_private=True,
         )
         for row in granted:
@@ -111,18 +127,14 @@ def _query_workgroup(
     params: list[Any] = [workgroup_id]
 
     # Exclude expired working memory
-    where.append(
-        "(expires_at IS NULL OR expires_at > ? OR memory_type != 'working')"
-    )
+    where.append("(expires_at IS NULL OR expires_at > ? OR memory_type != 'working')")
     params.append(now)
 
     if exclude_private:
         where.append("access_scope != 'private'")
     elif caller_agent_id:
         # Private memories only visible to creating agent
-        where.append(
-            "(access_scope != 'private' OR agent_id = ?)"
-        )
+        where.append("(access_scope != 'private' OR agent_id = ?)")
         params.append(caller_agent_id)
 
     if agent_id:
@@ -160,6 +172,10 @@ def _query_workgroup(
     for row in rows:
         d = {k: row[k] for k in row.keys()}
         d["content"] = json.loads(d["content"]) if isinstance(d["content"], str) else d["content"]
-        d["linked_memory_ids"] = json.loads(d["linked_memory_ids"]) if isinstance(d["linked_memory_ids"], str) else d["linked_memory_ids"]
+        d["linked_memory_ids"] = (
+            json.loads(d["linked_memory_ids"])
+            if isinstance(d["linked_memory_ids"], str)
+            else d["linked_memory_ids"]
+        )
         results.append(d)
     return results

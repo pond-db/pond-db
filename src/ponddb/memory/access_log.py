@@ -42,12 +42,22 @@ def write_access_log(
             trace_id, span_id, latency_ms, status, error_type, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
-            log_id, agent_id, workgroup_id, action,
+            log_id,
+            agent_id,
+            workgroup_id,
+            action,
             json.dumps(memory_ids) if memory_ids else None,
-            query_text, result_count, grant_id,
-            source_workgroup_id, execution_id,
-            trace_id, span_id, latency_ms, status,
-            error_type, _now_iso(),
+            query_text,
+            result_count,
+            grant_id,
+            source_workgroup_id,
+            execution_id,
+            trace_id,
+            span_id,
+            latency_ms,
+            status,
+            error_type,
+            _now_iso(),
         ),
     )
     conn.commit()
@@ -92,6 +102,7 @@ def count_recent_actions(
     """Count recent actions for rate limiting."""
     since = datetime.now(timezone.utc)
     from datetime import timedelta
+
     since = (since - timedelta(seconds=window_seconds)).isoformat()
     where = ["action = ?", "created_at >= ?"]
     params: list[Any] = [action, since]

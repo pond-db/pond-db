@@ -66,8 +66,10 @@ class MemoryCleanupTask:
             try:
                 write_access_log(
                     self._conn,
-                    agent_id="system", workgroup_id="system",
-                    action="cleanup", result_count=count,
+                    agent_id="system",
+                    workgroup_id="system",
+                    action="cleanup",
+                    result_count=count,
                 )
             except Exception:
                 pass
@@ -110,6 +112,7 @@ class UtilityDecayTask:
     def run_once(self) -> int:
         """Apply utility decay. Returns count of affected memories."""
         from datetime import timedelta
+
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         try:
             cursor = self._conn.execute(

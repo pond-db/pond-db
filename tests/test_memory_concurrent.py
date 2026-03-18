@@ -46,7 +46,9 @@ class TestConcurrentWrites:
                 for attempt in range(3):
                     try:
                         store.create_memory(
-                            agent_id=agent_id, workgroup_id=WG, memory_type="semantic",
+                            agent_id=agent_id,
+                            workgroup_id=WG,
+                            memory_type="semantic",
                             content={"agent": agent_id, "i": i},
                         )
                         break
@@ -77,7 +79,9 @@ class TestConcurrentWrites:
                 for attempt in range(3):
                     try:
                         store.create_memory(
-                            agent_id=agent_id, workgroup_id=WG, memory_type="semantic",
+                            agent_id=agent_id,
+                            workgroup_id=WG,
+                            memory_type="semantic",
                             content={"i": i},
                         )
                         break
@@ -108,7 +112,9 @@ class TestConcurrentWrites:
                 for attempt in range(3):
                     try:
                         store.create_memory(
-                            agent_id=agent_id, workgroup_id=WG, memory_type="semantic",
+                            agent_id=agent_id,
+                            workgroup_id=WG,
+                            memory_type="semantic",
                             content={"i": i},
                         )
                         break
@@ -131,8 +137,9 @@ class TestConcurrentReadWrite:
     def test_reads_consistent_during_writes(self, store, conn):
         # Pre-load some data
         for i in range(50):
-            store.create_memory(agent_id="pre", workgroup_id=WG, memory_type="semantic",
-                                content={"pre": i})
+            store.create_memory(
+                agent_id="pre", workgroup_id=WG, memory_type="semantic", content={"pre": i}
+            )
         stop = threading.Event()
         read_results = []
 
@@ -141,8 +148,9 @@ class TestConcurrentReadWrite:
                 if stop.is_set():
                     break
                 try:
-                    store.create_memory(agent_id="w", workgroup_id=WG, memory_type="semantic",
-                                        content={"write": i})
+                    store.create_memory(
+                        agent_id="w", workgroup_id=WG, memory_type="semantic", content={"write": i}
+                    )
                 except Exception:
                     pass  # SQLite concurrent write may fail
 
@@ -178,8 +186,9 @@ class TestConcurrentReadWrite:
             for i in range(100):
                 if stop.is_set():
                     break
-                store.create_memory(agent_id="w", workgroup_id=WG, memory_type="semantic",
-                                    content={"i": i})
+                store.create_memory(
+                    agent_id="w", workgroup_id=WG, memory_type="semantic", content={"i": i}
+                )
 
         def reader():
             for _ in range(30):
@@ -200,8 +209,13 @@ class TestConcurrentReadWrite:
 class TestConcurrentGrantChanges:
     def test_grant_created_mid_test(self, store, conn):
         for i in range(10):
-            store.create_memory(agent_id="src", workgroup_id=WG2, memory_type="shared",
-                                access_scope="workgroup", content={"i": i})
+            store.create_memory(
+                agent_id="src",
+                workgroup_id=WG2,
+                memory_type="shared",
+                access_scope="workgroup",
+                content={"i": i},
+            )
 
         # Before grant: nothing from WG2
         granted = [g for g in get_accessible_workgroups(conn, WG, "a1") if g["grant_id"]]
@@ -210,8 +224,13 @@ class TestConcurrentGrantChanges:
         assert len(wg2_before) == 0
 
         # Create grant
-        create_grant(conn, grantor_workgroup_id=WG2, grantee_workgroup_id=WG,
-                     permission="read", created_by="admin")
+        create_grant(
+            conn,
+            grantor_workgroup_id=WG2,
+            grantee_workgroup_id=WG,
+            permission="read",
+            created_by="admin",
+        )
 
         # After grant: sees WG2
         granted = [g for g in get_accessible_workgroups(conn, WG, "a1") if g["grant_id"]]
@@ -221,10 +240,20 @@ class TestConcurrentGrantChanges:
 
     def test_grant_revoked_mid_test(self, store, conn):
         for i in range(10):
-            store.create_memory(agent_id="src", workgroup_id=WG2, memory_type="shared",
-                                access_scope="workgroup", content={"i": i})
-        g = create_grant(conn, grantor_workgroup_id=WG2, grantee_workgroup_id=WG,
-                         permission="read", created_by="admin")
+            store.create_memory(
+                agent_id="src",
+                workgroup_id=WG2,
+                memory_type="shared",
+                access_scope="workgroup",
+                content={"i": i},
+            )
+        g = create_grant(
+            conn,
+            grantor_workgroup_id=WG2,
+            grantee_workgroup_id=WG,
+            permission="read",
+            created_by="admin",
+        )
 
         # With grant: sees data
         granted = [x for x in get_accessible_workgroups(conn, WG, "a1") if x["grant_id"]]
@@ -242,8 +271,9 @@ class TestConcurrentGrantChanges:
 
 class TestConcurrentFeedback:
     def test_10_agents_feedback_converges(self, store):
-        m = store.create_memory(agent_id="a1", workgroup_id=WG, memory_type="semantic",
-                                content={"x": 1})
+        m = store.create_memory(
+            agent_id="a1", workgroup_id=WG, memory_type="semantic", content={"x": 1}
+        )
         barrier = threading.Barrier(10)
 
         def feedback_agent(agent_id):
@@ -276,8 +306,11 @@ class TestCleanupDuringWrites:
                     break
                 try:
                     store.create_memory(
-                        agent_id="w", workgroup_id=WG, memory_type="working",
-                        content={"i": i}, expires_at="2020-01-01T00:00:00+00:00",
+                        agent_id="w",
+                        workgroup_id=WG,
+                        memory_type="working",
+                        content={"i": i},
+                        expires_at="2020-01-01T00:00:00+00:00",
                     )
                 except Exception:
                     pass  # SQLite concurrent writes may conflict

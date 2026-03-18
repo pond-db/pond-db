@@ -65,22 +65,35 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
                 raise HTTPException(400, "Causal parent would create a cycle (max depth 50)")
 
         memory = store.create_memory(
-            agent_id=agent, workgroup_id=wg,
-            memory_type=body.memory_type, access_scope=body.access_scope,
-            content=body.content, importance=body.importance,
-            memory_key=body.memory_key, causal_parent_id=body.causal_parent_id,
+            agent_id=agent,
+            workgroup_id=wg,
+            memory_type=body.memory_type,
+            access_scope=body.access_scope,
+            content=body.content,
+            importance=body.importance,
+            memory_key=body.memory_key,
+            causal_parent_id=body.causal_parent_id,
             expires_at=body.expires_at,
         )
 
         latency = (time.perf_counter() - t0) * 1000
         bg.add_task(
-            write_access_log, conn,
-            agent_id=agent, workgroup_id=wg, action="write",
-            memory_ids=[memory["id"]], latency_ms=latency,
+            write_access_log,
+            conn,
+            agent_id=agent,
+            workgroup_id=wg,
+            action="write",
+            memory_ids=[memory["id"]],
+            latency_ms=latency,
             trace_id=_trace_id(request),
         )
 
-        return {"id": memory["id"], "agent_id": agent, "memory_type": body.memory_type, "created_at": memory["created_at"]}
+        return {
+            "id": memory["id"],
+            "agent_id": agent,
+            "memory_type": body.memory_type,
+            "created_at": memory["created_at"],
+        }
 
     # ── GET /memories/search ───────────────────────────────────
     @router.get("/memories/search")
@@ -106,11 +119,19 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
         granted = [e for e in accessible if e["grant_id"] is not None]
 
         results = search_memories(
-            conn, wg, agent_id=agent_id, caller_agent_id=caller,
-            memory_type=memory_type, access_scope=access_scope,
-            min_importance=min_importance, min_utility=min_utility,
-            since=since, until=until, content_contains=content_contains,
-            limit=limit, granted_workgroups=granted,
+            conn,
+            wg,
+            agent_id=agent_id,
+            caller_agent_id=caller,
+            memory_type=memory_type,
+            access_scope=access_scope,
+            min_importance=min_importance,
+            min_utility=min_utility,
+            since=since,
+            until=until,
+            content_contains=content_contains,
+            limit=limit,
+            granted_workgroups=granted,
         )
 
         latency = (time.perf_counter() - t0) * 1000
@@ -121,9 +142,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
             r.pop("_source_workgroup_id", None)
 
         bg.add_task(
-            write_access_log, conn,
-            agent_id=caller, workgroup_id=wg, action="search",
-            result_count=len(results), latency_ms=latency,
+            write_access_log,
+            conn,
+            agent_id=caller,
+            workgroup_id=wg,
+            action="search",
+            result_count=len(results),
+            latency_ms=latency,
             grant_id=grant_ids[0] if grant_ids else None,
             trace_id=_trace_id(request),
         )
@@ -150,9 +175,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
 
         latency = (time.perf_counter() - t0) * 1000
         bg.add_task(
-            write_access_log, conn,
-            agent_id=caller, workgroup_id=wg, action="read",
-            memory_ids=[memory_id], latency_ms=latency,
+            write_access_log,
+            conn,
+            agent_id=caller,
+            workgroup_id=wg,
+            action="read",
+            memory_ids=[memory_id],
+            latency_ms=latency,
             trace_id=_trace_id(request),
         )
         return memory
@@ -186,9 +215,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
 
         latency = (time.perf_counter() - t0) * 1000
         bg.add_task(
-            write_access_log, conn,
-            agent_id=caller, workgroup_id=wg, action="update",
-            memory_ids=[memory_id], latency_ms=latency,
+            write_access_log,
+            conn,
+            agent_id=caller,
+            workgroup_id=wg,
+            action="update",
+            memory_ids=[memory_id],
+            latency_ms=latency,
             trace_id=_trace_id(request),
         )
         return updated
@@ -216,9 +249,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
 
         latency = (time.perf_counter() - t0) * 1000
         bg.add_task(
-            write_access_log, conn,
-            agent_id=caller, workgroup_id=wg, action="delete",
-            memory_ids=[memory_id], latency_ms=latency,
+            write_access_log,
+            conn,
+            agent_id=caller,
+            workgroup_id=wg,
+            action="delete",
+            memory_ids=[memory_id],
+            latency_ms=latency,
             trace_id=_trace_id(request),
         )
         return {"id": memory_id, "deleted_at": result.get("deleted_at")}
@@ -242,7 +279,10 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
 
         # Rate limit: 10 feedback per memory per hour
         recent = count_recent_actions(
-            conn, action="feedback", memory_id=memory_id, window_seconds=3600,
+            conn,
+            action="feedback",
+            memory_id=memory_id,
+            window_seconds=3600,
         )
         if recent >= 10:
             raise HTTPException(429, "Feedback rate limit: 10/hour per memory")
@@ -251,9 +291,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
 
         latency = (time.perf_counter() - t0) * 1000
         bg.add_task(
-            write_access_log, conn,
-            agent_id=caller, workgroup_id=wg, action="feedback",
-            memory_ids=[memory_id], latency_ms=latency,
+            write_access_log,
+            conn,
+            agent_id=caller,
+            workgroup_id=wg,
+            action="feedback",
+            memory_ids=[memory_id],
+            latency_ms=latency,
             trace_id=_trace_id(request),
         )
         return {
@@ -300,9 +344,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
         )
 
         bg.add_task(
-            write_access_log, conn,
-            agent_id=_agent(auth), workgroup_id=wg, action="write",
-            grant_id=grant["id"], trace_id=_trace_id(request),
+            write_access_log,
+            conn,
+            agent_id=_agent(auth),
+            workgroup_id=wg,
+            action="write",
+            grant_id=grant["id"],
+            trace_id=_trace_id(request),
         )
         return grant
 
@@ -329,9 +377,13 @@ def make_memory_router(store: MemoryStore) -> APIRouter:
         delete_grant(conn, grant_id)
 
         bg.add_task(
-            write_access_log, conn,
-            agent_id=_agent(auth), workgroup_id=wg, action="delete",
-            grant_id=grant_id, trace_id=_trace_id(request),
+            write_access_log,
+            conn,
+            agent_id=_agent(auth),
+            workgroup_id=wg,
+            action="delete",
+            grant_id=grant_id,
+            trace_id=_trace_id(request),
         )
         return {"detail": "revoked", "grant_id": grant_id}
 

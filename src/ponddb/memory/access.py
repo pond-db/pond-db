@@ -77,12 +77,14 @@ def get_accessible_workgroups(
     rows = conn.execute(sql, params).fetchall()
 
     for row in rows:
-        result.append({
-            "workgroup_id": row["grantor_workgroup_id"],
-            "grant_id": row["id"],
-            "type_filter": row["memory_type_filter"],
-            "min_importance": row["min_importance"] or 0.0,
-        })
+        result.append(
+            {
+                "workgroup_id": row["grantor_workgroup_id"],
+                "grant_id": row["id"],
+                "type_filter": row["memory_type_filter"],
+                "min_importance": row["min_importance"] or 0.0,
+            }
+        )
 
     return result
 
@@ -103,8 +105,11 @@ def can_access_memory(
 
     # Cross-workgroup: need a grant
     accessible = get_accessible_workgroups(
-        conn, caller_workgroup_id, caller_agent_id,
-        include_grants=True, permission_filter=permission,
+        conn,
+        caller_workgroup_id,
+        caller_agent_id,
+        include_grants=True,
+        permission_filter=permission,
     )
     for entry in accessible:
         if entry["workgroup_id"] == memory["workgroup_id"]:

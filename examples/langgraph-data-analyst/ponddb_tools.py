@@ -60,10 +60,7 @@ def query_ponddb(sql: str) -> str:
             rows = data.get("rows", [])
             count = data.get("rows_returned", len(rows))
             preview = rows[:20]
-            return (
-                f"Query returned {count} rows:\n"
-                f"{json.dumps(preview, indent=2, default=str)}"
-            )
+            return f"Query returned {count} rows:\n{json.dumps(preview, indent=2, default=str)}"
 
         if data["status"] == "failed":
             return f"Query failed: {data.get('error_message', 'unknown error')}"
@@ -109,10 +106,14 @@ def list_ponddb_tables() -> str:
     headers = _headers()
 
     datasets_resp = httpx.get(
-        f"{PONDDB_URL}/datasets", headers=headers, timeout=15,
+        f"{PONDDB_URL}/datasets",
+        headers=headers,
+        timeout=15,
     )
     schema_resp = httpx.get(
-        f"{PONDDB_URL}/schema", headers=headers, timeout=15,
+        f"{PONDDB_URL}/schema",
+        headers=headers,
+        timeout=15,
     )
 
     datasets = datasets_resp.json() if datasets_resp.status_code == 200 else []
@@ -153,7 +154,9 @@ def get_saved_queries() -> str:
     """
     headers = _headers()
     resp = httpx.get(
-        f"{PONDDB_URL}/queries", headers=headers, timeout=15,
+        f"{PONDDB_URL}/queries",
+        headers=headers,
+        timeout=15,
     )
 
     if resp.status_code == 200:
