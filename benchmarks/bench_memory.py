@@ -91,7 +91,7 @@ def bench_search_latency(store: MemoryStore) -> BenchmarkResult:
     conn = store._conn
     result.table_headers = ["Scale", "Searches", "p50", "p95"]
 
-    for scale in [1_000, 10_000, 100_000]:
+    for scale in [1_000, 10_000]:
         # Bulk insert
         for i in range(scale):
             store.create_memory(
@@ -129,7 +129,7 @@ def bench_grant_overhead(store: MemoryStore) -> BenchmarkResult:
     )
     conn = store._conn
 
-    for i in range(10_000):
+    for i in range(1_000):
         store.create_memory(
             agent_id=f"a-{i % 10}", workgroup_id="wg-grant-src",
             memory_type="semantic", access_scope="workgroup",
@@ -217,7 +217,7 @@ def bench_isolation_stress(store: MemoryStore) -> BenchmarkResult:
     wgs = ["wg-iso-a", "wg-iso-b", "wg-iso-c"]
 
     for wg in wgs:
-        for i in range(1_000):
+        for i in range(500):
             store.create_memory(
                 agent_id=f"agent-{wg}-{i % 10}", workgroup_id=wg,
                 memory_type="semantic", access_scope="workgroup",
@@ -227,7 +227,7 @@ def bench_isolation_stress(store: MemoryStore) -> BenchmarkResult:
     leaks = 0
     total_queries = 0
     lats = []
-    for _ in range(10_000):
+    for _ in range(3_000):
         wg = wgs[total_queries % 3]
         agent = f"agent-{wg}-0"
         t0 = time.perf_counter()

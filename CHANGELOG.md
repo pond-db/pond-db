@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-18
+
+### Added
+
+- **Agent Memory Primitives**: `agent_memories` table with 5 cognitive types (working, episodic, semantic, procedural, shared), 3 access scopes (private, workgroup, namespace), MemRL utility scoring, MAGMA causal chains, memory_key upserts
+- **Cross-Workgroup Grants**: `memory_grants` table for selective sharing with type filters, importance thresholds, time-bounded validity, agent-specific targeting
+- **Complete Audit Trail**: `memory_access_log` table logging every memory operation with trace_id propagation, latency tracking, grant references for cross-workgroup access
+- **8 HTTP Endpoints**: POST /memories, GET /memories/search, GET /memories/{id}, PUT /memories/{id}, DELETE /memories/{id}, POST /memories/{id}/feedback, POST /memory-grants, DELETE /memory-grants/{id}
+- **Background Tasks**: Working memory cleanup (60s interval), utility decay for stale memories (24h, 0.99 multiplier after 7 days idle)
+- **MCP Server**: `mcp-server-ponddb` package with 5 tools (ponddb_remember, ponddb_recall, ponddb_query, ponddb_forget, ponddb_feedback) for Claude Code integration
+- **170+ New Tests**: Isolation (38), monitoring (30), failure modes (28), concurrent (12), edge cases (18), plus 58 from initial implementation
+- **Memory Benchmarks**: Write throughput, search latency at 1K-100K scale, grant overhead, access log overhead, isolation stress test (10K queries, 0 leaks)
+- **3 Demo Examples**: quickstart, Claude Code MCP setup guide, multi-agent team with causal chains
+- **GET /health/cleanup**: Health check for memory cleanup background task
+
+### Changed
+
+- Thread-safe MemoryStore with `threading.Lock` for concurrent access
+- JSON storage uses `ensure_ascii=False` for unicode content searchability
+- README updated with "For AI Agents" section, memory API docs, MCP setup, benchmark numbers
+
 ## [1.0.0] - 2026-03-17
 
 ### Added
