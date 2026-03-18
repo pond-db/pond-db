@@ -75,12 +75,15 @@ def search_memories(
     if results:
         ids = [r["id"] for r in results]
         placeholders = ",".join("?" for _ in ids)
-        conn.execute(
-            f"UPDATE agent_memories SET access_count = access_count + 1, "
-            f"last_accessed_at = ? WHERE id IN ({placeholders})",
-            [now] + ids,
-        )
-        conn.commit()
+        try:
+            conn.execute(
+                f"UPDATE agent_memories SET access_count = access_count + 1, "
+                f"last_accessed_at = ? WHERE id IN ({placeholders})",
+                [now] + ids,
+            )
+            conn.commit()
+        except Exception:
+            pass  # Non-fatal — access count is best-effort
 
     return results
 

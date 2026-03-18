@@ -9,6 +9,7 @@ Follows the same synchronous-sqlite-with-async-wrappers pattern as MetadataStore
 
 import json
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -28,6 +29,7 @@ class MemoryStore:
     def __init__(self, db_path: str) -> None:
         self._db_path = db_path
         self._conn: Optional[sqlite3.Connection] = None
+        self._lock = threading.Lock()
 
     def initialize_blocking(self) -> None:
         if self._conn is None:
@@ -145,42 +147,43 @@ class MemoryStore:
         now = _now_iso()
         content = kwargs["content"]
         if not isinstance(content, str):
-            content = json.dumps(content)
+            content = json.dumps(content, ensure_ascii=False)
         linked = kwargs.get("linked_memory_ids", [])
         if not isinstance(linked, str):
             linked = json.dumps(linked)
 
-        # Upsert if memory_key provided
-        memory_key = kwargs.get("memory_key")
-        if memory_key:
-            existing = self._conn.execute(
-                "SELECT id FROM agent_memories WHERE workgroup_id = ? AND memory_key = ? AND deleted_at IS NULL",
-                (kwargs["workgroup_id"], memory_key),
-            ).fetchone()
-            if existing:
-                self._conn.execute(
-                    "UPDATE agent_memories SET content = ?, importance = ?, updated_at = ? WHERE id = ?",
-                    (content, kwargs.get("importance", 0.5), now, existing["id"]),
-                )
-                self._conn.commit()
-                return self.get_memory(existing["id"])
+        with self._lock:
+            # Upsert if memory_key provided
+            memory_key = kwargs.get("memory_key")
+            if memory_key:
+                existing = self._conn.execute(
+                    "SELECT id FROM agent_memories WHERE workgroup_id = ? AND memory_key = ? AND deleted_at IS NULL",
+                    (kwargs["workgroup_id"], memory_key),
+                ).fetchone()
+                if existing:
+                    self._conn.execute(
+                        "UPDATE agent_memories SET content = ?, importance = ?, updated_at = ? WHERE id = ?",
+                        (content, kwargs.get("importance", 0.5), now, existing["id"]),
+                    )
+                    self._conn.commit()
+                    return self.get_memory(existing["id"])
 
-        self._conn.execute(
-            """INSERT INTO agent_memories
-               (id, agent_id, workgroup_id, memory_type, access_scope, content,
-                memory_key, importance, utility, linked_memory_ids,
-                causal_parent_id, created_at, updated_at, expires_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                mid, kwargs["agent_id"], kwargs["workgroup_id"],
-                kwargs["memory_type"], kwargs.get("access_scope", "private"),
-                content, memory_key,
-                kwargs.get("importance", 0.5), kwargs.get("utility", 0.5),
-                linked, kwargs.get("causal_parent_id"),
-                now, now, kwargs.get("expires_at"),
-            ),
-        )
-        self._conn.commit()
+            self._conn.execute(
+                """INSERT INTO agent_memories
+                   (id, agent_id, workgroup_id, memory_type, access_scope, content,
+                    memory_key, importance, utility, linked_memory_ids,
+                    causal_parent_id, created_at, updated_at, expires_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    mid, kwargs["agent_id"], kwargs["workgroup_id"],
+                    kwargs["memory_type"], kwargs.get("access_scope", "private"),
+                    content, memory_key,
+                    kwargs.get("importance", 0.5), kwargs.get("utility", 0.5),
+                    linked, kwargs.get("causal_parent_id"),
+                    now, now, kwargs.get("expires_at"),
+                ),
+            )
+            self._conn.commit()
         return self.get_memory(mid)
 
     def get_memory(self, memory_id: str) -> Optional[dict[str, Any]]:
@@ -200,7 +203,7 @@ class MemoryStore:
         if "content" in kwargs:
             c = kwargs["content"]
             sets.append("content = ?")
-            vals.append(json.dumps(c) if not isinstance(c, str) else c)
+            vals.append(json.dumps(c, ensure_ascii=False) if not isinstance(c, str) else c)
         if "importance" in kwargs:
             sets.append("importance = ?")
             vals.append(kwargs["importance"])
@@ -209,38 +212,41 @@ class MemoryStore:
         sets.append("updated_at = ?")
         vals.append(_now_iso())
         vals.append(memory_id)
-        self._conn.execute(
-            f"UPDATE agent_memories SET {', '.join(sets)} WHERE id = ? AND deleted_at IS NULL",
-            vals,
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                f"UPDATE agent_memories SET {', '.join(sets)} WHERE id = ? AND deleted_at IS NULL",
+                vals,
+            )
+            self._conn.commit()
         return self.get_memory(memory_id)
 
     def soft_delete_memory(self, memory_id: str) -> Optional[dict[str, Any]]:
         now = _now_iso()
-        self._conn.execute(
-            "UPDATE agent_memories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
-            (now, memory_id),
-        )
-        self._conn.commit()
-        row = self._conn.execute("SELECT * FROM agent_memories WHERE id = ?", (memory_id,)).fetchone()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE agent_memories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
+                (now, memory_id),
+            )
+            self._conn.commit()
+            row = self._conn.execute("SELECT * FROM agent_memories WHERE id = ?", (memory_id,)).fetchone()
         return self._row_to_dict(row) if row else None
 
     def update_utility(self, memory_id: str, reward: float) -> Optional[dict[str, Any]]:
         """Apply MemRL utility update: utility = clamp(utility + 0.1*(reward - utility), 0.1, 0.9)."""
-        row = self._conn.execute(
-            "SELECT utility FROM agent_memories WHERE id = ? AND deleted_at IS NULL",
-            (memory_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        old = row["utility"]
-        new = max(0.1, min(0.9, old + 0.1 * (reward - old)))
-        self._conn.execute(
-            "UPDATE agent_memories SET utility = ?, updated_at = ? WHERE id = ?",
-            (new, _now_iso(), memory_id),
-        )
-        self._conn.commit()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT utility FROM agent_memories WHERE id = ? AND deleted_at IS NULL",
+                (memory_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            old = row["utility"]
+            new = max(0.1, min(0.9, old + 0.1 * (reward - old)))
+            self._conn.execute(
+                "UPDATE agent_memories SET utility = ?, updated_at = ? WHERE id = ?",
+                (new, _now_iso(), memory_id),
+            )
+            self._conn.commit()
         return {"old_utility": old, "new_utility": new, **self.get_memory(memory_id)}
 
     def check_causal_cycle(self, parent_id: str, new_id: Optional[str] = None) -> bool:

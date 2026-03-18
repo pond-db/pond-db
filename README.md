@@ -109,58 +109,112 @@ curl http://localhost:8432/pondapi/execute/abc-123/result \
 # {"status": "complete", "rows": [{"answer": 42}], "elapsed_ms": 12}
 ```
 
-## For AI Agent Teams
+## For AI Agents
 
-Multi-agent systems fail 37% of the time because agents can't share state consistently
-([O'Reilly, 2026](https://www.oreilly.com/radar/why-multi-agent-systems-need-memory-engineering/)).
-Every framework reinvents shared memory. PondDB provides it as infrastructure.
+PondDB gives your agent team a shared, queryable memory database.
 
-**How PondDB maps to multi-agent concepts:**
+### The problem
 
-| Agent Concept | PondDB Equivalent |
-|---------------|-------------------|
-| Agent workspace | PondDB session (isolated DuckDB connection) |
-| Team/crew shared state | Workgroup (shared datasets + queries) |
-| Structured memory | SQL tables (not lossy context window) |
-| Concurrent access | FOR UPDATE SKIP LOCKED (no race conditions) |
-| Resource limits | Workgroup quotas (sessions, compute, result size) |
-| Audit trail | pondapi_executions + security_audit_log |
+Multi-agent systems stitch together Redis + Postgres + Pinecone for memory. When something goes wrong, you can't answer: **"What did the agent know when it made that decision?"**
 
-**SQL instead of hallucination:**
+### The solution
 
-Without PondDB:
-> Agent: "Revenue was approximately $2.3M last quarter" *(hallucinated)*
+PondDB stores agent memories as structured data in one database. Every operation is logged. Debug your agents with SQL, not guesswork.
 
-With PondDB:
-> Agent → `query_ponddb("SELECT SUM(revenue) FROM sales WHERE quarter='Q4'")`
-> Agent: "Revenue was $2,147,832 in Q4" *(verified from data)*
+**Store a memory:**
 
-**Works with every framework:**
+```bash
+curl -X POST http://localhost:8432/memories \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"agent_id": "researcher", "memory_type": "semantic",
+       "content": {"fact": "Q1 revenue was $2.1M"},
+       "access_scope": "workgroup", "importance": 0.9}'
+```
+
+**Search memories:**
+
+```bash
+curl "http://localhost:8432/memories/search?memory_type=semantic&min_importance=0.7" \
+  -H "X-API-Key: $API_KEY"
+```
+
+**The query no other memory system can run:**
+
+```sql
+-- "What did the agent know right before it failed?"
+SELECT mal.agent_id, am.content, am.utility
+FROM memory_access_log mal
+JOIN agent_memories am ON am.id IN (SELECT json_each.value FROM json_each(mal.memory_ids))
+WHERE mal.status = 'error'
+ORDER BY mal.created_at DESC;
+```
+
+### Memory types
+
+| Type | Purpose | Lifetime |
+|------|---------|----------|
+| `working` | Current task context | Auto-expires (configurable TTL) |
+| `episodic` | Interaction history | Permanent |
+| `semantic` | Extracted facts | Permanent |
+| `procedural` | Learned patterns | Permanent |
+| `shared` | Cross-agent team state | Permanent |
+
+### Multi-agent isolation
+
+Agents are isolated by workgroup. Cross-workgroup sharing requires explicit grants:
+
+```bash
+# Grant research-team read access to analysis-team's semantic memories
+curl -X POST http://localhost:8432/memory-grants \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"grantor_workgroup_id": "analysis-team-id",
+       "grantee_workgroup_id": "research-team-id",
+       "memory_type_filter": "semantic",
+       "permission": "read"}'
+```
+
+### Use with Claude Code (MCP)
+
+```bash
+pip install mcp-server-ponddb
+```
+
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "ponddb": {
+      "command": "python", "args": ["-m", "mcp_server_ponddb"],
+      "env": {"PONDDB_URL": "http://localhost:8432", "PONDDB_API_KEY": "your-key"}
+    }
+  }
+}
+```
+
+Then: *"Remember that our Q1 revenue was $2.1M"* → stored in PondDB.
+
+### Benchmarks
+
+| Metric | Result |
+|--------|--------|
+| Memory write (single) | < 5ms p50 |
+| Memory write (10 concurrent) | < 15ms p50 |
+| Memory search (10K memories) | < 10ms p50 |
+| Isolation (10K cross-WG queries) | **0 leaks** |
+| Grant check overhead | < 2ms |
+| Access log overhead | < 1ms |
+
+[Full benchmark results](./benchmarks/RESULTS.md)
+
+### Works with every framework
 
 | Framework | Integration | Status |
 |-----------|------------|--------|
-| LangGraph | PondDB tools for agents | ✅ [Example](./examples/langgraph-data-analyst/) |
-| CrewAI | PondDB as crew shared workspace | 🔜 Coming |
-| Claude Code | MCP server | 🔜 Coming |
-| AutoGen | PondDB for multi-agent debate state | 🔜 Coming |
-| OpenClaw | Analytics skill | 🔜 Coming |
-| Any HTTP client | PondAPI (POST SQL, poll results) | ✅ Works now |
-
-Any agent that can make HTTP calls can use PondDB today:
-
-```bash
-# Agent submits a query
-curl -X POST http://localhost:8432/pondapi/execute \
-  -H "Authorization: Bearer pk_agent_key" \
-  -d '{"sql": "SELECT COUNT(*) as users FROM signups WHERE date > CURRENT_DATE - 7"}'
-
-# Agent polls for result
-curl http://localhost:8432/pondapi/execute/{id}/result \
-  -H "Authorization: Bearer pk_agent_key"
-# {"status": "complete", "rows": [{"users": 342}]}
-```
-
-PondAPI is async by design — submit SQL, get an execution ID, poll for results. Perfect for agents that need to interleave reasoning with data retrieval.
+| LangGraph | PondDB tools for agents | [Example](./examples/langgraph-data-analyst/) |
+| Claude Code | MCP server | [Setup guide](./examples/claude-code-mcp/) |
+| CrewAI | PondDB as crew shared workspace | Coming |
+| Any HTTP client | PondAPI + Memory API | Works now |
 
 ## Features
 
@@ -280,6 +334,20 @@ COLD ──► ACTIVE ──► SUSPENDED ──► DESTROYED
 | `GET` | `/queries` | JWT | List saved queries |
 | `GET` | `/q/{slug}` | — | Execute a shared query (public link) |
 | `GET` | `/editor` | — | Browser-based SQL editor |
+
+### Agent Memory
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/memories` | JWT | Create a memory (5 types, 3 scopes) |
+| `GET` | `/memories/search` | JWT | Search with 9 filters + grant-aware |
+| `GET` | `/memories/{id}` | JWT | Get single memory with access control |
+| `PUT` | `/memories/{id}` | JWT | Update content or importance |
+| `DELETE` | `/memories/{id}` | JWT | Soft delete (audit trail preserved) |
+| `POST` | `/memories/{id}/feedback` | JWT | Update utility score (-1.0 to 1.0) |
+| `POST` | `/memory-grants` | Admin JWT | Create cross-workgroup grant |
+| `DELETE` | `/memory-grants/{id}` | Admin JWT | Revoke a grant (immediate) |
+| `GET` | `/health/cleanup` | — | Memory cleanup task status |
 
 ### Admin
 

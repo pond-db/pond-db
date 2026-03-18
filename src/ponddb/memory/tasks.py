@@ -48,14 +48,17 @@ class MemoryCleanupTask:
     def run_once(self) -> int:
         """Run cleanup synchronously. Returns count of deleted memories."""
         now = _now_iso()
-        cursor = self._conn.execute(
-            "UPDATE agent_memories SET deleted_at = ? "
-            "WHERE memory_type = 'working' AND expires_at IS NOT NULL "
-            "AND expires_at < ? AND deleted_at IS NULL",
-            (now, now),
-        )
-        count = cursor.rowcount
-        self._conn.commit()
+        try:
+            cursor = self._conn.execute(
+                "UPDATE agent_memories SET deleted_at = ? "
+                "WHERE memory_type = 'working' AND expires_at IS NOT NULL "
+                "AND expires_at < ? AND deleted_at IS NULL",
+                (now, now),
+            )
+            count = cursor.rowcount
+            self._conn.commit()
+        except Exception:
+            count = 0
         self._last_run = now
         self._last_count = count
 
@@ -108,12 +111,15 @@ class UtilityDecayTask:
         """Apply utility decay. Returns count of affected memories."""
         from datetime import timedelta
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        cursor = self._conn.execute(
-            "UPDATE agent_memories SET utility = MAX(0.1, utility * 0.99) "
-            "WHERE deleted_at IS NULL "
-            "AND (last_accessed_at IS NULL OR last_accessed_at < ?)",
-            (cutoff,),
-        )
-        count = cursor.rowcount
-        self._conn.commit()
+        try:
+            cursor = self._conn.execute(
+                "UPDATE agent_memories SET utility = MAX(0.1, utility * 0.99) "
+                "WHERE deleted_at IS NULL "
+                "AND (last_accessed_at IS NULL OR last_accessed_at < ?)",
+                (cutoff,),
+            )
+            count = cursor.rowcount
+            self._conn.commit()
+        except Exception:
+            count = 0
         return count

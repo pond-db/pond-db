@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ponddb"
-version = "1.0.0"
+version = "1.1.0"
 description = "Lightweight self-hosted compute platform wrapping DuckDB with serverless session management"
 readme = "README.md"
 license = {text = "BSL-1.1"}
