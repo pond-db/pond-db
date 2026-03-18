@@ -4,11 +4,7 @@
 
 """Tests for memory store, models, access scope, grants, and background tasks."""
 
-import json
 import os
-import sqlite3
-import tempfile
-import uuid
 
 import pytest
 
@@ -17,12 +13,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from ponddb.memory.store import MemoryStore
-from ponddb.memory.access import can_access_memory, can_modify_memory, get_accessible_workgroups
+from ponddb.memory.access import can_access_memory, get_accessible_workgroups
 from ponddb.memory.grants import create_grant, delete_grant, get_grant, list_grants
 from ponddb.memory.search import search_memories
 from ponddb.memory.access_log import count_recent_actions, get_access_logs, write_access_log
 from ponddb.memory.tasks import MemoryCleanupTask, UtilityDecayTask
-from ponddb.memory.models import MemoryCreate, MemoryFeedback, MemoryUpdate, GrantCreate
+from ponddb.memory.models import MemoryCreate, MemoryFeedback, GrantCreate
 
 
 @pytest.fixture
