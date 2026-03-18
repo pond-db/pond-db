@@ -411,7 +411,7 @@ Full API docs at `http://localhost:8432/docs` after starting PondDB.
 |--------|--------|
 | Memory search (10K memories) | 0.9ms p50 |
 | Cross-workgroup isolation | **0 leaks** / 3K+ queries |
-| Memory write throughput | 26 writes/sec (SQLite*) |
+| Memory write throughput | 29 writes/sec (SQLite*) |
 | Concurrent write (10 agents) | 47 writes/sec (SQLite*) |
 | DuckDB analytical queries | 1.3ms – 44.6ms |
 | PondAPI concurrent write (DuckDB) | 903 writes/sec |
