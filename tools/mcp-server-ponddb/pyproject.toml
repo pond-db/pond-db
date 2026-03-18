@@ -5,20 +5,18 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-server-ponddb"
 version = "0.1.0"
-description = "MCP server for PondDB — give AI agents SQL access to your data"
-readme = "README.md"
-license = { text = "BSL-1.1" }
-requires-python = ">=3.10"
+description = "MCP server exposing PondDB agent memory operations as tools"
+license = {text = "BSL-1.1"}
+requires-python = ">=3.11"
 dependencies = [
-    "mcp>=1.0.0",
-    "httpx>=0.27",
+    "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.24,<1",
 ]
 
 [project.scripts]
-mcp-server-ponddb = "mcp_server_ponddb.__main__:main"
-
-[tool.hatch.build.targets.wheel]
-packages = ["mcp_server_ponddb"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
+mcp-server-ponddb = "mcp_server_ponddb.server:main"

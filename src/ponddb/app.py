@@ -53,6 +53,9 @@ from ponddb.api.website_routes import make_website_router
 from ponddb.api.admin_routes import make_admin_router
 from ponddb.api.htmx_partials import make_htmx_router
 from ponddb.security.security_headers import SecurityHeadersMiddleware
+from ponddb.memory.store import MemoryStore
+from ponddb.memory.routes import make_memory_router
+from ponddb.memory.tasks import MemoryCleanupTask, UtilityDecayTask
 from ponddb.security.health_security import make_health_security_router
 
 # ---------------------------------------------------------------------------
@@ -138,9 +141,15 @@ async def _lifespan(application: FastAPI) -> AsyncIterator[None]:
     poll = float(os.environ.get("POND_WATCHDOG_INTERVAL", "30"))
     task = asyncio.create_task(_manager.start_watchdog(poll_interval=poll))
     _logger.info("Session watchdog started (poll=%.0fs)", poll)
+    # Phase 9: start memory cleanup + decay tasks
+    _cleanup_task.start()
+    _decay_task.start()
+    _logger.info("Memory cleanup + utility decay tasks started")
     try:
         yield
     finally:
+        _cleanup_task.stop()
+        _decay_task.stop()
         task.cancel()
         try:
             await task
@@ -355,6 +364,13 @@ def _get_usage_stats() -> dict:
 app.include_router(make_admin_router(_invite_store, _workgroups, _namespaces, _get_usage_stats))
 app.include_router(make_htmx_router(_manager, _workgroups, _pondapi_db_conn, store=_store))
 
+# Phase 9: Agent memory primitives
+_memory_store = MemoryStore(_sqlite_path)
+_memory_store.initialize_blocking()
+app.include_router(make_memory_router(_memory_store))
+_cleanup_task = MemoryCleanupTask(_memory_store._conn, interval=60.0)
+_decay_task = UtilityDecayTask(_memory_store._conn, interval=86400.0)
+
 
 @app.get("/metrics", include_in_schema=False)
 async def metrics() -> Response:
@@ -368,6 +384,11 @@ app.include_router(make_health_security_router())
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "version": __version__, "sessions": _manager.session_count}
+
+
+@app.get("/health/cleanup")
+async def health_cleanup() -> dict:
+    return _cleanup_task.health()
 
 
 @app.head("/health", include_in_schema=False)

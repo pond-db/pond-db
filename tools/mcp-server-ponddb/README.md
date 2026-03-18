@@ -1,64 +1,37 @@
-# MCP Server for PondDB
+# mcp-server-ponddb
 
-Give any MCP-compatible AI agent (Claude Code, OpenClaw, LangChain) direct SQL access to your PondDB data.
+MCP server exposing PondDB agent memory operations as 5 tools.
 
-## Install
+## Tools
+
+| Tool | Maps to | Description |
+|------|---------|-------------|
+| `ponddb_remember` | POST /memories | Store a memory |
+| `ponddb_recall` | GET /memories/search | Search memories |
+| `ponddb_query` | POST /pondapi/execute | Run SQL |
+| `ponddb_forget` | DELETE /memories/{id} | Soft-delete a memory |
+| `ponddb_feedback` | POST /memories/{id}/feedback | Rate usefulness |
+
+## Configuration
 
 ```bash
-pip install mcp-server-ponddb
-# or run without installing:
-uvx mcp-server-ponddb --url http://localhost:8432 --api-key pk_...
+export PONDDB_URL=http://localhost:8432
+export PONDDB_API_KEY=pk_your_key
+export PONDDB_WORKGROUP=default
 ```
 
-## Configure Claude Code
-
-Add to your `~/.claude/settings.json` (or project `.claude/settings.json`):
+## Claude Desktop
 
 ```json
 {
   "mcpServers": {
     "ponddb": {
-      "command": "uvx",
-      "args": ["mcp-server-ponddb", "--url", "http://localhost:8432", "--api-key", "pk_..."]
+      "command": "mcp-server-ponddb",
+      "env": {
+        "PONDDB_URL": "http://localhost:8432",
+        "PONDDB_API_KEY": "pk_your_key"
+      }
     }
   }
 }
 ```
-
-Then ask Claude: *"What tables are in my PondDB?"* or *"Show me top revenue by region."*
-
-## Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `ponddb_query` | Execute SQL, get results as JSON |
-| `ponddb_list_datasets` | List all tables with schemas and metadata |
-| `ponddb_describe_table` | Column details + 5-row sample |
-| `ponddb_upload_csv` | Upload CSV content as a queryable table |
-
-## Example Usage
-
-Once configured, agents can run queries like:
-
-```
-User: What's the total revenue by region in the sales table?
-
-Claude uses ponddb_describe_table("sales") → sees columns: region, revenue
-Claude uses ponddb_query("SELECT region, SUM(revenue) FROM sales GROUP BY region") → returns results
-```
-
-## Development
-
-```bash
-git clone ...
-cd tools/mcp-server-ponddb
-pip install -e ".[dev]"
-pytest tests/ -v
-```
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `PONDDB_URL` | PondDB server URL (overrides `--url`) |
-| `PONDDB_API_KEY` | API key (overrides `--api-key`) |
