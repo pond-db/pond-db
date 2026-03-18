@@ -25,6 +25,7 @@ services:
       - POND_SQLITE_PATH=/app/data/ponddb.db
       - POND_DATA_ROOT=/app/data
       - POND_LOG_LEVEL=info
+      - POND_PONDAPI_RATE_LIMIT=200
       - POND_JWT_SECRET_FILE=/run/secrets/jwt_secret
       - POND_API_KEY_FILE=/run/secrets/api_key
       - POND_WEBSITE_SESSION_SECRET_FILE=/run/secrets/session_secret

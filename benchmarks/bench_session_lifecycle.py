@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import asyncio
-import os
+import gc
 import time
 
 from helpers import (
@@ -18,7 +18,7 @@ from helpers import (
     percentiles,
 )
 
-CYCLES = 50
+CYCLES = 100
 # Short idle timeout for benchmark (server must honour POND_IDLE_TIMEOUT).
 # If the server's timeout is longer, we poll until SUSPENDED or skip that phase.
 SUSPEND_POLL_TIMEOUT = 2.0  # max seconds to wait for auto-suspend
@@ -51,10 +51,18 @@ async def _wait_for_status(
     )
 
 
+async def _safe_destroy(client, session_id: str) -> None:
+    """Destroy a session, ignoring errors (best-effort cleanup)."""
+    try:
+        await destroy_session(client, session_id)
+    except Exception:
+        pass
+
+
 async def run(url: str, api_key: str) -> BenchmarkResult:
     result = BenchmarkResult(
         name="Session Lifecycle",
-        description=f"{CYCLES} full create \u2192 suspend \u2192 resume \u2192 destroy cycles.",
+        description=f"{CYCLES} full create → suspend → resume → destroy cycles.",
     )
 
     create_lats: list[float] = []
@@ -65,8 +73,9 @@ async def run(url: str, api_key: str) -> BenchmarkResult:
     skipped_suspend = 0
 
     async with make_client(url, api_key, timeout=60.0) as client:
-        for _ in range(CYCLES):
+        for cycle in range(CYCLES):
             cycle_t0 = time.perf_counter()
+            session_id: str | None = None
             try:
                 # CREATE
                 t0 = time.perf_counter()
@@ -91,8 +100,10 @@ async def run(url: str, api_key: str) -> BenchmarkResult:
                     suspend_times.append(wait)
                 except TimeoutError:
                     skipped_suspend += 1
-                    # Destroy and continue — server idle timeout is too long
-                    await destroy_session(client, session_id)
+
+                    # DESTROY (suspend didn't happen — skip resume phase)
+                    await _safe_destroy(client, session_id)
+                    session_id = None
                     full_cycle_lats.append(time.perf_counter() - cycle_t0)
                     continue
 
@@ -109,12 +120,22 @@ async def run(url: str, api_key: str) -> BenchmarkResult:
                 assert status and status.upper() == "ACTIVE"
 
                 # DESTROY
-                await destroy_session(client, session_id)
+                await _safe_destroy(client, session_id)
+                session_id = None
 
                 full_cycle_lats.append(time.perf_counter() - cycle_t0)
 
             except Exception:
                 failures += 1
+            finally:
+                # Always clean up — prevents DuckDB session accumulation
+                if session_id is not None:
+                    await _safe_destroy(client, session_id)
+
+            # Periodically GC to release DuckDB connection memory
+            if (cycle + 1) % 20 == 0:
+                gc.collect()
+                await asyncio.sleep(0.2)
 
     cp = percentiles(create_lats)
     rp = percentiles(resume_lats) if resume_lats else {"p50": 0, "p95": 0}

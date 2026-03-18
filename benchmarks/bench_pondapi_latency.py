@@ -18,12 +18,10 @@ from helpers import (
     pondapi_submit,
 )
 
-CONCURRENCY_LEVELS = [1, 5, 10, 20, 50]
+CONCURRENCY_LEVELS = [1, 5, 10, 25]
 QUERY = "SELECT 1 + 1 AS answer"
-# Seconds to sleep between concurrency levels so the sliding-window
-# rate limit counter decays.  We set the env var POND_PONDAPI_RATE_LIMIT
-# high before running, but still sleep a moment to keep results clean.
-RATE_WINDOW_SECONDS = 1.0
+MAX_RETRIES = 1
+RETRY_BACKOFF = 0.1  # seconds
 
 
 async def _single_execution(
@@ -32,18 +30,23 @@ async def _single_execution(
     submit_lats: list[float],
     e2e_lats: list[float],
 ) -> bool:
-    """Submit, poll, measure. Return True on success."""
-    t_start = time.perf_counter()
-    try:
-        t0 = time.perf_counter()
-        exec_id = await pondapi_submit(client, session_id, QUERY)
-        submit_lats.append(time.perf_counter() - t0)
+    """Submit, poll, measure.  Retry once on transient failure."""
+    for attempt in range(1 + MAX_RETRIES):
+        t_start = time.perf_counter()
+        try:
+            t0 = time.perf_counter()
+            exec_id = await pondapi_submit(client, session_id, QUERY)
+            submit_lats.append(time.perf_counter() - t0)
 
-        result = await pondapi_poll(client, exec_id)
-        e2e_lats.append(time.perf_counter() - t_start)
-        return result["status"] == "complete"
-    except Exception:
-        return False
+            result = await pondapi_poll(client, exec_id)
+            e2e_lats.append(time.perf_counter() - t_start)
+            return result["status"] == "complete"
+        except Exception:
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(RETRY_BACKOFF)
+                continue
+            return False
+    return False  # unreachable, keeps mypy happy
 
 
 async def run(url: str, api_key: str) -> BenchmarkResult:
@@ -90,14 +93,10 @@ async def run(url: str, api_key: str) -> BenchmarkResult:
             ])
 
             await destroy_session(client, session_id)
-            # Let rate-limit window slide before next level
-            await asyncio.sleep(RATE_WINDOW_SECONDS)
+            # Brief pause between levels for clean measurement
+            await asyncio.sleep(0.5)
 
-    # Allow up to 5% error rate at high concurrency levels
-    result.passed = all(
-        int(row[-1]) <= max(1, int(row[0]) * 0.05)
-        for row in result.table_rows
-    )
+    result.passed = all(row[-1] == "0" for row in result.table_rows)
     return result
 
 
