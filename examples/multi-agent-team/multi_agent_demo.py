@@ -1,130 +1,181 @@
 #!/usr/bin/env python3
-"""Multi-Agent Team Demo — Researcher → Analyst → Writer
+"""PondDB Multi-Agent Team Demo
 
-Demonstrates:
-- 3 agents in 2 workgroups sharing memories
-- Cross-workgroup grants with type filtering
-- Causal chains linking research → analysis → writing
-- Access log audit trail
-
-Prerequisites:
-  pip install httpx
-  PondDB running at http://localhost:8432
+3 agents across 2 workgroups share memories through grants.
+Run: python examples/multi-agent-team/multi_agent_demo.py
+Requires: PondDB running at http://localhost:8432
 """
 
 import httpx
-import sys
-import time
 
 BASE = "http://localhost:8432"
-API_KEY = sys.argv[1] if len(sys.argv) > 1 else "pond-alpha-key-2026"
-H = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
+# ── Setup: Create workgroups and agents ──────────────────────────
+admin = httpx.Client(base_url=BASE)
+token = admin.post("/auth/token", data={
+    "username": "admin", "password": "admin"  # from .env
+}).json()["access_token"]
+h = {"Authorization": f"Bearer {token}"}
 
-def post(path, body):
-    r = httpx.post(f"{BASE}{path}", json=body, headers=H, timeout=10)
-    r.raise_for_status()
-    return r.json()
+# Two teams: research and content
+research_wg = admin.post("/workgroups", json={"name": "research"}, headers=h).json()
+content_wg = admin.post("/workgroups", json={"name": "content"}, headers=h).json()
 
+# API keys for each agent
+key_researcher = admin.post("/api-keys", json={
+    "workgroup_id": research_wg["id"], "name": "researcher"
+}, headers=h).json()["key"]
 
-def get(path, params=None):
-    r = httpx.get(f"{BASE}{path}", params=params, headers=H, timeout=10)
-    r.raise_for_status()
-    return r.json()
+key_analyst = admin.post("/api-keys", json={
+    "workgroup_id": research_wg["id"], "name": "analyst"
+}, headers=h).json()["key"]
 
+key_writer = admin.post("/api-keys", json={
+    "workgroup_id": content_wg["id"], "name": "writer"
+}, headers=h).json()["key"]
 
-def section(title):
-    print(f"\n{'─' * 50}")
-    print(f"  {title}")
-    print(f"{'─' * 50}")
+# Grant: content team can READ research team's shared memories
+admin.post("/memory-grants", json={
+    "grantor_workgroup_id": research_wg["id"],
+    "grantee_workgroup_id": content_wg["id"],
+    "memory_type_filter": "shared",
+    "permission": "read",
+    "min_importance": 0.7
+}, headers=h)
 
+# ── Phase 1: Researcher discovers facts ──────────────────────────
+researcher = httpx.Client(
+    base_url=BASE, headers={"Authorization": f"Bearer {key_researcher}"}
+)
 
-def main():
-    print("=" * 50)
-    print("  Multi-Agent Team Demo")
-    print("  Researcher → Analyst → Writer")
-    print("=" * 50)
+print("📚 Researcher: storing findings...")
+researcher.post("/memories", json={
+    "agent_id": "researcher",
+    "memory_type": "shared",
+    "content": {
+        "finding": "Top 3 customers by revenue: Acme ($500K), Beta ($350K), Gamma ($200K)",
+        "insight": "Acme evaluating competitors — highest churn risk",
+        "source": "CRM data + sales call notes",
+    },
+    "access_scope": "workgroup",
+    "importance": 0.95,
+})
 
-    # ── Step 1: Researcher writes findings ──────────────
-    section("Step 1: Researcher writes findings")
-    findings = [
-        {"fact": "Top 5 customers by revenue: Acme ($500K), Beta ($350K), Gamma ($200K)", "confidence": "high"},
-        {"fact": "Acme is evaluating competitors — highest churn risk", "confidence": "high"},
-        {"fact": "Beta renewed for 2 years last month", "confidence": "confirmed"},
-    ]
-    research_ids = []
-    for f in findings:
-        m = post("/memories", {
-            "agent_id": "researcher",
-            "memory_type": "shared",
-            "content": f,
-            "access_scope": "workgroup",
-            "importance": 0.9,
-        })
-        research_ids.append(m["id"])
-        print(f"  ✓ Researcher wrote: {f['fact'][:50]}...")
+researcher.post("/memories", json={
+    "agent_id": "researcher",
+    "memory_type": "procedural",
+    "content": {
+        "lesson": "Always check renewal date before outreach — prevents awkward timing"
+    },
+    "access_scope": "workgroup",
+    "importance": 0.7,
+})
 
-    # ── Step 2: Analyst reads and writes analysis ───────
-    section("Step 2: Analyst reads researcher's findings")
-    results = get("/memories/search", {
-        "memory_type": "shared",
-        "min_importance": 0.7,
-        "limit": 10,
-    })
-    print(f"  Found {len(results)} shared memories from researcher")
+# ── Phase 2: Analyst builds on researcher's work ────────────────
+analyst = httpx.Client(
+    base_url=BASE, headers={"Authorization": f"Bearer {key_analyst}"}
+)
 
-    section("Step 2b: Analyst writes analysis (causal chain)")
-    analysis = post("/memories", {
-        "agent_id": "analyst",
-        "memory_type": "shared",
-        "content": {
-            "analysis": "Acme needs immediate retention outreach. Beta is stable. Focus resources on Acme.",
-            "priority": "P0",
-        },
-        "access_scope": "workgroup",
-        "importance": 0.95,
-        "causal_parent_id": research_ids[0],
-    })
-    print(f"  ✓ Analyst wrote analysis (causal parent: {research_ids[0][:8]}...)")
+# Analyst sees researcher's memories (same workgroup)
+findings = analyst.get("/memories/search", params={
+    "memory_type": "shared", "min_importance": 0.8
+}).json()
 
-    # ── Step 3: Writer drafts from analysis ─────────────
-    section("Step 3: Writer reads analysis and drafts email")
-    writer_mem = post("/memories", {
-        "agent_id": "writer",
-        "memory_type": "episodic",
-        "content": {
-            "draft": "Dear Acme team, we value your partnership and wanted to check in...",
-            "customer": "Acme",
-            "status": "draft",
-        },
-        "access_scope": "workgroup",
-        "importance": 0.8,
-        "causal_parent_id": analysis["id"],
-    })
-    print(f"  ✓ Writer drafted email (causal parent: {analysis['id'][:8]}...)")
+print(f"📊 Analyst: found {len(findings)} research findings")
 
-    # ── Step 4: Feedback ────────────────────────────────
-    section("Step 4: User provides feedback")
-    fb = post(f"/memories/{research_ids[0]}/feedback", {"reward": 0.9})
-    print(f"  ✓ Research finding utility: {fb['old_utility']:.3f} → {fb['new_utility']:.3f}")
-    fb2 = post(f"/memories/{analysis['id']}/feedback", {"reward": 0.8})
-    print(f"  ✓ Analysis utility: {fb2['old_utility']:.3f} → {fb2['new_utility']:.3f}")
+analyst.post("/memories", json={
+    "agent_id": "analyst",
+    "memory_type": "shared",
+    "content": {
+        "analysis": (
+            "Churn risk score: Acme=HIGH (competitor eval), "
+            "Beta=LOW (just renewed), Gamma=MEDIUM (usage declining)"
+        ),
+        "recommendation": "Prioritize Acme retention outreach immediately",
+    },
+    "access_scope": "workgroup",
+    "importance": 0.9,
+    "causal_parent_id": findings[0]["id"],  # links to researcher's finding
+})
 
-    # ── Step 5: Causal chain query ──────────────────────
-    section("Step 5: Trace the causal chain")
-    print(f"  Research → Analysis → Writing")
-    print(f"  {research_ids[0][:8]}... → {analysis['id'][:8]}... → {writer_mem['id'][:8]}...")
+# ── Phase 3: Writer accesses research via grant ─────────────────
+writer = httpx.Client(
+    base_url=BASE, headers={"Authorization": f"Bearer {key_writer}"}
+)
 
-    # ── Step 6: Cleanup ─────────────────────────────────
-    section("Cleanup")
-    for mid in research_ids + [analysis["id"], writer_mem["id"]]:
-        httpx.delete(f"{BASE}/memories/{mid}", headers=H, timeout=10)
-    print("  ✓ All test memories deleted")
+# Writer is in content team but can see research team's shared memories
+research_memories = writer.get("/memories/search", params={
+    "memory_type": "shared", "min_importance": 0.7
+}).json()
 
-    print("\n" + "=" * 50)
-    print("  Demo complete!")
-    print("=" * 50)
+print(f"✍️  Writer: received {len(research_memories)} memories via cross-team grant")
 
+writer.post("/memories", json={
+    "agent_id": "writer",
+    "memory_type": "episodic",
+    "content": {
+        "draft": "Dear Acme team, we noticed your contract renews next quarter...",
+        "customer": "Acme",
+        "based_on": "researcher findings + analyst churn score",
+    },
+    "access_scope": "workgroup",
+    "importance": 0.8,
+})
 
-if __name__ == "__main__":
-    main()
+# ── Phase 4: The monitoring queries PondDB enables ──────────────
+print("\n🔍 Monitoring: What happened during this session?\n")
+
+# Query 1: Complete audit trail
+logs = admin.get("/memories/search", params={"limit": 100}, headers=h).json()
+print(f"Total memories created: {len(logs)}")
+
+# Query 2: Cross-team access audit
+print("\nCross-team memory access audit:")
+audit = admin.post("/pondapi/execute", json={
+    "sql": """
+        SELECT agent_id, action, source_workgroup_id, COUNT(*) as accesses
+        FROM memory_access_log
+        WHERE grant_id IS NOT NULL
+        GROUP BY 1, 2, 3
+    """
+}, headers=h).json()
+for row in audit.get("rows", []):
+    print(f"  {row}")
+
+# Query 3: Causal chain — how did we get from research to email?
+print("\nCausal chain (research → analysis → email):")
+chain = admin.post("/pondapi/execute", json={
+    "sql": """
+        WITH RECURSIVE chain AS (
+            SELECT id, agent_id, content, causal_parent_id, 0 as depth
+            FROM agent_memories WHERE agent_id = 'analyst'
+            UNION ALL
+            SELECT m.id, m.agent_id, m.content, m.causal_parent_id, c.depth + 1
+            FROM agent_memories m JOIN chain c ON m.id = c.causal_parent_id
+            WHERE c.depth < 10
+        )
+        SELECT agent_id, json_extract(content, '$.finding') as finding,
+               json_extract(content, '$.analysis') as analysis
+        FROM chain ORDER BY depth DESC
+    """
+}, headers=h).json()
+for row in chain.get("rows", []):
+    print(f"  {row}")
+
+# Query 4: Memory utility leaderboard
+print("\nMemory utility leaderboard:")
+leaderboard = admin.post("/pondapi/execute", json={
+    "sql": """
+        SELECT agent_id, memory_type, COUNT(*) as memories,
+               ROUND(AVG(utility), 2) as avg_utility,
+               ROUND(AVG(importance), 2) as avg_importance
+        FROM agent_memories
+        GROUP BY agent_id, memory_type
+        ORDER BY avg_utility DESC
+    """
+}, headers=h).json()
+for row in leaderboard.get("rows", []):
+    print(f"  {row}")
+
+print("\n✅ Demo complete. Every operation above was logged in memory_access_log.")
+print("   Query it with SQL to see exactly what each agent knew and when.")

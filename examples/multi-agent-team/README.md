@@ -1,54 +1,67 @@
 # Multi-Agent Team Demo
 
-A 3-agent team demonstrating PondDB's memory sharing and causal chains.
+Three AI agents collaborate through PondDB's shared memory:
 
-## Agents
+1. **Researcher** discovers facts → stores as shared memories
+2. **Analyst** reads findings → adds churn analysis with causal link
+3. **Writer** (different team) accesses research via cross-team grant → drafts email
 
-| Agent | Workgroup | Role |
-|-------|-----------|------|
-| researcher | research-team | Finds customer data, writes shared findings |
-| analyst | research-team | Reads findings, writes analysis with causal link |
-| writer | writing-team | Reads analysis via cross-workgroup grant, drafts emails |
+## What this demonstrates
 
-## Run
+- **Workgroup isolation**: Writer can't see research until a grant is created
+- **Selective sharing**: Grant filters by memory type + importance threshold
+- **Causal chains**: Analyst's memory links to researcher's via causal_parent_id
+- **Monitoring**: Every operation logged in memory_access_log, queryable with SQL
+- **Utility scoring**: Memories that lead to good outcomes rank higher
+
+## Run it
 
 ```bash
 # Start PondDB
 docker compose up -d
 
 # Run the demo
-python multi_agent_demo.py [your-api-key]
+python multi_agent_demo.py
 ```
 
-## What it demonstrates
+## Expected output
 
-1. **Memory types**: `shared` for team knowledge, `episodic` for drafts
-2. **Causal chains**: research → analysis → writing linked via `causal_parent_id`
-3. **Utility feedback**: user rates memories, boosting high-value findings
-4. **Access logging**: every operation tracked in `memory_access_log`
+```
+📚 Researcher: storing findings...
+📊 Analyst: found 1 research findings
+✍️  Writer: received 2 memories via cross-team grant
 
-## The analytics queries you can run after
+🔍 Monitoring: What happened during this session?
+
+Total memories created: 4
+Cross-team memory access audit:
+  writer | search | research-wg-id | 1
+Causal chain (research → analysis → email):
+  researcher | "Top 3 customers..." | null
+  analyst | null | "Churn risk score: Acme=HIGH..."
+Memory utility leaderboard:
+  researcher | shared | 1 | 0.5 | 0.95
+  analyst | shared | 1 | 0.5 | 0.9
+  ...
+
+✅ Demo complete.
+```
+
+## What makes this different from Mem0
+
+With Mem0, you store and search memories. With PondDB, you also get:
 
 ```sql
--- Which agent created most memories?
-SELECT agent_id, COUNT(*) as total
-FROM agent_memories WHERE deleted_at IS NULL
-GROUP BY agent_id ORDER BY total DESC;
+-- "What did the writer receive from the research team?"
+SELECT * FROM memory_access_log WHERE grant_id IS NOT NULL;
 
--- Show the causal chain
-WITH RECURSIVE chain AS (
-  SELECT id, agent_id, content, causal_parent_id, 0 as depth
-  FROM agent_memories WHERE causal_parent_id IS NULL AND deleted_at IS NULL
-  UNION ALL
-  SELECT m.id, m.agent_id, m.content, m.causal_parent_id, c.depth + 1
-  FROM agent_memories m JOIN chain c ON m.causal_parent_id = c.id
-  WHERE m.deleted_at IS NULL AND c.depth < 10
-)
-SELECT depth, agent_id, content FROM chain ORDER BY depth;
+-- "Trace the causal chain from research → email"
+WITH RECURSIVE chain AS (...) SELECT * FROM chain;
 
--- Cross-workgroup access audit
-SELECT agent_id, action, grant_id, source_workgroup_id, COUNT(*)
-FROM memory_access_log
-WHERE grant_id IS NOT NULL
-GROUP BY 1, 2, 3, 4;
+-- "Which memories are frequently accessed but low quality?"
+SELECT * FROM agent_memories WHERE utility < 0.3 AND access_count > 10;
 ```
+
+These queries are impossible with Mem0 because their data is split across 3 databases
+(Qdrant + Neo4j + SQLite). PondDB keeps everything in one database — memories, access
+logs, and execution history are all JOINable.
