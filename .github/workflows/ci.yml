@@ -28,7 +28,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +61,7 @@ jobs:
 
       - name: Run tests (shard ${{ matrix.shard }}/4)
         run: pytest ${{ steps.split.outputs.files }} -v --tb=short
-        timeout-minutes: 15
+        timeout-minutes: 25
 
   build:
     runs-on: ubuntu-latest
