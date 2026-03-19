@@ -115,45 +115,12 @@ def test_ci_pull_request_does_not_trigger_on_all_branches(ci: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Coverage reporting — pytest must run with --cov flag
+# Coverage reporting — removed: --cov causes DuckDB finalizer hangs in CI
 # ---------------------------------------------------------------------------
-
-
-def test_ci_pytest_step_includes_cov_flag(ci_text: str) -> None:
-    """The pytest command in CI must include --cov to generate a coverage report.
-
-    Without --cov, there is no signal on test coverage trends. Coverage data
-    is especially useful in CI to catch regressions before merge.
-    """
-    assert "--cov" in ci_text, (
-        "CI workflow pytest step must include --cov flag. "
-        "Update the 'Run tests' step to: pytest tests/ --cov=src/ponddb --tb=short"
-    )
-
-
-def test_ci_pytest_step_includes_cov_report(ci_text: str) -> None:
-    """Coverage report format must be specified (e.g. --cov-report=term-missing).
-
-    Without --cov-report, pytest-cov defaults to an empty report that is hard
-    to read in CI logs. 'term-missing' prints uncovered line numbers inline.
-    """
-    assert "--cov-report" in ci_text, (
-        "CI workflow pytest step must include --cov-report flag. "
-        "Add --cov-report=term-missing to show uncovered lines in CI output."
-    )
-
-
-def test_ci_pytest_step_targets_src_ponddb(ci_text: str) -> None:
-    """--cov must point at the source package, not just the tests directory.
-
-    'pytest tests/ --cov' without a path measures coverage of everything
-    including test files themselves, inflating the percentage. Specify
-    '--cov=src/ponddb' to measure only production code coverage.
-    """
-    assert "--cov=src/ponddb" in ci_text or "--cov src/ponddb" in ci_text, (
-        "CI workflow --cov flag must target 'src/ponddb'. "
-        "Use: pytest tests/ --cov=src/ponddb --cov-report=term-missing --tb=short"
-    )
+# The --cov flag was removed from CI because pytest-cov's atexit handler
+# triggers DuckDB connection finalizers that hang for 5+ minutes after all
+# tests pass. Coverage is tracked locally instead.
+# See: ci: remove --cov to fix post-test hang in shard 2 (commit 9730dca)
 
 
 def test_ci_pytest_does_not_suppress_failures(ci_text: str) -> None:
