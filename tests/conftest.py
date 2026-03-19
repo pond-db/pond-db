@@ -1,6 +1,5 @@
 """Shared pytest fixtures and hooks for the PondDB test suite."""
 
-import atexit
 import gc
 import os
 
