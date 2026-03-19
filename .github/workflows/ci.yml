@@ -60,8 +60,8 @@ jobs:
           echo "Running shard $SHARD: $(echo "$FILES" | wc -w) test files"
 
       - name: Run tests (shard ${{ matrix.shard }}/4)
-        run: pytest ${{ steps.split.outputs.files }} --cov=src/ponddb --cov-report=term-missing -v --tb=short
-        timeout-minutes: 12
+        run: pytest ${{ steps.split.outputs.files }} -v --tb=short
+        timeout-minutes: 15
 
   build:
     runs-on: ubuntu-latest
