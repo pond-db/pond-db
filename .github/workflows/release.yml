@@ -32,8 +32,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/databasecompany/ponddb:${{ steps.version.outputs.VERSION }}
-            ghcr.io/databasecompany/ponddb:latest
+            ghcr.io/pond-db/pond-db:${{ steps.version.outputs.VERSION }}
+            ghcr.io/pond-db/pond-db:latest
 
   release-notes:
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
             ## Docker
 
             ```bash
-            docker pull ghcr.io/databasecompany/ponddb:${{ steps.version.outputs.VERSION }}
+            docker pull ghcr.io/pond-db/pond-db:${{ steps.version.outputs.VERSION }}
             ```
 
             ## Quick Start
