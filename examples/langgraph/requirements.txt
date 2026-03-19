@@ -1,0 +1,4 @@
+langgraph>=0.4
+langchain-anthropic>=0.3
+httpx>=0.27
+python-dotenv
