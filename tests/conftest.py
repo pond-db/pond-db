@@ -1,8 +1,24 @@
 """Shared pytest fixtures and hooks for the PondDB test suite."""
 
+import atexit
 import gc
+import os
 
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Force-exit workaround for DuckDB finalizer hang.
+# After all tests pass, DuckDB's connection finalizers block for 10+ minutes
+# in CI during Python interpreter shutdown. This atexit handler calls os._exit
+# to skip the finalizer phase entirely. Only active in CI (GITHUB_ACTIONS).
+# ---------------------------------------------------------------------------
+if os.environ.get("GITHUB_ACTIONS"):
+
+    def _force_exit() -> None:
+        os._exit(0)
+
+    atexit.register(_force_exit)
 
 
 @pytest.fixture(autouse=True)
