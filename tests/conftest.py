@@ -10,15 +10,15 @@ import pytest
 # ---------------------------------------------------------------------------
 # Force-exit workaround for DuckDB finalizer hang.
 # After all tests pass, DuckDB's connection finalizers block for 10+ minutes
-# in CI during Python interpreter shutdown. This atexit handler calls os._exit
-# to skip the finalizer phase entirely. Only active in CI (GITHUB_ACTIONS).
+# in CI during Python interpreter shutdown. The pytest_sessionfinish hook
+# fires after all tests complete but before Python's atexit/finalizer phase.
+# We call os._exit(0) here to skip the hang. Only active in CI.
 # ---------------------------------------------------------------------------
-if os.environ.get("GITHUB_ACTIONS"):
 
-    def _force_exit() -> None:
-        os._exit(0)
 
-    atexit.register(_force_exit)
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if os.environ.get("GITHUB_ACTIONS"):
+        os._exit(exitstatus)
 
 
 @pytest.fixture(autouse=True)
